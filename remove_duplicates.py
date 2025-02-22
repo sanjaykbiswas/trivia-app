@@ -2,6 +2,7 @@ import json
 import os
 import openai
 import numpy as np
+import datetime
 from generate_questions import get_trivia_questions
 
 # Set up OpenAI API key
@@ -12,16 +13,16 @@ if not openai_api_key:
 # Initialize OpenAI client
 client = openai.OpenAI(api_key=openai_api_key)
 
-# Choose the latest embedding model
-embedding_model = "text-embedding-3-small"  # Or use "text-embedding-3-large" for better quality
+# Choose the embedding model
+embedding_model = "text-embedding-3-small"  # Or "text-embedding-3-large" for better quality
 
 # Generate the trivia questions JSON (as a string)
-questions_json = get_trivia_questions("General Knowledge", 200)
+questions_json = get_trivia_questions(category, num_questions)
 
-# Parse the JSON into a Python list of dictionaries
+# Directly parse the JSON string into a Python list of dictionaries
 questions_data = json.loads(questions_json)
 
-# Assign a unique questionID to each question (e.g., Q1, Q2, ...)
+# Assign a temporary unique questionID to each question (e.g., Q1, Q2, ...)
 for idx, question in enumerate(questions_data):
     question['temp_questionID'] = f"Q{idx + 1}"
 
@@ -73,7 +74,7 @@ for i in range(num_questions):
             dup_id = questions_data[j]['temp_questionID']
             duplicates_info.setdefault(original_id, []).append(dup_id)
 
-# Print out duplicate questions with their questionIDs
+# Log duplicate questions detected
 print("Duplicate questions detected:")
 if duplicates_info:
     for original, dup_list in duplicates_info.items():
@@ -90,5 +91,23 @@ print("\nUnique questions kept:")
 for question in unique_questions:
     print(f"{question['temp_questionID']}: {question['Question']}")
 
-# Print the count of unique questions kept.
 print(f"\nTotal unique questions kept: {len(unique_questions)}")
+
+# ----------------------------------------------------------------------
+# Transform unique questions to match the Supabase schema
+# ----------------------------------------------------------------------
+questions_for_supabase = [
+    {
+        "question_text": question["Question"],
+        "difficulty": question["Difficulty"],
+        "user_id": None,  # Leave as NULL in the database
+        "created_at": datetime.datetime.utcnow().isoformat(),
+        "correct_answer": question["Correct Answer"],
+        "incorrect_answer_array": question["Incorrect Answer Array"]
+    }
+    for question in unique_questions
+]
+
+# Now you can pass `questions_for_supabase` to your Supabase batch upload process
+print("\nQuestions ready for Supabase upload:")
+print(json.dumps(questions_for_supabase, indent=2))

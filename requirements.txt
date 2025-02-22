@@ -6,3 +6,4 @@ numpy
 os
 argparse
 json
+supabase
