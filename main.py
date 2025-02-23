@@ -1,12 +1,10 @@
-from remove_duplicates import get_unique_questions
-from database_import import upload_questions
+from generate_questions import get_trivia_questions
+from remove_duplicates import remove_duplicates
+from database_import import upload_to_supabase
 
-def main():
-    # Generate questions and remove duplicates
-    unique_questions = get_unique_questions()
-    
-    # Upload the unique questions to Supabase
-    upload_questions(unique_questions)
+category = "General Knowledge"
+num_questions = 300
 
-if __name__ == "__main__":
-    main()
+questions = get_trivia_questions(category, num_questions)
+unique_questions = remove_duplicates(questions)
+upload_to_supabase(unique_questions)

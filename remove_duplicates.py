@@ -2,10 +2,10 @@ import json
 import os
 import openai
 import numpy as np
-import datetime
-from generate_questions import get_trivia_questions
+from dotenv import load_dotenv
 
 # Set up OpenAI API key
+load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 if not openai_api_key:
     raise ValueError("No OPENAI_API_KEY found in .env file")
@@ -14,100 +14,69 @@ if not openai_api_key:
 client = openai.OpenAI(api_key=openai_api_key)
 
 # Choose the embedding model
-embedding_model = "text-embedding-3-small"  # Or "text-embedding-3-large" for better quality
+embedding_model = "text-embedding-3-small"  # Using a lightweight model for efficiency
 
-# Generate the trivia questions JSON (as a string)
-questions_json = get_trivia_questions(category, num_questions)
 
-# Directly parse the JSON string into a Python list of dictionaries
-questions_data = json.loads(questions_json)
-
-# Assign a temporary unique questionID to each question (e.g., Q1, Q2, ...)
-for idx, question in enumerate(questions_data):
-    question['temp_questionID'] = f"Q{idx + 1}"
-
-# Create a text representation for each question for embedding
-texts_for_embedding = [
-    (
-        f"QuestionID: {question['temp_questionID']}\n"
-        f"Category: {question['Category']}\n"
-        f"Question: {question['Question']}\n"
-        f"Correct Answer: {question['Correct Answer']}\n"
-        f"Incorrect Answers: {', '.join(question['Incorrect Answer Array'])}\n"
-        f"Difficulty: {question['Difficulty']}"
+def get_embeddings(texts):
+    """Fetches embeddings for the given list of text inputs."""
+    response = client.embeddings.create(
+        model=embedding_model,  # Calls OpenAI embedding model
+        input=texts  # Input is a list of text strings to get embeddings for
     )
-    for question in questions_data
-]
+    return [item.embedding for item in response.data]  # Extracts embeddings from response
 
-# Obtain embeddings for each question in a single batch API call
-response = client.embeddings.create(
-    model=embedding_model,
-    input=texts_for_embedding
-)
 
-# Extract embeddings from the response
-embeddings = [item.embedding for item in response.data]
-
-# Define cosine similarity function
 def cosine_similarity(vec1, vec2):
-    vec1 = np.array(vec1)
-    vec2 = np.array(vec2)
-    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
+    """Computes cosine similarity between two vectors to measure question similarity."""
+    vec1, vec2 = np.array(vec1), np.array(vec2)  # Convert to NumPy arrays
+    return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))  # Standard cosine similarity formula
 
-# Compare each embedding with others to detect duplicates
-threshold = 0.90
-num_questions = len(embeddings)
 
-duplicate_indices = set()
-duplicates_info = {}
+def remove_duplicates(questions, threshold=0.90):
+    """
+    Identifies and removes duplicate questions based on semantic similarity using embeddings.
+    
+    Parameters:
+    - questions (list): List of trivia question dictionaries.
+    - threshold (float): Similarity threshold above which a question is considered a duplicate.
+    
+    Returns:
+    - List of unique questions with duplicates removed.
+    """
+    texts = [
+        f"{q['Question']} | {q['Correct Answer']} | {', '.join(q['Incorrect Answer Array'])}"
+        for q in questions
+    ]  # Create a text representation of each question for embedding
 
-for i in range(num_questions):
-    if i in duplicate_indices:
-        continue  # Skip questions already marked as duplicates
-    for j in range(i + 1, num_questions):
-        if j in duplicate_indices:
-            continue
-        sim = cosine_similarity(embeddings[i], embeddings[j])
-        if sim > threshold:
-            duplicate_indices.add(j)
-            original_id = questions_data[i]['temp_questionID']
-            dup_id = questions_data[j]['temp_questionID']
-            duplicates_info.setdefault(original_id, []).append(dup_id)
+    embeddings = get_embeddings(texts)  # Get embeddings for each question
 
-# Log duplicate questions detected
-print("Duplicate questions detected:")
-if duplicates_info:
-    for original, dup_list in duplicates_info.items():
-        print(f"Original QuestionID: {original} has duplicates: {', '.join(dup_list)}")
-else:
-    print("No duplicates found.")
+    duplicate_indices = set()  # Stores indices of duplicate questions
+    num_questions = len(embeddings)
 
-# Remove duplicates, keeping only the first occurrence of each duplicate group.
-unique_questions = [
-    question for idx, question in enumerate(questions_data) if idx not in duplicate_indices
-]
+    # Compare each question with all other questions
+    for i in range(num_questions):
+        if i in duplicate_indices:
+            continue  # Skip already marked duplicates
+        for j in range(i + 1, num_questions):
+            if j in duplicate_indices:
+                continue  # Skip already marked duplicates
+            if cosine_similarity(embeddings[i], embeddings[j]) > threshold:
+                duplicate_indices.add(j)  # Mark question as duplicate
 
-print("\nUnique questions kept:")
-for question in unique_questions:
-    print(f"{question['temp_questionID']}: {question['Question']}")
+    return [q for idx, q in enumerate(questions) if idx not in duplicate_indices]  # Keep only unique questions
 
-print(f"\nTotal unique questions kept: {len(unique_questions)}")
 
-# ----------------------------------------------------------------------
-# Transform unique questions to match the Supabase schema
-# ----------------------------------------------------------------------
-questions_for_supabase = [
-    {
-        "question_text": question["Question"],
-        "difficulty": question["Difficulty"],
-        "user_id": None,  # Leave as NULL in the database
-        "created_at": datetime.datetime.utcnow().isoformat(),
-        "correct_answer": question["Correct Answer"],
-        "incorrect_answer_array": question["Incorrect Answer Array"]
-    }
-    for question in unique_questions
-]
+if __name__ == "__main__":
+    import argparse
+    from generate_questions import get_trivia_questions
 
-# Now you can pass `questions_for_supabase` to your Supabase batch upload process
-print("\nQuestions ready for Supabase upload:")
-print(json.dumps(questions_for_supabase, indent=2))
+    parser = argparse.ArgumentParser(description="Generate and remove duplicate trivia questions.")
+    parser.add_argument("--category", required=True)
+    parser.add_argument("--num_questions", type=int, required=True)
+    args = parser.parse_args()
+
+    questions = get_trivia_questions(args.category, args.num_questions)  # Generate questions
+    unique_questions = remove_duplicates(questions)  # Remove duplicates
+
+    print(json.dumps(unique_questions, indent=2))  # Print final unique questions
+    print(f"\nTotal unique questions: {len(unique_questions)}")
