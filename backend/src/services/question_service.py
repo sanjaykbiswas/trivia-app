@@ -6,6 +6,7 @@ from repositories.question_repository import QuestionRepository
 from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
+from config.llm_config import LLMConfigFactory
 
 class QuestionService:
     """
@@ -20,14 +21,37 @@ class QuestionService:
     def __init__(
         self, 
         question_repository: QuestionRepository,
-        question_generator: QuestionGenerator,
-        answer_generator: AnswerGenerator,
-        deduplicator: Deduplicator
+        question_generator: Optional[QuestionGenerator] = None,
+        answer_generator: Optional[AnswerGenerator] = None,
+        deduplicator: Optional[Deduplicator] = None
     ):
+        """
+        Initialize question service with necessary components
+        
+        Args:
+            question_repository (QuestionRepository): Repository for data access
+            question_generator (QuestionGenerator, optional): Custom question generator
+            answer_generator (AnswerGenerator, optional): Custom answer generator
+            deduplicator (Deduplicator, optional): Custom deduplicator
+        """
         self.repository = question_repository
-        self.generator = question_generator
-        self.answer_generator = answer_generator
-        self.deduplicator = deduplicator
+        
+        # Create default generators with appropriate configs if not provided
+        if question_generator is None:
+            # For questions, we might want a more powerful model
+            question_config = LLMConfigFactory.create_anthropic("claude-3-7-sonnet-20250219")
+            self.generator = QuestionGenerator(question_config)
+        else:
+            self.generator = question_generator
+            
+        if answer_generator is None:
+            # For answers, we might want a faster model
+            answer_config = LLMConfigFactory.create_openai("gpt-3.5-turbo")
+            self.answer_generator = AnswerGenerator(answer_config)
+        else:
+            self.answer_generator = answer_generator
+            
+        self.deduplicator = deduplicator or Deduplicator()
     
     def generate_and_save_questions(
         self, 

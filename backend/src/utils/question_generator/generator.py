@@ -1,18 +1,26 @@
 import json
-from config.llm_config import LLMConfig
+from config.llm_config import LLMConfigFactory
 from utils.question_generator.category_helper import CategoryHelper
 from models.question import Question
 
 class QuestionGenerator:
     """
     Generates trivia questions for given categories
-    Refactored from create_questions.py
     """
-    def __init__(self):
-        self.llm_config = LLMConfig()
+    def __init__(self, llm_config=None):
+        """
+        Initialize the question generator
+        
+        Args:
+            llm_config (LLMConfig, optional): Specific LLM configuration to use
+        """
+        # Use provided config or create default
+        self.llm_config = llm_config or LLMConfigFactory.create_default()
         self.client = self.llm_config.get_client()
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
+        
+        # CategoryHelper can use its own LLM configuration if needed
         self.category_helper = CategoryHelper()
     
     def generate_questions(self, category, count=10):

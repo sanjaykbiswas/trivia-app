@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends
 import supabase
 from config.environment import Environment
+from config.llm_config import LLMConfigFactory
 from repositories.question_repository import QuestionRepository
 from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
@@ -33,12 +34,14 @@ def get_question_repository(client = Depends(get_supabase_client)):
     return QuestionRepository(client)
 
 def get_question_generator():
-    """Create question generator"""
-    return QuestionGenerator()
+    """Create question generator with Claude for rich, creative questions"""
+    config = LLMConfigFactory.create_anthropic("claude-3-7-sonnet-20250219")
+    return QuestionGenerator(config)
 
 def get_answer_generator():
-    """Create answer generator"""
-    return AnswerGenerator()
+    """Create answer generator with GPT for fast, structured answers"""
+    config = LLMConfigFactory.create_openai("gpt-3.5-turbo")
+    return AnswerGenerator(config)
 
 def get_deduplicator():
     """Create deduplicator"""

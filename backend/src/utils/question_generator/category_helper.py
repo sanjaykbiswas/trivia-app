@@ -1,12 +1,19 @@
-from config.llm_config import LLMConfig
+from config.llm_config import LLMConfigFactory
 
 class CategoryHelper:
     """
     Generates category-specific guidelines for question generation
-    Refactored from category_prompt_helper.py
     """
-    def __init__(self):
-        self.llm_config = LLMConfig()
+    def __init__(self, llm_config=None):
+        """
+        Initialize the category helper
+        
+        Args:
+            llm_config (LLMConfig, optional): Specific LLM configuration to use
+        """
+        # Use provided config or create default
+        # For CategoryHelper, we might want to use a less expensive model
+        self.llm_config = llm_config or LLMConfigFactory.create_default()
         self.client = self.llm_config.get_client()
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
