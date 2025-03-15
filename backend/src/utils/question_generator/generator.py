@@ -70,7 +70,7 @@ class QuestionGenerator:
         Follow these primary guidelines when creating a response:
 
         **Output format**
-        -- Output the answers in valid JSON format.
+        -- Output the questions in valid JSON format.
         -- One-dimensional JSON array of strings.  Do not nest the questions under a key.
         -- No markdown, fluff, introductions, or finishes.
         -- Output the questions only, no answers.

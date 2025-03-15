@@ -3,8 +3,5 @@ python-dotenv
 openai
 argparse
 numpy
-os
-argparse
-json
 supabase
 anthropic
