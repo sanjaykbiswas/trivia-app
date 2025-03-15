@@ -8,31 +8,47 @@ from dotenv import load_dotenv
 # Initialize Supabase client
 load_dotenv()
 supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_ANON_KEY")
+supabase_key = os.getenv("SUPABASE_KEY")
 if not supabase_url or not supabase_key:
     raise ValueError("Missing Supabase credentials.")
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
-def upload_to_supabase(questions):
-    """ Uploads trivia questions to the Supabase database. """
+def upload_to_supabase(questions, category):
+    """Uploads trivia questions to Supabase with the given category."""
+    
+    # Check if the category already exists
+    result = supabase.table("categories").select("id").eq("name", category).execute()
+    if result.data and len(result.data) > 0:
+        category_id = result.data[0]["id"]
+    else:
+        # Insert new category if it does not exist
+        insert_result = supabase.table("categories").insert({"name": category}).execute()
+        if not insert_result.data:
+            print("Error inserting category:", insert_result)
+            return
+        category_id = insert_result.data[0]["id"]
+
+    # Format questions and include the category_id
     formatted_questions = [
         {
             "question_text": q["Question"],
             "difficulty": q["Difficulty"].lower(),  # Ensure lowercase
-            "user_id": None,
+            "created_by": None,
             "created_at": None,
             "correct_answer": q["Correct Answer"],
-            "incorrect_answer_array": q["Incorrect Answer Array"]
+            "incorrect_answer_array": q["Incorrect Answer Array"],
+            "category_id": category_id  # Associate the question with its category
         }
         for q in questions
     ]
 
+    # Insert questions into the questions table
     response = supabase.table("questions").insert(formatted_questions).execute()
     
-    # Check if the response contains an error
-    if response.get("error"):
-        print("Upload Error")
+    # Check for error by verifying if data was returned
+    if not response.data:
+        print("Upload Error:", response)
     else:
         print("Upload Successful")
 
@@ -53,7 +69,7 @@ if __name__ == "__main__":
     num_questions = args.num_questions
     batch_size = args.batch_size
 
-        # Call category_prompt_helper using the provided category
+    # Call category_prompt_helper using the provided category
     prompt_nuance = category_prompt_helper(category)
     print(prompt_nuance)
 
@@ -88,4 +104,4 @@ if __name__ == "__main__":
     print(json.dumps(all_answers, indent=2))
 
     # Upload all answers to supabase
-    upload_to_supabase(all_answers)
+    upload_to_supabase(all_answers, category)

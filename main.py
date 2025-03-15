@@ -4,7 +4,7 @@ from category_prompt_helper import category_prompt_helper
 from remove_duplicates import remove_duplicates
 from create_answers import create_answers
 from create_answers import batch_questions
-from upload_questions import upload_to_supabase
+from write_new_questions import upload_to_supabase
 
 category = "General Knowledge"
 num_questions = 300
@@ -45,4 +45,4 @@ print("\nQuestions with Answers:\n")
 print(json.dumps(all_answers, indent=2))
 
 # Upload all answers to supabase
-upload_to_supabase(all_answers)
+upload_to_supabase(all_answers, category)
