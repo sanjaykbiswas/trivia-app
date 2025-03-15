@@ -1,3 +1,5 @@
+fastapi
+uvicorn
 pydantic
 python-dotenv
 openai
@@ -5,3 +7,6 @@ argparse
 numpy
 supabase
 anthropic
+typing-extensions
+python-multipart
+httpx
