@@ -32,6 +32,10 @@ class CompleteQuestion:
     def category(self):
         return self.question.category
     
+    @property
+    def user(self):
+        return self.question.user
+    
     def to_dict(self):
         """Convert to a single dictionary"""
         return {
@@ -41,5 +45,6 @@ class CompleteQuestion:
             "correct_answer": self.answer.correct_answer,
             "incorrect_answers": self.answer.incorrect_answers,
             "difficulty": self.question.difficulty,
+            "user": self.question.user,
             "created_at": self.question.created_at.isoformat()
         }

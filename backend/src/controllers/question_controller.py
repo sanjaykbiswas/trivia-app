@@ -10,12 +10,14 @@ class QuestionGenerationRequest(BaseModel):
     count: int = Field(default=10, ge=1, le=100)
     deduplicate: bool = True
     difficulties: Optional[List[str]] = None  # Add difficulties parameter
+    user: Optional[str] = None
 
 class QuestionResponse(BaseModel):
     id: str
     content: str
     category: str
     difficulty: Optional[str] = None  # Support the 5 difficulty levels
+    user: str = "system"  # Add user field with default value
 
 class AnswerResponse(BaseModel):
     correct_answer: str
@@ -28,6 +30,7 @@ class CompleteQuestionResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None  # Support the 5 difficulty levels
+    user: str = "system"  # Add user field with default value
 
 class QuestionController:
     """
@@ -60,7 +63,8 @@ class QuestionController:
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
-            difficulty=request.difficulties[0] if request.difficulties and len(request.difficulties) == 1 else None
+            difficulty=request.difficulties[0] if request.difficulties and len(request.difficulties) == 1 else None,
+            user=request.user
         )
         
         return [
@@ -68,7 +72,8 @@ class QuestionController:
                 id=q.id,
                 content=q.content,
                 category=q.category,
-                difficulty=q.difficulty
+                difficulty=q.difficulty,
+                user=q.user
             ) for q in questions
         ]
     
@@ -86,7 +91,8 @@ class QuestionController:
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
-            difficulties=request.difficulties
+            difficulties=request.difficulties,
+            user=request.user
         )
         
         return [self._format_complete_question(q) for q in complete_questions]
@@ -161,5 +167,6 @@ class QuestionController:
             category=question.category,
             correct_answer=question.correct_answer,
             incorrect_answers=question.incorrect_answers,
-            difficulty=question.difficulty
+            difficulty=question.difficulty,
+            user=question.user
         )
