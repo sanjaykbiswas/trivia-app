@@ -54,7 +54,6 @@ class AnswerGenerator:
                         question_id=question_id,
                         correct_answer=answer_data["Correct Answer"],
                         incorrect_answers=answer_data["Incorrect Answer Array"],
-                        difficulty=answer_data["Difficulty"]
                     )
                     all_answers.append(answer)
                     
