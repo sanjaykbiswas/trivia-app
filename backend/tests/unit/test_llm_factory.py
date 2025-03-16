@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Add the project root to the Python path so we can import modules
 # Adjust this path to the root of your project
-project_root = Path("/Users/sanjaybiswas/development/trivia-app/backend/src")
+project_root = Path("/Users/sanjaybiswas/development/trivia-app")
 sys.path.append(str(project_root))
 
 from config.llm_config import LLMConfigFactory

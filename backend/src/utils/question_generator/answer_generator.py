@@ -85,10 +85,6 @@ class AnswerGenerator:
         - If the question has specific constraints (e.g., "Cities starting with B"), all incorrect answers must meet those same constraints
         - Incorrect answers should vary in difficulty to avoid making the correct answer obvious
         - Incorrect answers should be factually incorrect but believable to someone with moderate knowledge of the topic
-        - A difficulty rating ("Easy", "Medium", or "Hard") based on:
-        - Easy: Common knowledge that most people would know
-        - Medium: Knowledge that requires some familiarity with the subject
-        - Hard: Specialized knowledge that only enthusiasts or experts would likely know
 
         FORMAT REQUIREMENTS:
         1. Return ONLY a JSON array of objects with no additional text
@@ -100,13 +96,11 @@ class AnswerGenerator:
                 "Question": "What is the capital of France?",
                 "Correct Answer": "Paris",
                 "Incorrect Answer Array": ["London", "Rome", "Berlin"],
-                "Difficulty": "Easy"
             }},
             {{
                 "Question": "Which planet is known as the Red Planet?",
                 "Correct Answer": "Mars",
                 "Incorrect Answer Array": ["Venus", "Jupiter", "Saturn"],
-                "Difficulty": "Easy"
             }}
         ]
 
