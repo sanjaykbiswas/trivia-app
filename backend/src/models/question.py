@@ -9,6 +9,7 @@ class Question:
     """
     content: str
     category: str
+    difficulty: Optional[str] = None  # Possible values: "Easy", "Medium", "Hard", "Expert", "Master"
     id: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     
@@ -17,6 +18,7 @@ class Question:
         return {
             "content": self.content,
             "category": self.category,
+            "difficulty": self.difficulty,
             "created_at": self.created_at.isoformat(),
             **({"id": self.id} if self.id else {})
         }

@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+import concurrent.futures
 from models.question import Question
 from models.answer import Answer
 from models.complete_question import CompleteQuestion
@@ -52,12 +53,16 @@ class QuestionService:
             self.answer_generator = answer_generator
             
         self.deduplicator = deduplicator or Deduplicator()
+        
+        # Standard difficulty levels (5 tiers)
+        self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
     def generate_and_save_questions(
         self, 
         category: str, 
         count: int = 10,
-        deduplicate: bool = True
+        deduplicate: bool = True,
+        difficulty: Optional[str] = None
     ) -> List[Question]:
         """
         Generate questions for a category and save them
@@ -66,12 +71,18 @@ class QuestionService:
             category (str): Question category
             count (int): Number of questions to generate
             deduplicate (bool): Whether to deduplicate questions
+            difficulty (str, optional): Specific difficulty level
             
         Returns:
             List[Question]: Generated and saved questions
         """
         # Generate questions
-        questions = self.generator.generate_questions(category, count)
+        if difficulty:
+            # Generate questions for a specific difficulty
+            questions = self.generator.generate_questions(category, count, difficulty)
+        else:
+            # Use the new multi-difficulty generation method
+            questions = self.generate_questions_across_difficulties(category, count)
         
         # Deduplicate if requested
         if deduplicate:
@@ -81,6 +92,64 @@ class QuestionService:
         saved_questions = self.repository.bulk_create(questions)
         
         return saved_questions
+    
+    def generate_questions_across_difficulties(
+        self,
+        category: str,
+        count: int = 10,
+        difficulties: List[str] = None
+    ) -> List[Question]:
+        """
+        Generate questions across multiple difficulty tiers concurrently
+        
+        Args:
+            category (str): Question category
+            count (int): Total number of questions to generate
+            difficulties (List[str], optional): List of difficulties to include
+                                               Defaults to all five difficulty levels
+            
+        Returns:
+            List[Question]: Generated questions across all difficulty tiers
+        """
+        # Default to all five difficulty levels if not specified
+        if difficulties is None:
+            difficulties = self.difficulty_levels
+        else:
+            # Filter to only include valid difficulty levels
+            difficulties = [d for d in difficulties if d in self.difficulty_levels]
+            if not difficulties:
+                difficulties = ["Medium"]  # Default to Medium if none are valid
+        
+        # Calculate questions per difficulty, distributing evenly
+        questions_per_difficulty = max(1, count // len(difficulties))
+        remainder = count % len(difficulties)
+        
+        # Distribute the remainder among the first few difficulties
+        counts = [questions_per_difficulty + (1 if i < remainder else 0) for i in range(len(difficulties))]
+        
+        # Generate questions for each difficulty tier concurrently
+        all_questions = []
+        
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_to_difficulty = {
+                executor.submit(
+                    self.generator.generate_questions, 
+                    category, 
+                    counts[i], 
+                    difficulty
+                ): difficulty 
+                for i, difficulty in enumerate(difficulties)
+            }
+            
+            for future in concurrent.futures.as_completed(future_to_difficulty):
+                try:
+                    questions = future.result()
+                    all_questions.extend(questions)
+                except Exception as exc:
+                    difficulty = future_to_difficulty[future]
+                    print(f"Generation for {difficulty} generated an exception: {exc}")
+        
+        return all_questions
     
     def generate_answers_for_questions(
         self,
@@ -116,7 +185,8 @@ class QuestionService:
         category: str,
         count: int = 10,
         deduplicate: bool = True,
-        batch_size: int = 50
+        batch_size: int = 50,
+        difficulties: List[str] = None
     ) -> List[CompleteQuestion]:
         """
         Complete end-to-end pipeline: generate questions and answers
@@ -126,15 +196,17 @@ class QuestionService:
             count (int): Number of questions
             deduplicate (bool): Whether to deduplicate
             batch_size (int): Processing batch size
+            difficulties (List[str], optional): List of difficulties to include
             
         Returns:
             List[CompleteQuestion]: Complete questions with answers
         """
-        # Generate and save questions
+        # Generate and save questions across difficulty tiers
         questions = self.generate_and_save_questions(
             category=category,
             count=count,
-            deduplicate=deduplicate
+            deduplicate=deduplicate,
+            difficulty=None  # Use multi-difficulty generation
         )
         
         # Generate and save answers

@@ -31,7 +31,7 @@ class AnswerGenerator:
         Returns:
             list[Answer]: Generated Answer objects
         """
-        # Extract question content
+        # Extract question content and metadata
         question_texts = [q.content for q in questions]
         question_ids = [q.id for q in questions]
         
@@ -103,7 +103,7 @@ class AnswerGenerator:
             }}
         ]
 
-    DO NOT include explanations, markdown formatting, or any text outside the JSON structure.
+        DO NOT include explanations, markdown formatting, or any text outside the JSON structure.
 
         Here is the list of questions:
         """ + "\n".join([f'- \"{q}\"' for q in question_batch])

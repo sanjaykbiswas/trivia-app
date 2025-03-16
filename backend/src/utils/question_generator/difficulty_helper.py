@@ -19,7 +19,7 @@ class DifficultyHelper:
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
         
-        # Standard difficulty levels
+        # Five standard difficulty levels
         self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
     def generate_difficulty_guidelines(self, category):
@@ -45,11 +45,11 @@ class DifficultyHelper:
         Format your response in a way that can be automatically parsed as JSON, following this exact structure:
 
         {{
-            "Tier 1: Easy": "2-3 sentence description of knowledge level, question types, and target audience",
-            "Tier 2: Medium": "2-3 sentence description of knowledge level, question types, and target audience",
-            "Tier 3: Hard": "2-3 sentence description of knowledge level, question types, and target audience",
-            "Tier 4: Expert": "2-3 sentence description of knowledge level, question types, and target audience",
-            "Tier 5: Master": "2-3 sentence description of knowledge level, question types, and target audience"
+            "Easy": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Medium": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Hard": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Expert": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Master": "2-3 sentence description of knowledge level, question types, and target audience"
         }}
 
         Ensure you include all 5 tiers exactly as named above and provide detailed, unique descriptions for each level.
@@ -105,17 +105,17 @@ class DifficultyHelper:
                 pass
         
         # Try to extract using regex as a last resort
-        for i, level in enumerate(self.difficulty_levels, 1):
-            pattern = rf"Tier {i}:?\s*{level}[:\"]?(.+?)(?=Tier {i+1}:|$)"
-            match = re.search(pattern, raw_response, re.DOTALL | re.IGNORECASE)
+        for level in self.difficulty_levels:
+            pattern = rf'"{level}":\s*"(.*?)"(?=,|\s*}})'
+            match = re.search(pattern, raw_response, re.DOTALL)
             if match:
-                description = match.group(1).strip().strip('"')
-                structured_difficulties[f"Tier {i}: {level}"] = description
+                description = match.group(1).strip()
+                structured_difficulties[level] = description
         
         # If we couldn't parse the structure properly, create a default structure
         if not structured_difficulties:
-            for i, level in enumerate(self.difficulty_levels, 1):
-                structured_difficulties[f"Tier {i}: {level}"] = f"Default {level.lower()} difficulty for {level.lower()} questions."
+            for level in self.difficulty_levels:
+                structured_difficulties[level] = f"Default {level.lower()} difficulty for {level.lower()} questions."
         
         return structured_difficulties
     
@@ -131,12 +131,10 @@ class DifficultyHelper:
             str: Difficulty description for the specified tier
         """
         if isinstance(tier, int) and 1 <= tier <= 5:
-            key = f"Tier {tier}: {self.difficulty_levels[tier-1]}"
-            return difficulty_guidelines.get(key, "")
+            level = self.difficulty_levels[tier-1]
+            return difficulty_guidelines.get(level, "")
         
         if isinstance(tier, str) and tier in self.difficulty_levels:
-            index = self.difficulty_levels.index(tier) + 1
-            key = f"Tier {index}: {tier}"
-            return difficulty_guidelines.get(key, "")
+            return difficulty_guidelines.get(tier, "")
         
         return ""

@@ -26,7 +26,7 @@ class CompleteQuestion:
     
     @property
     def difficulty(self):
-        return self.answer.difficulty
+        return self.question.difficulty
     
     @property
     def category(self):
@@ -40,6 +40,6 @@ class CompleteQuestion:
             "category": self.question.category,
             "correct_answer": self.answer.correct_answer,
             "incorrect_answers": self.answer.incorrect_answers,
-            "difficulty": self.answer.difficulty,
+            "difficulty": self.question.difficulty,
             "created_at": self.question.created_at.isoformat()
         }

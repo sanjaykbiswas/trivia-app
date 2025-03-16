@@ -9,16 +9,17 @@ class QuestionGenerationRequest(BaseModel):
     category: str
     count: int = Field(default=10, ge=1, le=100)
     deduplicate: bool = True
+    difficulties: Optional[List[str]] = None  # Add difficulties parameter
 
 class QuestionResponse(BaseModel):
     id: str
     content: str
     category: str
+    difficulty: Optional[str] = None  # Support the 5 difficulty levels
 
 class AnswerResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
-    difficulty: str
 
 class CompleteQuestionResponse(BaseModel):
     id: str
@@ -26,7 +27,7 @@ class CompleteQuestionResponse(BaseModel):
     category: str
     correct_answer: str
     incorrect_answers: List[str]
-    difficulty: str
+    difficulty: Optional[str] = None  # Support the 5 difficulty levels
 
 class QuestionController:
     """
@@ -58,14 +59,16 @@ class QuestionController:
         questions = self.question_service.generate_and_save_questions(
             category=request.category,
             count=request.count,
-            deduplicate=request.deduplicate
+            deduplicate=request.deduplicate,
+            difficulty=request.difficulties[0] if request.difficulties and len(request.difficulties) == 1 else None
         )
         
         return [
             QuestionResponse(
                 id=q.id,
                 content=q.content,
-                category=q.category
+                category=q.category,
+                difficulty=q.difficulty
             ) for q in questions
         ]
     
@@ -82,7 +85,8 @@ class QuestionController:
         complete_questions = self.question_service.create_complete_question_set(
             category=request.category,
             count=request.count,
-            deduplicate=request.deduplicate
+            deduplicate=request.deduplicate,
+            difficulties=request.difficulties
         )
         
         return [self._format_complete_question(q) for q in complete_questions]
@@ -104,7 +108,8 @@ class QuestionController:
             QuestionResponse(
                 id=q.id,
                 content=q.content,
-                category=q.category
+                category=q.category,
+                difficulty=q.difficulty
             ) for q in questions
         ]
     

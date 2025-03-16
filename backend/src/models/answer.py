@@ -10,7 +10,6 @@ class Answer:
     question_id: str
     correct_answer: str
     incorrect_answers: List[str]
-    difficulty: str  # "Easy", "Medium", "Hard"
     id: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     
@@ -20,7 +19,6 @@ class Answer:
             "question_id": self.question_id,
             "correct_answer": self.correct_answer,
             "incorrect_answers": self.incorrect_answers,
-            "difficulty": self.difficulty,
             "created_at": self.created_at.isoformat(),
             **({"id": self.id} if self.id else {})
         }

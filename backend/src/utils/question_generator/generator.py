@@ -24,6 +24,9 @@ class QuestionGenerator:
         # CategoryHelper can use its own LLM configuration if needed
         self.category_helper = CategoryHelper()
         self.difficulty_helper = DifficultyHelper()
+        
+        # Standard difficulty levels (5 tiers)
+        self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
     def generate_questions(self, category, count=10, difficulty=None):
         """
@@ -41,15 +44,33 @@ class QuestionGenerator:
         # Get category-specific guidelines
         category_guidelines = self.category_helper.generate_category_guidelines(category)
         
-        # Get difficulty guidelines if a specific difficulty is requested
+        # Standardize difficulty if provided
+        standard_difficulty = None
         difficulty_context = ""
+        
         if difficulty:
+            # Convert to standard difficulty format
+            if isinstance(difficulty, int) and 1 <= difficulty <= 5:
+                standard_difficulty = self.difficulty_levels[difficulty-1]
+            elif isinstance(difficulty, str) and difficulty in self.difficulty_levels:
+                standard_difficulty = difficulty
+            elif isinstance(difficulty, str):
+                # Try to match difficulty string to standard level
+                for level in self.difficulty_levels:
+                    if level.lower() in difficulty.lower():
+                        standard_difficulty = level
+                        break
+                
+            # If still not matched, default to Medium
+            if not standard_difficulty:
+                standard_difficulty = "Medium"
+                
             # Generate all difficulty tiers
             difficulty_tiers = self.difficulty_helper.generate_difficulty_guidelines(category)
             
             # Get the specific tier description requested
             if difficulty_tiers:
-                difficulty_context = self.difficulty_helper.get_difficulty_by_tier(difficulty_tiers, difficulty)
+                difficulty_context = self.difficulty_helper.get_difficulty_by_tier(difficulty_tiers, standard_difficulty)
                 if difficulty_context:
                     difficulty_context = f"\nDifficulty Level:\n{difficulty_context}"
         
@@ -65,8 +86,8 @@ class QuestionGenerator:
         else:
             question_list = raw_questions
             
-        # Create Question objects
-        return [Question(content=q, category=category) for q in question_list]
+        # Create Question objects with difficulty information
+        return [Question(content=q, category=category, difficulty=standard_difficulty) for q in question_list]
     
     def _call_llm_for_questions(self, category, count, category_guidelines, difficulty_context=""):
         """
