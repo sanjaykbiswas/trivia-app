@@ -1,4 +1,6 @@
 from config.llm_config import LLMConfigFactory
+import json
+import re
 
 class DifficultyHelper:
     """
@@ -16,6 +18,9 @@ class DifficultyHelper:
         self.client = self.llm_config.get_client()
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
+        
+        # Standard difficulty levels
+        self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
     def generate_difficulty_guidelines(self, category):
         """
@@ -25,7 +30,7 @@ class DifficultyHelper:
             category (str): The category to generate difficulty guidelines for
             
         Returns:
-            str: Guidelines text
+            dict: Structured difficulty guidelines with keys for each tier
         """
         prompt = f"""
         Create 5 distinct difficulty tiers for the category: '{category}'.
@@ -37,33 +42,26 @@ class DifficultyHelper:
         - Depth of subject matter (common facts → obscure details)
         - Breadth across subcategories within '{category}'
 
-        Format your response exactly as follows:
+        Format your response in a way that can be automatically parsed as JSON, following this exact structure:
 
-        ### {Category} Difficulty Tiers
+        {{
+            "Tier 1: Easy": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Tier 2: Medium": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Tier 3: Hard": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Tier 4: Expert": "2-3 sentence description of knowledge level, question types, and target audience",
+            "Tier 5: Master": "2-3 sentence description of knowledge level, question types, and target audience"
+        }}
 
-        **Tier 1: [Brief Title]**
-        [2-3 sentence description of knowledge level, question types, and target audience]
-
-        **Tier 2: [Brief Title]**
-        [2-3 sentence description of knowledge level, question types, and target audience]
-
-        **Tier 3: [Brief Title]**
-        [2-3 sentence description of knowledge level, question types, and target audience]
-
-        **Tier 4: [Brief Title]**
-        [2-3 sentence description of knowledge level, question types, and target audience]
-
-        **Tier 5: [Brief Title]**
-        [2-3 sentence description of knowledge level, question types, and target audience]
-
+        Ensure you include all 5 tiers exactly as named above and provide detailed, unique descriptions for each level.
         """
         
+        raw_response = ""
         if self.provider == "openai":
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.choices[0].message.content
+            raw_response = response.choices[0].message.content
         
         elif self.provider == "anthropic":
             response = self.client.messages.create(
@@ -71,7 +69,74 @@ class DifficultyHelper:
                 max_tokens=1024,
                 messages=[{"role": "user", "content": prompt}],
             )
-            return response.content[0].text
+            raw_response = response.content[0].text
         
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
+        
+        # Parse the response into a structured format
+        return self._parse_difficulty_response(raw_response)
+    
+    def _parse_difficulty_response(self, raw_response):
+        """
+        Parse the LLM response into a structured format
+        
+        Args:
+            raw_response (str): Raw text response from the LLM
+            
+        Returns:
+            dict: Structured difficulty guidelines
+        """
+        # Try to parse as JSON first
+        try:
+            return json.loads(raw_response)
+        except json.JSONDecodeError:
+            pass
+        
+        # Fall back to regex parsing if JSON parsing fails
+        structured_difficulties = {}
+        
+        # Clean up the response - find content between triple backticks if present
+        json_content = re.search(r'```(?:json)?\s*(.*?)\s*```', raw_response, re.DOTALL)
+        if json_content:
+            try:
+                return json.loads(json_content.group(1))
+            except json.JSONDecodeError:
+                pass
+        
+        # Try to extract using regex as a last resort
+        for i, level in enumerate(self.difficulty_levels, 1):
+            pattern = rf"Tier {i}:?\s*{level}[:\"]?(.+?)(?=Tier {i+1}:|$)"
+            match = re.search(pattern, raw_response, re.DOTALL | re.IGNORECASE)
+            if match:
+                description = match.group(1).strip().strip('"')
+                structured_difficulties[f"Tier {i}: {level}"] = description
+        
+        # If we couldn't parse the structure properly, create a default structure
+        if not structured_difficulties:
+            for i, level in enumerate(self.difficulty_levels, 1):
+                structured_difficulties[f"Tier {i}: {level}"] = f"Default {level.lower()} difficulty for {level.lower()} questions."
+        
+        return structured_difficulties
+    
+    def get_difficulty_by_tier(self, difficulty_guidelines, tier):
+        """
+        Get difficulty description for a specific tier
+        
+        Args:
+            difficulty_guidelines (dict): Structured difficulty guidelines
+            tier (int or str): Tier number (1-5) or name (Easy, Medium, etc.)
+            
+        Returns:
+            str: Difficulty description for the specified tier
+        """
+        if isinstance(tier, int) and 1 <= tier <= 5:
+            key = f"Tier {tier}: {self.difficulty_levels[tier-1]}"
+            return difficulty_guidelines.get(key, "")
+        
+        if isinstance(tier, str) and tier in self.difficulty_levels:
+            index = self.difficulty_levels.index(tier) + 1
+            key = f"Tier {index}: {tier}"
+            return difficulty_guidelines.get(key, "")
+        
+        return ""

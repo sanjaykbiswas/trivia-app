@@ -1,6 +1,7 @@
 import json
 from config.llm_config import LLMConfigFactory
 from utils.question_generator.category_helper import CategoryHelper
+from utils.question_generator.difficulty_helper import DifficultyHelper
 from models.question import Question
 
 class QuestionGenerator:
@@ -22,14 +23,17 @@ class QuestionGenerator:
         
         # CategoryHelper can use its own LLM configuration if needed
         self.category_helper = CategoryHelper()
+        self.difficulty_helper = DifficultyHelper()
     
-    def generate_questions(self, category, count=10):
+    def generate_questions(self, category, count=10, difficulty=None):
         """
         Generate trivia questions for a specific category
         
         Args:
             category (str): The category to generate questions for
             count (int): Number of questions to generate
+            difficulty (str or int, optional): Specific difficulty level to target
+                                              (Easy, Medium, Hard, Expert, Master) or tier number (1-5)
             
         Returns:
             list[Question]: Generated Question objects
@@ -37,8 +41,20 @@ class QuestionGenerator:
         # Get category-specific guidelines
         category_guidelines = self.category_helper.generate_category_guidelines(category)
         
+        # Get difficulty guidelines if a specific difficulty is requested
+        difficulty_context = ""
+        if difficulty:
+            # Generate all difficulty tiers
+            difficulty_tiers = self.difficulty_helper.generate_difficulty_guidelines(category)
+            
+            # Get the specific tier description requested
+            if difficulty_tiers:
+                difficulty_context = self.difficulty_helper.get_difficulty_by_tier(difficulty_tiers, difficulty)
+                if difficulty_context:
+                    difficulty_context = f"\nDifficulty Level:\n{difficulty_context}"
+        
         # Generate raw questions
-        raw_questions = self._call_llm_for_questions(category, count, category_guidelines)
+        raw_questions = self._call_llm_for_questions(category, count, category_guidelines, difficulty_context)
         
         # Parse questions and convert to Question objects
         if isinstance(raw_questions, str):
@@ -52,7 +68,7 @@ class QuestionGenerator:
         # Create Question objects
         return [Question(content=q, category=category) for q in question_list]
     
-    def _call_llm_for_questions(self, category, count, category_guidelines):
+    def _call_llm_for_questions(self, category, count, category_guidelines, difficulty_context=""):
         """
         Call the LLM to generate questions
         
@@ -60,6 +76,7 @@ class QuestionGenerator:
             category (str): Category
             count (int): Number of questions
             category_guidelines (str): Category-specific guidelines
+            difficulty_context (str): Difficulty-specific context
             
         Returns:
             str or list: Raw question data from LLM
@@ -89,7 +106,7 @@ class QuestionGenerator:
         -- Do not do riddles.
 
         **Difficulty**
-        -- Provide questions with a range of difficulties, but overall lean towards more challenging.
+        -- Questions should match the difficulty context, if provided: {difficulty_context}.
 
         Additionally, ensure you follow the following more specific guidelines for the category '{category}':
 
