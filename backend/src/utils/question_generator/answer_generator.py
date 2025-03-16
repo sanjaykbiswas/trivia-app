@@ -75,19 +75,25 @@ class AnswerGenerator:
             str: JSON string with answer data
         """
         prompt = f"""
-        You are an expert at trivia. You will receive a list of trivia questions.
-        
-        **For each question in the list, generate a separate JSON object.**
+        You are a trivia expert tasked with enriching a set of trivia questions in the {category} category.
 
-        Each object should include:
-        - The correct answer.
-        - Three plausible but incorrect answers.
-        - A difficulty rating (Easy, Medium, or Hard).
+        For each question provided, create a complete JSON object containing:
+        - The original question text (exactly as provided)
+        - The correct answer (verified for accuracy)
+        - Three plausible but incorrect answers that follow these guidelines:
+        - All incorrect answers must belong to the same category/type as the correct answer
+        - If the question has specific constraints (e.g., "Cities starting with B"), all incorrect answers must meet those same constraints
+        - Incorrect answers should vary in difficulty to avoid making the correct answer obvious
+        - Incorrect answers should be factually incorrect but believable to someone with moderate knowledge of the topic
+        - A difficulty rating ("Easy", "Medium", or "Hard") based on:
+        - Easy: Common knowledge that most people would know
+        - Medium: Knowledge that requires some familiarity with the subject
+        - Hard: Specialized knowledge that only enthusiasts or experts would likely know
 
-        When creating the incorrect answers, you must remember that the category is {category}.
-        - If the category has a unique aspect, e.g., "Cities that start with B", ensure all incorrect answers also meet that criteria so the answer is not immediately obvious.
-
-        Return the response as a **JSON array of objects**, formatted like this:
+        FORMAT REQUIREMENTS:
+        1. Return ONLY a JSON array of objects with no additional text
+        2. Include ALL {len(question_batch)} questions in your response
+        3. Follow this exact structure:
 
         [
             {{
@@ -104,9 +110,7 @@ class AnswerGenerator:
             }}
         ]
 
-        **You MUST return all {len(question_batch)} questions in the response. Do NOT return just one question.**
-
-        **Return only the pure JSON. No extra text, comments, or markdown.**
+    DO NOT include explanations, markdown formatting, or any text outside the JSON structure.
 
         Here is the list of questions:
         """ + "\n".join([f'- \"{q}\"' for q in question_batch])

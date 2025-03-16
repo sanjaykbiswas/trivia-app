@@ -29,22 +29,28 @@ class CategoryHelper:
             str: Guidelines text
         """
         prompt = f"""
-        Generate a prompt that will help a **Trivia Question Generator** LLM come up with interesting trivia questions for the category '{category}'.
+        Create a comprehensive guide for generating exceptional trivia questions in the category: '{category}'.
 
-        The prompt should consider the nuances of '{category}', and frame these nuances in a way that will help the **Trivia Question Generator** create high-quality questions.
+        Analyze the distinctive elements of '{category}' and develop specific guidelines that will help create engaging, accurate, and diverse trivia questions. Focus on:
 
-        Return clear, labeled guidelines in the following format, and limit the number of guidelines you create to 10. Don't output anything but the format described below.
+        - Key knowledge domains within this category
+        - Different question formats that work well
+        - Types of facts that make for interesting questions
+        - Ways to ensure questions are factually accurate
 
-        Category Guidelines
+        Format your response using the exact structure below:
 
-        **Guideline 1** Description of guideline 1 (Replace **Guideline 1** with a label for the guideline)
+        ### {category} Trivia Question Guidelines
 
-        **Guideline 2** Description of guideline 2 (Replace **Guideline 2** with a label for the guideline)
+        **[Descriptive Guideline Title 1]**
+        Clear explanation of the guideline.
 
-        **Guideline N** Description of guideline N (Replace **Guideline N** with a label for the guideline)
+        **[Descriptive Guideline Title 2]**
+        Clear explanation of the guideline.
 
-        --
-        None of the guidelines should involve visual question generation or difficulty balancing.
+        [Continue with additional guidelines, maximum of 10 total]
+
+        Important: Do not include guidelines about visual questions or difficulty balancing. Focus exclusively on content, format, and quality considerations for text-based trivia questions.
         """
         
         if self.provider == "openai":
