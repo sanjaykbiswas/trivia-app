@@ -10,3 +10,4 @@ anthropic
 typing-extensions
 python-multipart
 httpx
+pytest

@@ -1,8 +1,12 @@
 from typing import Optional, Dict, Any, List
+import logging
 from models.question import Question
 from models.answer import Answer
 from config.environment import Environment
 from datetime import datetime
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 class SupabaseActions:
     """
@@ -33,6 +37,8 @@ class SupabaseActions:
         Returns:
             Question: Saved question with ID
         """
+        logger.info(f"Saving question: {question.content[:30]}...")
+        
         # Ensure user exists
         await self.ensure_user_exists(question.user_id)
         
@@ -46,6 +52,9 @@ class SupabaseActions:
         
         if response.data:
             question.id = response.data[0]["id"]
+            logger.info(f"Question saved with ID: {question.id}")
+        else:
+            logger.error("Failed to save question: No data returned from Supabase")
         
         return question
     
@@ -59,6 +68,8 @@ class SupabaseActions:
         Returns:
             Answer: Saved answer with ID
         """
+        logger.info(f"Saving answer for question ID: {answer.question_id}")
+        
         response = (
             self.client
             .table(self.answers_table)
@@ -68,6 +79,9 @@ class SupabaseActions:
         
         if response.data:
             answer.id = response.data[0]["id"]
+            logger.info(f"Answer saved with ID: {answer.id}")
+        else:
+            logger.error("Failed to save answer: No data returned from Supabase")
         
         return answer
     
@@ -132,6 +146,8 @@ class SupabaseActions:
         Returns:
             Dict[str, Any]: User data
         """
+        logger.info(f"Ensuring user exists: {user_id}")
+        
         # Check if user exists
         response = (
             self.client
@@ -143,9 +159,11 @@ class SupabaseActions:
         
         # If user exists, return user data
         if response.data and len(response.data) > 0:
+            logger.info(f"User {user_id} already exists")
             return response.data[0]
         
         # User doesn't exist, create new user
+        logger.info(f"Creating new user: {user_id}")
         user_data = {
             "id": user_id,
             "username": username,
@@ -160,6 +178,8 @@ class SupabaseActions:
         )
         
         if create_response.data and len(create_response.data) > 0:
+            logger.info(f"User {user_id} created successfully")
             return create_response.data[0]
         else:
+            logger.error(f"Failed to create user with ID: {user_id}")
             raise ValueError(f"Failed to create user with ID: {user_id}")
