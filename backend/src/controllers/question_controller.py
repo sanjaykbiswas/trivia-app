@@ -17,7 +17,7 @@ class QuestionResponse(BaseModel):
     content: str
     category: str
     difficulty: Optional[str] = None  # Support the 5 difficulty levels
-    user_id: str = "system"  # Add user_id field with default value
+    user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
 class AnswerResponse(BaseModel):
     correct_answer: str
@@ -30,7 +30,7 @@ class CompleteQuestionResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None  # Support the 5 difficulty levels
-    user_id: str = "system"  # Add user_id field with default value
+    user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
 class QuestionController:
     """

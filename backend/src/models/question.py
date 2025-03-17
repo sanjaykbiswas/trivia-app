@@ -10,7 +10,7 @@ class Question:
     content: str
     category: str
     difficulty: Optional[str] = None  # Possible values: "Easy", "Medium", "Hard", "Expert", "Master"
-    user_id: str = "system"  # Default to 'system' if no user_id is specified
+    user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
     id: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     
