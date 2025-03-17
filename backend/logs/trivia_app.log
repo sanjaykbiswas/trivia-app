@@ -1,0 +1,117 @@
+2025-03-16 19:36:53,628 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 19:36:53,640 - api_tests - INFO - === STARTING API ENDPOINT TESTS ===
+2025-03-16 19:36:53,640 - api_tests - INFO - TESTING ENDPOINT: POST /upload/question
+2025-03-16 19:36:53,644 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 19:36:53,645 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0015s
+2025-03-16 19:36:53,646 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 19:36:53,646 - api_tests - ERROR - API TEST FAILED: Expected status code 200, got 500
+2025-03-16 19:40:09,331 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 19:40:09,339 - api_tests - INFO - === STARTING API ENDPOINT TESTS ===
+2025-03-16 19:40:09,339 - api_tests - INFO - TESTING ENDPOINT: POST /upload/question
+2025-03-16 19:40:09,341 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 19:40:09,342 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0011s
+2025-03-16 19:40:09,343 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 19:40:09,343 - api_tests - ERROR - API TEST FAILED: Expected status code 200, got 500
+2025-03-16 19:45:59,020 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 19:45:59,029 - api_tests - INFO - === STARTING API ENDPOINT TESTS ===
+2025-03-16 19:45:59,029 - api_tests - INFO - TESTING ENDPOINT: POST /upload/question
+2025-03-16 19:45:59,031 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 19:45:59,032 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0010s
+2025-03-16 19:45:59,033 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 19:45:59,033 - api_tests - ERROR - API TEST FAILED: Expected status code 200, got 500
+2025-03-16 19:47:48,007 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 19:47:48,015 - api_tests - INFO - === STARTING API ENDPOINT TESTS ===
+2025-03-16 19:47:48,015 - api_tests - INFO - TESTING ENDPOINT: POST /upload/question
+2025-03-16 19:47:48,018 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 19:47:48,019 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0010s
+2025-03-16 19:47:48,019 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 19:47:48,019 - api_tests - ERROR - API TEST FAILED: Expected status code 200, got 500
+2025-03-16 20:01:47,657 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 20:01:47,667 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 20:01:47,668 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0014s
+2025-03-16 20:01:47,669 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 20:03:43,234 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 20:03:43,244 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 20:03:43,245 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0011s
+2025-03-16 20:03:43,245 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 20:10:09,052 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 20:10:09,062 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 20:10:09,063 - trivia_app - INFO - Response: POST /upload/question - Status: 500 - Time: 0.0012s
+2025-03-16 20:10:09,063 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 500 Internal Server Error"
+2025-03-16 21:20:08,299 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 21:20:08,396 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 21:20:08,397 - utils.supabase_actions - INFO - Saving question: Who wrote Romeo and Juliet?...
+2025-03-16 21:20:08,397 - utils.supabase_actions - INFO - Ensuring user exists: 00000000-0000-0000-0000-000000000000
+2025-03-16 21:20:08,576 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.00000000-0000-0000-0000-000000000000 "HTTP/2 200 OK"
+2025-03-16 21:20:08,583 - utils.supabase_actions - INFO - User 00000000-0000-0000-0000-000000000000 already exists
+2025-03-16 21:20:08,685 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:20:08,687 - utils.supabase_actions - INFO - Question saved with ID: 2e953d32-ee2f-4b11-b1ae-b9d79fa472b5
+2025-03-16 21:20:08,688 - utils.supabase_actions - INFO - Saving answer for question ID: 2e953d32-ee2f-4b11-b1ae-b9d79fa472b5
+2025-03-16 21:20:08,761 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:20:08,764 - utils.supabase_actions - INFO - Answer saved with ID: 13
+2025-03-16 21:20:08,765 - trivia_app - INFO - Response: POST /upload/question - Status: 200 - Time: 0.3695s
+2025-03-16 21:20:08,767 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 200 OK"
+2025-03-16 21:21:01,275 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-16 21:21:01,368 - api_tests - INFO - === STARTING API ENDPOINT TESTS ===
+2025-03-16 21:21:01,369 - api_tests - INFO - TESTING ENDPOINT: POST /upload/question
+2025-03-16 21:21:01,372 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-16 21:21:01,373 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-16 21:21:01,373 - utils.supabase_actions - INFO - Ensuring user exists: b982e4dc-7b6c-4238-944d-3164dce46635
+2025-03-16 21:21:01,538 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.b982e4dc-7b6c-4238-944d-3164dce46635 "HTTP/2 200 OK"
+2025-03-16 21:21:01,541 - utils.supabase_actions - INFO - Creating new user: b982e4dc-7b6c-4238-944d-3164dce46635
+2025-03-16 21:21:01,635 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 21:21:01,638 - utils.supabase_actions - INFO - User b982e4dc-7b6c-4238-944d-3164dce46635 created successfully
+2025-03-16 21:21:01,722 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:21:01,724 - utils.supabase_actions - INFO - Question saved with ID: d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d
+2025-03-16 21:21:01,724 - utils.supabase_actions - INFO - Saving answer for question ID: d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d
+2025-03-16 21:21:01,797 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:21:01,800 - utils.supabase_actions - INFO - Answer saved with ID: 18
+2025-03-16 21:21:01,801 - trivia_app - INFO - Response: POST /upload/question - Status: 200 - Time: 0.4294s
+2025-03-16 21:21:01,804 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 200 OK"
+2025-03-16 21:21:01,805 - api_tests - INFO - Created question with ID: d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d
+2025-03-16 21:21:01,805 - api_tests - INFO - Test PASSED
+2025-03-16 21:21:01,805 - api_tests - INFO - TESTING ENDPOINT: POST /upload/questions/bulk
+2025-03-16 21:21:01,807 - trivia_app - INFO - Request: POST /upload/questions/bulk from testclient
+2025-03-16 21:21:01,809 - utils.supabase_actions - INFO - Saving question: What is the smallest prime num...
+2025-03-16 21:21:01,809 - utils.supabase_actions - INFO - Ensuring user exists: 0a9ead1d-7349-4465-9c62-769016e621c9
+2025-03-16 21:21:01,883 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.0a9ead1d-7349-4465-9c62-769016e621c9 "HTTP/2 200 OK"
+2025-03-16 21:21:01,886 - utils.supabase_actions - INFO - Creating new user: 0a9ead1d-7349-4465-9c62-769016e621c9
+2025-03-16 21:21:01,954 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 21:21:01,956 - utils.supabase_actions - INFO - User 0a9ead1d-7349-4465-9c62-769016e621c9 created successfully
+2025-03-16 21:21:02,067 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:21:02,069 - utils.supabase_actions - INFO - Question saved with ID: 08c6746d-a3ea-46ec-b238-156525ee1dac
+2025-03-16 21:21:02,070 - utils.supabase_actions - INFO - Saving answer for question ID: 08c6746d-a3ea-46ec-b238-156525ee1dac
+2025-03-16 21:21:02,200 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:21:02,202 - utils.supabase_actions - INFO - Answer saved with ID: 19
+2025-03-16 21:21:02,202 - utils.supabase_actions - INFO - Saving question: Who painted the Mona Lisa?...
+2025-03-16 21:21:02,202 - utils.supabase_actions - INFO - Ensuring user exists: 0a9ead1d-7349-4465-9c62-769016e621c9
+2025-03-16 21:21:02,270 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.0a9ead1d-7349-4465-9c62-769016e621c9 "HTTP/2 200 OK"
+2025-03-16 21:21:02,272 - utils.supabase_actions - INFO - User 0a9ead1d-7349-4465-9c62-769016e621c9 already exists
+2025-03-16 21:21:02,367 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:21:02,369 - utils.supabase_actions - INFO - Question saved with ID: 57f0ff96-aa1b-4c29-909f-e67864554ded
+2025-03-16 21:21:02,369 - utils.supabase_actions - INFO - Saving answer for question ID: 57f0ff96-aa1b-4c29-909f-e67864554ded
+2025-03-16 21:21:02,441 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:21:02,443 - utils.supabase_actions - INFO - Answer saved with ID: 20
+2025-03-16 21:21:02,444 - trivia_app - INFO - Response: POST /upload/questions/bulk - Status: 200 - Time: 0.6379s
+2025-03-16 21:21:02,446 - httpx - INFO - HTTP Request: POST http://testserver/upload/questions/bulk "HTTP/1.1 200 OK"
+2025-03-16 21:21:02,446 - api_tests - INFO - Created 2 questions in bulk
+2025-03-16 21:21:02,446 - api_tests - INFO - Test PASSED
+2025-03-16 21:21:02,447 - api_tests - INFO - TESTING ENDPOINT: POST /upload/user
+2025-03-16 21:21:02,448 - trivia_app - INFO - Request: POST /upload/user from testclient
+2025-03-16 21:21:02,450 - utils.supabase_actions - INFO - Ensuring user exists: b6ee980b-d011-4e0b-8192-d42471d47423
+2025-03-16 21:21:02,515 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.b6ee980b-d011-4e0b-8192-d42471d47423 "HTTP/2 200 OK"
+2025-03-16 21:21:02,516 - utils.supabase_actions - INFO - Creating new user: b6ee980b-d011-4e0b-8192-d42471d47423
+2025-03-16 21:21:02,630 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 21:21:02,632 - utils.supabase_actions - INFO - User b6ee980b-d011-4e0b-8192-d42471d47423 created successfully
+2025-03-16 21:21:02,634 - trivia_app - INFO - Response: POST /upload/user - Status: 200 - Time: 0.1856s
+2025-03-16 21:21:02,635 - httpx - INFO - HTTP Request: POST http://testserver/upload/user "HTTP/1.1 200 OK"
+2025-03-16 21:21:02,636 - api_tests - INFO - Registered user with ID: b6ee980b-d011-4e0b-8192-d42471d47423
+2025-03-16 21:21:02,636 - api_tests - INFO - Test PASSED
+2025-03-16 21:21:02,636 - api_tests - INFO - TESTING ENDPOINT: GET /questions/d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d
+2025-03-16 21:21:02,638 - trivia_app - INFO - Request: GET /questions/d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d from testclient
+2025-03-16 21:21:02,781 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A&id=eq.d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d "HTTP/2 200 OK"
+2025-03-16 21:21:02,838 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=eq.d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d "HTTP/2 200 OK"
+2025-03-16 21:21:02,840 - trivia_app - INFO - Response: GET /questions/d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d - Status: 200 - Time: 0.2020s
+2025-03-16 21:21:02,842 - httpx - INFO - HTTP Request: GET http://testserver/questions/d4c7b3f8-003d-4aaa-930c-9ed0b1e8348d "HTTP/1.1 200 OK"
+2025-03-16 21:21:02,842 - api_tests - INFO - Test PASSED
+2025-03-16 21:21:02,842 - api_tests - INFO - === ALL API TESTS PASSED ===

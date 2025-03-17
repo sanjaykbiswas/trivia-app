@@ -33,12 +33,19 @@ class UploadController:
     Controller for database upload API endpoints
     """
     def __init__(self, upload_service: UploadService):
+        """
+        Initialize with the upload service
+        
+        Args:
+            upload_service (UploadService): Service for handling uploads
+        """
         self.upload_service = upload_service
         self.router = APIRouter(prefix="/upload", tags=["upload"])
         self._setup_routes()
     
     def _setup_routes(self):
         """Set up API routes"""
+        # IMPORTANT: Use method references, not lambdas which can cause issues
         self.router.post("/question", response_model=CompleteQuestionResponse)(self.upload_question)
         self.router.post("/questions/bulk", response_model=List[CompleteQuestionResponse])(self.bulk_upload_questions)
         self.router.post("/user", response_model=Dict[str, Any])(self.register_user)

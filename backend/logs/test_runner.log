@@ -5,3 +5,228 @@
 2025-03-16 19:29:46,785 - upload_tests - INFO - === STARTING UPLOAD FUNCTIONALITY TESTS ===
 2025-03-16 19:29:46,785 - upload_tests - INFO - STARTING TEST: User Creation
 2025-03-16 19:29:47,089 - test_runner - ERROR - Error running tests: supabase_url is required
+2025-03-16 19:36:51,145 - test_runner - INFO - Logging configured for test_runner
+2025-03-16 19:36:51,204 - upload_tests - INFO - === STARTING UPLOAD FUNCTIONALITY TESTS ===
+2025-03-16 19:36:51,204 - upload_tests - INFO - STARTING TEST: User Creation
+2025-03-16 19:36:51,384 - upload_tests - INFO - Creating test user: f5b3b727-47be-45ba-b201-ff978079eff8
+2025-03-16 19:36:51,384 - utils.supabase_actions - INFO - Ensuring user exists: f5b3b727-47be-45ba-b201-ff978079eff8
+2025-03-16 19:36:51,937 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.f5b3b727-47be-45ba-b201-ff978079eff8 "HTTP/2 404 Not Found"
+2025-03-16 19:36:51,939 - upload_tests - ERROR - User creation test FAILED: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.users" does not exist'}
+2025-03-16 19:36:51,939 - upload_tests - INFO - STARTING TEST: Question Upload
+2025-03-16 19:36:51,971 - upload_tests - INFO - Saving test question and answer
+2025-03-16 19:36:51,971 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-16 19:36:51,971 - utils.supabase_actions - INFO - Ensuring user exists: a3717695-bf4b-4370-9752-f8bbc405e1e1
+2025-03-16 19:36:52,296 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.a3717695-bf4b-4370-9752-f8bbc405e1e1 "HTTP/2 404 Not Found"
+2025-03-16 19:36:52,300 - upload_tests - ERROR - Question upload test FAILED: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.users" does not exist'}
+2025-03-16 19:36:52,301 - upload_tests - INFO - STARTING TEST: Upload Service
+2025-03-16 19:36:52,332 - upload_tests - INFO - Testing upload_complete_question method
+2025-03-16 19:36:52,332 - utils.supabase_actions - INFO - Saving question: What is the largest planet in ...
+2025-03-16 19:36:52,332 - utils.supabase_actions - INFO - Ensuring user exists: 6f396ddb-9070-4ddd-b893-83234c5c4b60
+2025-03-16 19:36:52,627 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.6f396ddb-9070-4ddd-b893-83234c5c4b60 "HTTP/2 404 Not Found"
+2025-03-16 19:36:52,628 - upload_tests - ERROR - Upload service test FAILED: {'code': '42P01', 'details': None, 'hint': None, 'message': 'relation "public.users" does not exist'}
+2025-03-16 19:36:52,628 - upload_tests - INFO - === TEST RESULTS SUMMARY ===
+2025-03-16 19:36:52,628 - upload_tests - INFO - user_creation: FAILED
+2025-03-16 19:36:52,628 - upload_tests - INFO - question_upload: FAILED
+2025-03-16 19:36:52,628 - upload_tests - INFO - upload_service: FAILED
+2025-03-16 19:36:52,628 - upload_tests - WARNING - Some tests FAILED!
+2025-03-16 19:40:07,556 - test_runner - INFO - Logging configured for test_runner
+2025-03-16 19:40:07,622 - upload_tests - INFO - === STARTING UPLOAD FUNCTIONALITY TESTS ===
+2025-03-16 19:40:07,622 - upload_tests - INFO - STARTING TEST: User Creation
+2025-03-16 19:40:07,821 - upload_tests - INFO - Creating test user: 98fb6a39-b3fe-4925-b50a-f85385e8edec
+2025-03-16 19:40:07,821 - utils.supabase_actions - INFO - Ensuring user exists: 98fb6a39-b3fe-4925-b50a-f85385e8edec
+2025-03-16 19:40:08,120 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.98fb6a39-b3fe-4925-b50a-f85385e8edec "HTTP/2 200 OK"
+2025-03-16 19:40:08,125 - utils.supabase_actions - INFO - Creating new user: 98fb6a39-b3fe-4925-b50a-f85385e8edec
+2025-03-16 19:40:08,234 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 401 Unauthorized"
+2025-03-16 19:40:08,237 - upload_tests - ERROR - User creation test FAILED: {'code': '42501', 'details': None, 'hint': None, 'message': 'new row violates row-level security policy for table "users"'}
+2025-03-16 19:40:08,237 - upload_tests - INFO - STARTING TEST: Question Upload
+2025-03-16 19:40:08,269 - upload_tests - INFO - Saving test question and answer
+2025-03-16 19:40:08,269 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-16 19:40:08,269 - utils.supabase_actions - INFO - Ensuring user exists: 3c06e9fd-616d-4a7b-968a-505a984739c4
+2025-03-16 19:40:08,520 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.3c06e9fd-616d-4a7b-968a-505a984739c4 "HTTP/2 200 OK"
+2025-03-16 19:40:08,522 - utils.supabase_actions - INFO - Creating new user: 3c06e9fd-616d-4a7b-968a-505a984739c4
+2025-03-16 19:40:08,620 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 401 Unauthorized"
+2025-03-16 19:40:08,622 - upload_tests - ERROR - Question upload test FAILED: {'code': '42501', 'details': None, 'hint': None, 'message': 'new row violates row-level security policy for table "users"'}
+2025-03-16 19:40:08,622 - upload_tests - INFO - STARTING TEST: Upload Service
+2025-03-16 19:40:08,656 - upload_tests - INFO - Testing upload_complete_question method
+2025-03-16 19:40:08,656 - utils.supabase_actions - INFO - Saving question: What is the largest planet in ...
+2025-03-16 19:40:08,656 - utils.supabase_actions - INFO - Ensuring user exists: 248b9f83-303b-49fa-b886-4b97c3a42e10
+2025-03-16 19:40:08,839 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.248b9f83-303b-49fa-b886-4b97c3a42e10 "HTTP/2 200 OK"
+2025-03-16 19:40:08,842 - utils.supabase_actions - INFO - Creating new user: 248b9f83-303b-49fa-b886-4b97c3a42e10
+2025-03-16 19:40:08,915 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 401 Unauthorized"
+2025-03-16 19:40:08,917 - upload_tests - ERROR - Upload service test FAILED: {'code': '42501', 'details': None, 'hint': None, 'message': 'new row violates row-level security policy for table "users"'}
+2025-03-16 19:40:08,917 - upload_tests - INFO - === TEST RESULTS SUMMARY ===
+2025-03-16 19:40:08,917 - upload_tests - INFO - user_creation: FAILED
+2025-03-16 19:40:08,918 - upload_tests - INFO - question_upload: FAILED
+2025-03-16 19:40:08,918 - upload_tests - INFO - upload_service: FAILED
+2025-03-16 19:40:08,918 - upload_tests - WARNING - Some tests FAILED!
+2025-03-16 19:45:57,045 - test_runner - INFO - Logging configured for test_runner
+2025-03-16 19:45:57,109 - upload_tests - INFO - === STARTING UPLOAD FUNCTIONALITY TESTS ===
+2025-03-16 19:45:57,109 - upload_tests - INFO - STARTING TEST: User Creation
+2025-03-16 19:45:57,305 - upload_tests - INFO - Creating test user: af52bb93-32e1-4d19-bd37-55123b55c99e
+2025-03-16 19:45:57,305 - utils.supabase_actions - INFO - Ensuring user exists: af52bb93-32e1-4d19-bd37-55123b55c99e
+2025-03-16 19:45:57,596 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.af52bb93-32e1-4d19-bd37-55123b55c99e "HTTP/2 200 OK"
+2025-03-16 19:45:57,602 - utils.supabase_actions - INFO - Creating new user: af52bb93-32e1-4d19-bd37-55123b55c99e
+2025-03-16 19:45:57,703 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 19:45:57,708 - utils.supabase_actions - INFO - User af52bb93-32e1-4d19-bd37-55123b55c99e created successfully
+2025-03-16 19:45:57,709 - upload_tests - INFO - Retrieving existing user: af52bb93-32e1-4d19-bd37-55123b55c99e
+2025-03-16 19:45:57,709 - utils.supabase_actions - INFO - Ensuring user exists: af52bb93-32e1-4d19-bd37-55123b55c99e
+2025-03-16 19:45:57,809 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.af52bb93-32e1-4d19-bd37-55123b55c99e "HTTP/2 200 OK"
+2025-03-16 19:45:57,812 - utils.supabase_actions - INFO - User af52bb93-32e1-4d19-bd37-55123b55c99e already exists
+2025-03-16 19:45:57,812 - upload_tests - INFO - User creation test PASSED
+2025-03-16 19:45:57,813 - upload_tests - INFO - STARTING TEST: Question Upload
+2025-03-16 19:45:57,846 - upload_tests - INFO - Saving test question and answer
+2025-03-16 19:45:57,846 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-16 19:45:57,846 - utils.supabase_actions - INFO - Ensuring user exists: 46019559-38c0-4329-8f63-e11bedd671a4
+2025-03-16 19:45:58,040 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.46019559-38c0-4329-8f63-e11bedd671a4 "HTTP/2 200 OK"
+2025-03-16 19:45:58,042 - utils.supabase_actions - INFO - Creating new user: 46019559-38c0-4329-8f63-e11bedd671a4
+2025-03-16 19:45:58,140 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 19:45:58,141 - utils.supabase_actions - INFO - User 46019559-38c0-4329-8f63-e11bedd671a4 created successfully
+2025-03-16 19:45:58,232 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 400 Bad Request"
+2025-03-16 19:45:58,236 - upload_tests - ERROR - Question upload test FAILED: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'category' column of 'questions' in the schema cache"}
+2025-03-16 19:45:58,237 - upload_tests - INFO - STARTING TEST: Upload Service
+2025-03-16 19:45:58,269 - upload_tests - INFO - Testing upload_complete_question method
+2025-03-16 19:45:58,269 - utils.supabase_actions - INFO - Saving question: What is the largest planet in ...
+2025-03-16 19:45:58,269 - utils.supabase_actions - INFO - Ensuring user exists: 6593c513-3039-467c-a657-5af60748d245
+2025-03-16 19:45:58,462 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.6593c513-3039-467c-a657-5af60748d245 "HTTP/2 200 OK"
+2025-03-16 19:45:58,464 - utils.supabase_actions - INFO - Creating new user: 6593c513-3039-467c-a657-5af60748d245
+2025-03-16 19:45:58,531 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 19:45:58,536 - utils.supabase_actions - INFO - User 6593c513-3039-467c-a657-5af60748d245 created successfully
+2025-03-16 19:45:58,602 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 400 Bad Request"
+2025-03-16 19:45:58,603 - upload_tests - ERROR - Upload service test FAILED: {'code': 'PGRST204', 'details': None, 'hint': None, 'message': "Could not find the 'category' column of 'questions' in the schema cache"}
+2025-03-16 19:45:58,603 - upload_tests - INFO - === TEST RESULTS SUMMARY ===
+2025-03-16 19:45:58,603 - upload_tests - INFO - user_creation: PASSED
+2025-03-16 19:45:58,603 - upload_tests - INFO - question_upload: FAILED
+2025-03-16 19:45:58,604 - upload_tests - INFO - upload_service: FAILED
+2025-03-16 19:45:58,604 - upload_tests - WARNING - Some tests FAILED!
+2025-03-16 19:47:45,196 - test_runner - INFO - Logging configured for test_runner
+2025-03-16 19:47:45,260 - upload_tests - INFO - === STARTING UPLOAD FUNCTIONALITY TESTS ===
+2025-03-16 19:47:45,261 - upload_tests - INFO - STARTING TEST: User Creation
+2025-03-16 19:47:45,456 - upload_tests - INFO - Creating test user: e7d621ef-013d-4237-a34b-da99a2f65d50
+2025-03-16 19:47:45,456 - utils.supabase_actions - INFO - Ensuring user exists: e7d621ef-013d-4237-a34b-da99a2f65d50
+2025-03-16 19:47:45,715 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.e7d621ef-013d-4237-a34b-da99a2f65d50 "HTTP/2 200 OK"
+2025-03-16 19:47:45,723 - utils.supabase_actions - INFO - Creating new user: e7d621ef-013d-4237-a34b-da99a2f65d50
+2025-03-16 19:47:45,841 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 19:47:45,843 - utils.supabase_actions - INFO - User e7d621ef-013d-4237-a34b-da99a2f65d50 created successfully
+2025-03-16 19:47:45,843 - upload_tests - INFO - Retrieving existing user: e7d621ef-013d-4237-a34b-da99a2f65d50
+2025-03-16 19:47:45,843 - utils.supabase_actions - INFO - Ensuring user exists: e7d621ef-013d-4237-a34b-da99a2f65d50
+2025-03-16 19:47:45,942 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.e7d621ef-013d-4237-a34b-da99a2f65d50 "HTTP/2 200 OK"
+2025-03-16 19:47:45,943 - utils.supabase_actions - INFO - User e7d621ef-013d-4237-a34b-da99a2f65d50 already exists
+2025-03-16 19:47:45,944 - upload_tests - INFO - User creation test PASSED
+2025-03-16 19:47:45,944 - upload_tests - INFO - STARTING TEST: Question Upload
+2025-03-16 19:47:45,978 - upload_tests - INFO - Saving test question and answer
+2025-03-16 19:47:45,978 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-16 19:47:45,978 - utils.supabase_actions - INFO - Ensuring user exists: be3fe533-c0b1-4391-8eeb-f7af639e6e01
+2025-03-16 19:47:46,161 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.be3fe533-c0b1-4391-8eeb-f7af639e6e01 "HTTP/2 200 OK"
+2025-03-16 19:47:46,162 - utils.supabase_actions - INFO - Creating new user: be3fe533-c0b1-4391-8eeb-f7af639e6e01
+2025-03-16 19:47:46,272 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 19:47:46,274 - utils.supabase_actions - INFO - User be3fe533-c0b1-4391-8eeb-f7af639e6e01 created successfully
+2025-03-16 19:47:46,343 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 19:47:46,346 - utils.supabase_actions - INFO - Question saved with ID: e1dba4a1-5b1c-4562-91fd-8d31c9fd5d9f
+2025-03-16 19:47:46,346 - utils.supabase_actions - INFO - Saving answer for question ID: e1dba4a1-5b1c-4562-91fd-8d31c9fd5d9f
+2025-03-16 19:47:46,415 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 19:47:46,420 - utils.supabase_actions - INFO - Answer saved with ID: 1
+2025-03-16 19:47:46,420 - upload_tests - INFO - Question upload test PASSED
+2025-03-16 19:47:46,420 - upload_tests - INFO - STARTING TEST: Upload Service
+2025-03-16 19:47:46,456 - upload_tests - INFO - Testing upload_complete_question method
+2025-03-16 19:47:46,456 - utils.supabase_actions - INFO - Saving question: What is the largest planet in ...
+2025-03-16 19:47:46,456 - utils.supabase_actions - INFO - Ensuring user exists: 78de5c23-d04f-49dc-bd2d-ec6476278689
+2025-03-16 19:47:46,674 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.78de5c23-d04f-49dc-bd2d-ec6476278689 "HTTP/2 200 OK"
+2025-03-16 19:47:46,685 - utils.supabase_actions - INFO - Creating new user: 78de5c23-d04f-49dc-bd2d-ec6476278689
+2025-03-16 19:47:46,787 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 19:47:46,791 - utils.supabase_actions - INFO - User 78de5c23-d04f-49dc-bd2d-ec6476278689 created successfully
+2025-03-16 19:47:46,875 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 19:47:46,876 - utils.supabase_actions - INFO - Question saved with ID: 6448abac-51b1-4a8a-9b24-813d33aac1fa
+2025-03-16 19:47:46,877 - utils.supabase_actions - INFO - Saving answer for question ID: 6448abac-51b1-4a8a-9b24-813d33aac1fa
+2025-03-16 19:47:46,976 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 19:47:46,978 - utils.supabase_actions - INFO - Answer saved with ID: 2
+2025-03-16 19:47:46,978 - upload_tests - INFO - Testing bulk_upload_complete_questions method
+2025-03-16 19:47:46,978 - utils.supabase_actions - INFO - Saving question: What is the smallest prime num...
+2025-03-16 19:47:46,978 - utils.supabase_actions - INFO - Ensuring user exists: 78de5c23-d04f-49dc-bd2d-ec6476278689
+2025-03-16 19:47:47,094 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.78de5c23-d04f-49dc-bd2d-ec6476278689 "HTTP/2 200 OK"
+2025-03-16 19:47:47,098 - utils.supabase_actions - INFO - User 78de5c23-d04f-49dc-bd2d-ec6476278689 already exists
+2025-03-16 19:47:47,210 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 19:47:47,214 - utils.supabase_actions - INFO - Question saved with ID: 5fc8d76e-9fc4-40f8-9538-c45d611054ed
+2025-03-16 19:47:47,214 - utils.supabase_actions - INFO - Saving answer for question ID: 5fc8d76e-9fc4-40f8-9538-c45d611054ed
+2025-03-16 19:47:47,292 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 19:47:47,293 - utils.supabase_actions - INFO - Answer saved with ID: 3
+2025-03-16 19:47:47,294 - utils.supabase_actions - INFO - Saving question: Who painted the Mona Lisa?...
+2025-03-16 19:47:47,294 - utils.supabase_actions - INFO - Ensuring user exists: 78de5c23-d04f-49dc-bd2d-ec6476278689
+2025-03-16 19:47:47,390 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.78de5c23-d04f-49dc-bd2d-ec6476278689 "HTTP/2 200 OK"
+2025-03-16 19:47:47,394 - utils.supabase_actions - INFO - User 78de5c23-d04f-49dc-bd2d-ec6476278689 already exists
+2025-03-16 19:47:47,476 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 19:47:47,480 - utils.supabase_actions - INFO - Question saved with ID: 41cd7d7e-8b1a-4568-ab13-e7c97ba26b5e
+2025-03-16 19:47:47,480 - utils.supabase_actions - INFO - Saving answer for question ID: 41cd7d7e-8b1a-4568-ab13-e7c97ba26b5e
+2025-03-16 19:47:47,592 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 19:47:47,595 - utils.supabase_actions - INFO - Answer saved with ID: 4
+2025-03-16 19:47:47,595 - upload_tests - INFO - Upload service test PASSED
+2025-03-16 19:47:47,595 - upload_tests - INFO - === TEST RESULTS SUMMARY ===
+2025-03-16 19:47:47,595 - upload_tests - INFO - user_creation: PASSED
+2025-03-16 19:47:47,595 - upload_tests - INFO - question_upload: PASSED
+2025-03-16 19:47:47,595 - upload_tests - INFO - upload_service: PASSED
+2025-03-16 19:47:47,595 - upload_tests - INFO - All tests PASSED!
+2025-03-16 21:20:58,796 - test_runner - INFO - Logging configured for test_runner
+2025-03-16 21:20:58,854 - upload_tests - INFO - === STARTING UPLOAD FUNCTIONALITY TESTS ===
+2025-03-16 21:20:58,854 - upload_tests - INFO - STARTING TEST: User Creation
+2025-03-16 21:20:59,033 - upload_tests - INFO - Creating test user: 99713639-4967-4502-83d4-a8c1e47c8ec5
+2025-03-16 21:20:59,033 - utils.supabase_actions - INFO - Ensuring user exists: 99713639-4967-4502-83d4-a8c1e47c8ec5
+2025-03-16 21:20:59,218 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.99713639-4967-4502-83d4-a8c1e47c8ec5 "HTTP/2 200 OK"
+2025-03-16 21:20:59,222 - utils.supabase_actions - INFO - Creating new user: 99713639-4967-4502-83d4-a8c1e47c8ec5
+2025-03-16 21:20:59,316 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 21:20:59,318 - utils.supabase_actions - INFO - User 99713639-4967-4502-83d4-a8c1e47c8ec5 created successfully
+2025-03-16 21:20:59,318 - upload_tests - INFO - Retrieving existing user: 99713639-4967-4502-83d4-a8c1e47c8ec5
+2025-03-16 21:20:59,318 - utils.supabase_actions - INFO - Ensuring user exists: 99713639-4967-4502-83d4-a8c1e47c8ec5
+2025-03-16 21:20:59,419 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.99713639-4967-4502-83d4-a8c1e47c8ec5 "HTTP/2 200 OK"
+2025-03-16 21:20:59,421 - utils.supabase_actions - INFO - User 99713639-4967-4502-83d4-a8c1e47c8ec5 already exists
+2025-03-16 21:20:59,422 - upload_tests - INFO - User creation test PASSED
+2025-03-16 21:20:59,422 - upload_tests - INFO - STARTING TEST: Question Upload
+2025-03-16 21:20:59,455 - upload_tests - INFO - Saving test question and answer
+2025-03-16 21:20:59,455 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-16 21:20:59,455 - utils.supabase_actions - INFO - Ensuring user exists: 310b46c3-263c-4568-8005-e030290ad1cf
+2025-03-16 21:20:59,623 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.310b46c3-263c-4568-8005-e030290ad1cf "HTTP/2 200 OK"
+2025-03-16 21:20:59,624 - utils.supabase_actions - INFO - Creating new user: 310b46c3-263c-4568-8005-e030290ad1cf
+2025-03-16 21:20:59,734 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 21:20:59,736 - utils.supabase_actions - INFO - User 310b46c3-263c-4568-8005-e030290ad1cf created successfully
+2025-03-16 21:20:59,814 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:20:59,816 - utils.supabase_actions - INFO - Question saved with ID: db652d6e-7d3b-4da3-8859-62736fb082f5
+2025-03-16 21:20:59,816 - utils.supabase_actions - INFO - Saving answer for question ID: db652d6e-7d3b-4da3-8859-62736fb082f5
+2025-03-16 21:20:59,889 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:20:59,891 - utils.supabase_actions - INFO - Answer saved with ID: 14
+2025-03-16 21:20:59,891 - upload_tests - INFO - Question upload test PASSED
+2025-03-16 21:20:59,891 - upload_tests - INFO - STARTING TEST: Upload Service
+2025-03-16 21:20:59,924 - upload_tests - INFO - Testing upload_complete_question method
+2025-03-16 21:20:59,924 - utils.supabase_actions - INFO - Saving question: What is the largest planet in ...
+2025-03-16 21:20:59,924 - utils.supabase_actions - INFO - Ensuring user exists: 61761437-c867-473d-bea0-c1b1cb0c1b55
+2025-03-16 21:21:00,106 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.61761437-c867-473d-bea0-c1b1cb0c1b55 "HTTP/2 200 OK"
+2025-03-16 21:21:00,107 - utils.supabase_actions - INFO - Creating new user: 61761437-c867-473d-bea0-c1b1cb0c1b55
+2025-03-16 21:21:00,196 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-16 21:21:00,198 - utils.supabase_actions - INFO - User 61761437-c867-473d-bea0-c1b1cb0c1b55 created successfully
+2025-03-16 21:21:00,272 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:21:00,274 - utils.supabase_actions - INFO - Question saved with ID: b5585ede-a91d-4a27-8458-d0f58d4b4076
+2025-03-16 21:21:00,274 - utils.supabase_actions - INFO - Saving answer for question ID: b5585ede-a91d-4a27-8458-d0f58d4b4076
+2025-03-16 21:21:00,373 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:21:00,375 - utils.supabase_actions - INFO - Answer saved with ID: 15
+2025-03-16 21:21:00,375 - upload_tests - INFO - Testing bulk_upload_complete_questions method
+2025-03-16 21:21:00,376 - utils.supabase_actions - INFO - Saving question: What is the smallest prime num...
+2025-03-16 21:21:00,376 - utils.supabase_actions - INFO - Ensuring user exists: 61761437-c867-473d-bea0-c1b1cb0c1b55
+2025-03-16 21:21:00,447 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.61761437-c867-473d-bea0-c1b1cb0c1b55 "HTTP/2 200 OK"
+2025-03-16 21:21:00,448 - utils.supabase_actions - INFO - User 61761437-c867-473d-bea0-c1b1cb0c1b55 already exists
+2025-03-16 21:21:00,512 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:21:00,514 - utils.supabase_actions - INFO - Question saved with ID: 7161566f-d76f-43fc-b4df-f529de0a6f93
+2025-03-16 21:21:00,515 - utils.supabase_actions - INFO - Saving answer for question ID: 7161566f-d76f-43fc-b4df-f529de0a6f93
+2025-03-16 21:21:00,579 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:21:00,581 - utils.supabase_actions - INFO - Answer saved with ID: 16
+2025-03-16 21:21:00,581 - utils.supabase_actions - INFO - Saving question: Who painted the Mona Lisa?...
+2025-03-16 21:21:00,581 - utils.supabase_actions - INFO - Ensuring user exists: 61761437-c867-473d-bea0-c1b1cb0c1b55
+2025-03-16 21:21:00,682 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.61761437-c867-473d-bea0-c1b1cb0c1b55 "HTTP/2 200 OK"
+2025-03-16 21:21:00,683 - utils.supabase_actions - INFO - User 61761437-c867-473d-bea0-c1b1cb0c1b55 already exists
+2025-03-16 21:21:00,791 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-16 21:21:00,794 - utils.supabase_actions - INFO - Question saved with ID: 4881d8fc-5852-41f6-b2f8-6b4b901c80f5
+2025-03-16 21:21:00,794 - utils.supabase_actions - INFO - Saving answer for question ID: 4881d8fc-5852-41f6-b2f8-6b4b901c80f5
+2025-03-16 21:21:00,889 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-16 21:21:00,890 - utils.supabase_actions - INFO - Answer saved with ID: 17
+2025-03-16 21:21:00,891 - upload_tests - INFO - Upload service test PASSED
+2025-03-16 21:21:00,891 - upload_tests - INFO - === TEST RESULTS SUMMARY ===
+2025-03-16 21:21:00,891 - upload_tests - INFO - user_creation: PASSED
+2025-03-16 21:21:00,891 - upload_tests - INFO - question_upload: PASSED
+2025-03-16 21:21:00,891 - upload_tests - INFO - upload_service: PASSED
+2025-03-16 21:21:00,891 - upload_tests - INFO - All tests PASSED!
