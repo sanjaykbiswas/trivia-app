@@ -6,8 +6,11 @@ from repositories.question_repository import QuestionRepository
 from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
+from utils.supabase_actions import SupabaseActions
 from services.question_service import QuestionService
+from services.upload_service import UploadService
 from controllers.question_controller import QuestionController
+from controllers.upload_controller import UploadController
 
 # Create FastAPI app
 app = FastAPI(
@@ -32,6 +35,10 @@ def get_supabase_client(env: Environment = Depends(get_environment)):
 def get_question_repository(client = Depends(get_supabase_client)):
     """Create question repository"""
     return QuestionRepository(client)
+
+def get_upload_service(client = Depends(get_supabase_client)):
+    """Create upload service"""
+    return UploadService(client)
 
 def get_question_generator():
     """Create question generator with Claude for rich, creative questions"""
@@ -63,9 +70,11 @@ def get_question_service(
 
 # Initialize controllers
 question_controller = QuestionController(Depends(get_question_service))
+upload_controller = UploadController(Depends(get_upload_service))
 
 # Include routers
 app.include_router(question_controller.router)
+app.include_router(upload_controller.router)
 
 # Root endpoint
 @app.get("/")
