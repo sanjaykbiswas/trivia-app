@@ -63,7 +63,7 @@ class QuestionService:
         count: int = 10,
         deduplicate: bool = True,
         difficulty: Optional[str] = None,
-        user: Optional[str] = None
+        user_id: Optional[str] = None
     ) -> List[Question]:
         """
         Generate questions for a category and save them
@@ -73,7 +73,7 @@ class QuestionService:
             count (int): Number of questions to generate
             deduplicate (bool): Whether to deduplicate questions
             difficulty (str, optional): Specific difficulty level
-            user (str, optional): User who created the questions
+            user_id (str, optional): user_id who created the questions
             
         Returns:
             List[Question]: Generated and saved questions
@@ -86,10 +86,10 @@ class QuestionService:
             # Use the new multi-difficulty generation method
             questions = self.generate_questions_across_difficulties(category, count)
         
-        # Set user for all questions
-        if user:
+        # Set user_id for all questions
+        if user_id:
             for question in questions:
-                question.user = user
+                question.user_id = user_id
         
         # Deduplicate if requested
         if deduplicate:
@@ -105,7 +105,7 @@ class QuestionService:
         category: str,
         count: int = 10,
         difficulties: List[str] = None,
-        user: Optional[str] = None
+        user_id: Optional[str] = None
     ) -> List[Question]:
         """
         Generate questions across multiple difficulty tiers concurrently
@@ -115,7 +115,7 @@ class QuestionService:
             count (int): Total number of questions to generate
             difficulties (List[str], optional): List of difficulties to include
                                                Defaults to all five difficulty levels
-            user (str, optional): User who created the questions
+            user_id (str, optional): user_id who created the questions
             
         Returns:
             List[Question]: Generated questions across all difficulty tiers
@@ -154,10 +154,10 @@ class QuestionService:
                 try:
                     questions = future.result()
 
-                    # Set user for all questions
-                    if user:
+                    # Set user_id for all questions
+                    if user_id:
                         for question in questions:
-                            question.user = user
+                            question.user_id = user_id
                     
                     all_questions.extend(questions)
                 except Exception as exc:
@@ -202,7 +202,7 @@ class QuestionService:
         deduplicate: bool = True,
         batch_size: int = 50,
         difficulties: List[str] = None,
-        user: Optional[str] = None
+        user_id: Optional[str] = None
     ) -> List[CompleteQuestion]:
         """
         Complete end-to-end pipeline: generate questions and answers
@@ -213,7 +213,7 @@ class QuestionService:
             deduplicate (bool): Whether to deduplicate
             batch_size (int): Processing batch size
             difficulties (List[str], optional): List of difficulties to include
-            user (str, optional): User who created the questions
+            user_id (str, optional): user_id who created the questions
             
         Returns:
             List[CompleteQuestion]: Complete questions with answers
@@ -224,7 +224,7 @@ class QuestionService:
             count=count,
             deduplicate=deduplicate,
             difficulty=None,  # Use multi-difficulty generation
-            user=user
+            user_id=user_id
         )
         
         # Generate and save answers

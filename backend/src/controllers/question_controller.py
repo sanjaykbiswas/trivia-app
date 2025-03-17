@@ -10,14 +10,14 @@ class QuestionGenerationRequest(BaseModel):
     count: int = Field(default=10, ge=1, le=100)
     deduplicate: bool = True
     difficulties: Optional[List[str]] = None  # Add difficulties parameter
-    user: Optional[str] = None
+    user_id: Optional[str] = None
 
 class QuestionResponse(BaseModel):
     id: str
     content: str
     category: str
     difficulty: Optional[str] = None  # Support the 5 difficulty levels
-    user: str = "system"  # Add user field with default value
+    user_id: str = "system"  # Add user_id field with default value
 
 class AnswerResponse(BaseModel):
     correct_answer: str
@@ -30,7 +30,7 @@ class CompleteQuestionResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None  # Support the 5 difficulty levels
-    user: str = "system"  # Add user field with default value
+    user_id: str = "system"  # Add user_id field with default value
 
 class QuestionController:
     """
@@ -64,7 +64,7 @@ class QuestionController:
             count=request.count,
             deduplicate=request.deduplicate,
             difficulty=request.difficulties[0] if request.difficulties and len(request.difficulties) == 1 else None,
-            user=request.user
+            user_id=request.user_id
         )
         
         return [
@@ -73,7 +73,7 @@ class QuestionController:
                 content=q.content,
                 category=q.category,
                 difficulty=q.difficulty,
-                user=q.user
+                user_id=q.user_id
             ) for q in questions
         ]
     
@@ -92,7 +92,7 @@ class QuestionController:
             count=request.count,
             deduplicate=request.deduplicate,
             difficulties=request.difficulties,
-            user=request.user
+            user_id=request.user_id
         )
         
         return [self._format_complete_question(q) for q in complete_questions]
@@ -168,5 +168,5 @@ class QuestionController:
             correct_answer=question.correct_answer,
             incorrect_answers=question.incorrect_answers,
             difficulty=question.difficulty,
-            user=question.user
+            user_id=question.user_id
         )
