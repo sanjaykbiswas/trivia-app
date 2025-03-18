@@ -8,6 +8,7 @@ from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
 from config.llm_config import LLMConfigFactory
+import asyncio
 
 class QuestionService:
     """
@@ -57,7 +58,7 @@ class QuestionService:
         # Standard difficulty levels (5 tiers)
         self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
-    def generate_and_save_questions(
+    async def generate_and_save_questions(
         self, 
         category: str, 
         count: int = 10,
@@ -84,7 +85,7 @@ class QuestionService:
             questions = self.generator.generate_questions(category, count, difficulty)
         else:
             # Use the new multi-difficulty generation method
-            questions = self.generate_questions_across_difficulties(category, count)
+            questions = await self.generate_questions_across_difficulties(category, count)
         
         # Set user_id for all questions
         if user_id:
@@ -96,11 +97,11 @@ class QuestionService:
             questions = self.deduplicator.remove_duplicates(questions)
         
         # Save to database
-        saved_questions = self.repository.bulk_create(questions)
+        saved_questions = await self.repository.bulk_create(questions)
         
         return saved_questions
     
-    def generate_questions_across_difficulties(
+    async def generate_questions_across_difficulties(
         self,
         category: str,
         count: int = 10,
@@ -114,7 +115,7 @@ class QuestionService:
             category (str): Question category
             count (int): Total number of questions to generate
             difficulties (List[str], optional): List of difficulties to include
-                                               Defaults to all five difficulty levels
+                                            Defaults to all five difficulty levels
             user_id (str, optional): user_id who created the questions
             
         Returns:
@@ -128,6 +129,9 @@ class QuestionService:
             difficulties = [d for d in difficulties if d in self.difficulty_levels]
             if not difficulties:
                 difficulties = ["Medium"]  # Default to Medium if none are valid
+            
+            # Print for debugging
+            print(f"Generating questions with difficulties: {difficulties}")
         
         # Calculate questions per difficulty, distributing evenly
         questions_per_difficulty = max(1, count // len(difficulties))
@@ -139,34 +143,68 @@ class QuestionService:
         # Generate questions for each difficulty tier concurrently
         all_questions = []
         
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future_to_difficulty = {
-                executor.submit(
-                    self.generator.generate_questions, 
-                    category, 
-                    counts[i], 
+        # Use asyncio.gather instead of ThreadPoolExecutor for async operation
+        tasks = []
+        
+        for i, difficulty in enumerate(difficulties):
+            # Schedule the task
+            task = asyncio.create_task(
+                self._generate_questions_for_difficulty(
+                    category,
+                    counts[i],
                     difficulty
-                ): difficulty 
-                for i, difficulty in enumerate(difficulties)
-            }
-            
-            for future in concurrent.futures.as_completed(future_to_difficulty):
-                try:
-                    questions = future.result()
-
-                    # Set user_id for all questions
-                    if user_id:
-                        for question in questions:
-                            question.user_id = user_id
-                    
-                    all_questions.extend(questions)
-                except Exception as exc:
-                    difficulty = future_to_difficulty[future]
-                    print(f"Generation for {difficulty} generated an exception: {exc}")
+                )
+            )
+            tasks.append((task, difficulty))
+        
+        # Wait for all tasks to complete
+        for task, difficulty in tasks:
+            try:
+                questions = await task
+                
+                # Verify questions have the correct difficulty
+                for question in questions:
+                    # Ensure the difficulty is set correctly
+                    if question.difficulty != difficulty:
+                        print(f"Fixing difficulty: {question.difficulty} -> {difficulty}")
+                        question.difficulty = difficulty
+                
+                # Set user_id for all questions
+                if user_id:
+                    for question in questions:
+                        question.user_id = user_id
+                
+                all_questions.extend(questions)
+            except Exception as exc:
+                print(f"Generation for {difficulty} generated an exception: {exc}")
+        
+        # Final verification of difficulties
+        difficulty_counts = {}
+        for q in all_questions:
+            difficulty_counts[q.difficulty] = difficulty_counts.get(q.difficulty, 0) + 1
+        
+        print(f"Generated questions by difficulty: {difficulty_counts}")
         
         return all_questions
+
+    async def _generate_questions_for_difficulty(self, category, count, difficulty):
+        """
+        Helper method to generate questions for a specific difficulty
+        Used by generate_questions_across_difficulties for concurrent generation
+        
+        Args:
+            category (str): Question category
+            count (int): Number of questions
+            difficulty (str): Difficulty level
+            
+        Returns:
+            List[Question]: Generated questions
+        """
+        # This is a wrapper in case the generator.generate_questions method isn't async
+        # If it is already async, you can call it directly
+        return self.generator.generate_questions(category, count, difficulty)
     
-    def generate_answers_for_questions(
+    async def generate_answers_for_questions(
         self,
         questions: List[Question],
         category: str,
@@ -191,11 +229,11 @@ class QuestionService:
         )
         
         # Save answers
-        saved_answers = self.repository.bulk_save_answers(answers)
+        saved_answers = await self.repository.bulk_save_answers(answers)
         
         return saved_answers
     
-    def create_complete_question_set(
+    async def create_complete_question_set(
         self,
         category: str,
         count: int = 10,
@@ -219,7 +257,7 @@ class QuestionService:
             List[CompleteQuestion]: Complete questions with answers
         """
         # Generate and save questions across difficulty tiers
-        questions = self.generate_and_save_questions(
+        questions = await self.generate_and_save_questions(
             category=category,
             count=count,
             deduplicate=deduplicate,
@@ -228,7 +266,7 @@ class QuestionService:
         )
         
         # Generate and save answers
-        answers = self.generate_answers_for_questions(
+        answers = await self.generate_answers_for_questions(
             questions=questions,
             category=category,
             batch_size=batch_size
@@ -248,7 +286,7 @@ class QuestionService:
         
         return complete_questions
     
-    def get_questions_by_category(
+    async def get_questions_by_category(
         self,
         category: str,
         limit: int = 50
@@ -263,9 +301,9 @@ class QuestionService:
         Returns:
             List[Question]: Matching questions
         """
-        return self.repository.find_by_category(category, limit)
+        return await self.repository.find_by_category(category, limit)
     
-    def get_random_game_questions(
+    async def get_random_game_questions(
         self,
         categories=None,
         count: int = 10
@@ -280,9 +318,9 @@ class QuestionService:
         Returns:
             List[CompleteQuestion]: Random questions with answers
         """
-        return self.repository.get_random_game_questions(categories, count)
+        return await self.repository.get_random_game_questions(categories, count)
     
-    def get_complete_question(
+    async def get_complete_question(
         self,
         question_id: str
     ) -> Optional[CompleteQuestion]:
@@ -295,4 +333,4 @@ class QuestionService:
         Returns:
             Optional[CompleteQuestion]: Complete question if found
         """
-        return self.repository.get_complete_question(question_id)
+        return await self.repository.get_complete_question(question_id)

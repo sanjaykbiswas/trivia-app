@@ -59,7 +59,7 @@ class QuestionController:
         Returns:
             List[QuestionResponse]: Generated questions
         """
-        questions = self.question_service.generate_and_save_questions(
+        questions = await self.question_service.generate_and_save_questions(
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
@@ -87,7 +87,7 @@ class QuestionController:
         Returns:
             List[CompleteQuestionResponse]: Complete questions
         """
-        complete_questions = self.question_service.create_complete_question_set(
+        complete_questions = await self.question_service.create_complete_question_set(
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
@@ -108,7 +108,7 @@ class QuestionController:
         Returns:
             List[QuestionResponse]: Matching questions
         """
-        questions = self.question_service.get_questions_by_category(category, limit)
+        questions = await self.question_service.get_questions_by_category(category, limit)
         
         return [
             QuestionResponse(
@@ -130,7 +130,7 @@ class QuestionController:
         Returns:
             List[CompleteQuestionResponse]: Random questions
         """
-        questions = self.question_service.get_random_game_questions(categories, count)
+        questions = await self.question_service.get_random_game_questions(categories, count)
         
         return [self._format_complete_question(q) for q in questions]
     
@@ -144,7 +144,7 @@ class QuestionController:
         Returns:
             CompleteQuestionResponse: Complete question
         """
-        question = self.question_service.get_complete_question(question_id)
+        question = await self.question_service.get_complete_question(question_id)
         
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")

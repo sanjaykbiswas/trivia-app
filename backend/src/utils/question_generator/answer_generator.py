@@ -116,6 +116,8 @@ class AnswerGenerator:
                 )
                 if response.choices:
                     content = response.choices[0].message.content
+                    # Clean the content to ensure it's valid JSON
+                    content = self._clean_json_response(content)
                     return content
                 return json.dumps([])  # Return empty JSON array if no response
 
@@ -129,8 +131,40 @@ class AnswerGenerator:
                 # Extract text from the TextBlock object
                 if isinstance(response.content, list) and len(response.content) > 0:
                     text_content = response.content[0].text  # Extract text from the first TextBlock
+                    # Clean the content to ensure it's valid JSON
+                    text_content = self._clean_json_response(text_content)
                     return text_content
                 return json.dumps([])  # Return empty JSON array if no response
 
         except Exception as e:
             raise ValueError(f"Error processing batch: {e}")
+
+    def _clean_json_response(self, response_text):
+        """
+        Clean the response text to ensure it's valid JSON
+        
+        Args:
+            response_text (str): Raw response from LLM
+            
+        Returns:
+            str: Cleaned JSON string
+        """
+        # Remove any leading/trailing whitespace
+        response_text = response_text.strip()
+        
+        # Try to find JSON array in the response
+        json_start = response_text.find('[')
+        json_end = response_text.rfind(']')
+        
+        if json_start != -1 and json_end != -1:
+            # Extract only the JSON array part
+            response_text = response_text[json_start:json_end+1]
+        
+        # Final validation attempt
+        try:
+            # Check if it's valid JSON
+            json.loads(response_text)
+            return response_text
+        except json.JSONDecodeError:
+            # If still not valid, return an empty array
+            return "[]"

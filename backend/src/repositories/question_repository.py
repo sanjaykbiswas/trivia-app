@@ -15,7 +15,7 @@ class QuestionRepository(BaseRepository[Question]):
         self.questions_table = "questions"
         self.answers_table = "answers"
     
-    def create(self, question: Question) -> Question:
+    async def create(self, question: Question) -> Question:
         """
         Create a single question
         
@@ -37,7 +37,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return question
     
-    def bulk_create(self, questions: List[Question]) -> List[Question]:
+    async def bulk_create(self, questions: List[Question]) -> List[Question]:
         """
         Create multiple questions
         
@@ -62,7 +62,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return questions
     
-    def get_by_id(self, id: str) -> Optional[Question]:
+    async def get_by_id(self, id: str) -> Optional[Question]:
         """
         Get question by ID
         
@@ -85,7 +85,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return None
     
-    def find(self, filter_params: Dict[str, Any], limit: int = 100) -> List[Question]:
+    async def find(self, filter_params: Dict[str, Any], limit: int = 100) -> List[Question]:
         """
         Find questions matching criteria
         
@@ -106,7 +106,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return [Question.from_dict(data) for data in response.data]
     
-    def find_by_category(self, category: str, limit: int = 50) -> List[Question]:
+    async def find_by_category(self, category: str, limit: int = 50) -> List[Question]:
         """
         Find questions by category
         
@@ -117,9 +117,9 @@ class QuestionRepository(BaseRepository[Question]):
         Returns:
             List[Question]: Matching questions
         """
-        return self.find({"category": category}, limit)
+        return await self.find({"category": category}, limit)
     
-    def update(self, id: str, data: Dict[str, Any]) -> Optional[Question]:
+    async def update(self, id: str, data: Dict[str, Any]) -> Optional[Question]:
         """
         Update a question
         
@@ -143,7 +143,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return None
     
-    def delete(self, id: str) -> bool:
+    async def delete(self, id: str) -> bool:
         """
         Delete a question
         
@@ -163,7 +163,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return len(response.data) > 0
     
-    def save_answer(self, answer: Answer) -> Answer:
+    async def save_answer(self, answer: Answer) -> Answer:
         """
         Save an answer
         
@@ -185,7 +185,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return answer
     
-    def bulk_save_answers(self, answers: List[Answer]) -> List[Answer]:
+    async def bulk_save_answers(self, answers: List[Answer]) -> List[Answer]:
         """
         Save multiple answers
         
@@ -210,7 +210,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return answers
     
-    def get_complete_question(self, question_id: str) -> Optional[CompleteQuestion]:
+    async def get_complete_question(self, question_id: str) -> Optional[CompleteQuestion]:
         """
         Get a question with its answer
         
@@ -221,7 +221,7 @@ class QuestionRepository(BaseRepository[Question]):
             Optional[CompleteQuestion]: Complete question if found
         """
         # Get question
-        question = self.get_by_id(question_id)
+        question = await self.get_by_id(question_id)
         if not question:
             return None
         
@@ -241,7 +241,7 @@ class QuestionRepository(BaseRepository[Question]):
         
         return CompleteQuestion(question=question, answer=answer)
     
-    def get_random_game_questions(self, categories=None, count=10) -> List[CompleteQuestion]:
+    async def get_random_game_questions(self, categories=None, count=10) -> List[CompleteQuestion]:
         """
         Get random questions for a game
         

@@ -8,9 +8,15 @@ import asyncio
 import uuid
 import json
 import sys
+import os
 import logging
 from datetime import datetime
 from typing import Dict, Any, List
+
+# Add the src directory to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
+# Now import the modules after the path is set
 from config.environment import Environment
 from utils.supabase_actions import SupabaseActions
 from services.upload_service import UploadService
@@ -40,10 +46,18 @@ async def test_user_creation():
     # Generate a unique ID
     user_id = str(uuid.uuid4())
     
+    # Check if user wants to create system user
+    use_system_id = input("Create system user (00000000-0000-0000-0000-000000000000)? (y/n): ")
+    if use_system_id.lower() == 'y':
+        user_id = "00000000-0000-0000-0000-000000000000"
+    
     # Get username from user
     username = input("Enter a username (or press Enter to use a generated one): ")
     if not username:
-        username = f"user_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        if user_id == "00000000-0000-0000-0000-000000000000":
+            username = "system"
+        else:
+            username = f"user_{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     print(f"\nCreating user with ID {user_id} and username {username}...")
     
@@ -120,6 +134,25 @@ async def test_question_upload(user_id=None):
         print(f"Error uploading question: {e}")
         return None
 
+async def create_system_user():
+    """Create the system user directly"""
+    client = await setup_supabase()
+    actions = SupabaseActions(client)
+    
+    print("\nCreating system user (00000000-0000-0000-0000-000000000000)...")
+    
+    try:
+        user_data = await actions.ensure_user_exists(
+            "00000000-0000-0000-0000-000000000000", 
+            "system"
+        )
+        print("System user created or verified successfully!")
+        print(f"User data: {json.dumps(user_data, indent=2)}")
+        return True
+    except Exception as e:
+        print(f"Error creating system user: {e}")
+        return False
+
 async def main():
     """Main interactive test function"""
     print("=" * 50)
@@ -129,9 +162,10 @@ async def main():
     print("1. Create a new user")
     print("2. Upload a question (as system user)")
     print("3. Create a user and upload a question as that user")
-    print("4. Exit")
+    print("4. Create system user (00000000-0000-0000-0000-000000000000)")
+    print("5. Exit")
     
-    choice = input("\nEnter your choice (1-4): ")
+    choice = input("\nEnter your choice (1-5): ")
     
     if choice == "1":
         await test_user_creation()
@@ -142,6 +176,8 @@ async def main():
         if user_id:
             await test_question_upload(user_id)
     elif choice == "4":
+        await create_system_user()
+    elif choice == "5":
         print("Exiting...")
         return
     else:

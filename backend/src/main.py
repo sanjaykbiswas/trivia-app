@@ -72,7 +72,7 @@ def create_question_generator():
 
 def create_answer_generator():
     """Create answer generator with GPT for fast, structured answers"""
-    config = LLMConfigFactory.create_openai("gpt-3.5-turbo")
+    config = LLMConfigFactory.create_openai("gpt-4o")
     return AnswerGenerator(config)
 
 def create_deduplicator():

@@ -1,0 +1,18 @@
+2025-03-17 21:43:38,912 - manual_test - INFO - Logging configured for manual_test
+2025-03-17 21:43:46,708 - utils.supabase_actions - INFO - Ensuring user exists: 00000000-0000-0000-0000-000000000000
+2025-03-17 21:43:47,218 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.00000000-0000-0000-0000-000000000000 "HTTP/2 200 OK"
+2025-03-17 21:43:47,224 - utils.supabase_actions - INFO - Creating new user: 00000000-0000-0000-0000-000000000000
+2025-03-17 21:43:47,381 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-17 21:43:47,384 - utils.supabase_actions - INFO - User 00000000-0000-0000-0000-000000000000 created successfully
+2025-03-17 21:44:29,584 - manual_test - INFO - Logging configured for manual_test
+2025-03-17 21:44:31,214 - utils.supabase_actions - INFO - Ensuring user exists: 00000000-0000-0000-0000-000000000000
+2025-03-17 21:44:31,496 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.00000000-0000-0000-0000-000000000000 "HTTP/2 200 OK"
+2025-03-17 21:44:31,501 - utils.supabase_actions - INFO - Creating new user: 00000000-0000-0000-0000-000000000000
+2025-03-17 21:44:31,632 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-17 21:44:31,635 - utils.supabase_actions - INFO - User 00000000-0000-0000-0000-000000000000 created successfully
+2025-03-17 21:45:50,054 - manual_test - INFO - Logging configured for manual_test
+2025-03-17 21:45:51,689 - utils.supabase_actions - INFO - Ensuring user exists: 00000000-0000-0000-0000-000000000000
+2025-03-17 21:45:52,418 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.00000000-0000-0000-0000-000000000000 "HTTP/2 200 OK"
+2025-03-17 21:45:52,424 - utils.supabase_actions - INFO - Creating new user: 00000000-0000-0000-0000-000000000000
+2025-03-17 21:45:52,553 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-17 21:45:52,558 - utils.supabase_actions - INFO - User 00000000-0000-0000-0000-000000000000 created successfully
