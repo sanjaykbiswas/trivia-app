@@ -179,3 +179,53 @@
 2025-03-17 23:07:35,119 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
 2025-03-17 23:07:35,522 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22content%22%2C%22category%22%2C%22difficulty%22%2C%22user_id%22 "HTTP/2 201 Created"
 2025-03-17 23:07:38,945 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-17 23:19:18,527 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-17 23:20:10,264 - trivia_app - INFO - Request: POST /questions/generate-complete from 127.0.0.1
+2025-03-17 23:20:27,768 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:20:37,001 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:20:38,975 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:20:53,278 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:02,590 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:04,644 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:17,683 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:27,018 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:29,733 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:43,765 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:51,976 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:21:54,820 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:22:08,164 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:22:16,738 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:22:19,094 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:22:20,012 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-17 23:22:20,385 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22user_id%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-17 23:22:24,455 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-17 23:22:24,577 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22created_at%22%2C%22question_id%22%2C%22correct_answer%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-17 23:22:24,582 - trivia_app - INFO - Response: POST /questions/generate-complete - Status: 200 - Time: 134.3183s
+2025-03-17 23:25:44,966 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-17 23:27:05,943 - trivia_app - INFO - Request: POST /questions/generate-complete from 127.0.0.1
+2025-03-17 23:27:05,947 - trivia_app - INFO - Response: POST /questions/generate-complete - Status: 422 - Time: 0.0040s
+2025-03-17 23:27:23,854 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-17 23:27:52,105 - trivia_app - INFO - Request: POST /questions/generate-complete from 127.0.0.1
+2025-03-17 23:27:52,108 - trivia_app - INFO - Response: POST /questions/generate-complete - Status: 422 - Time: 0.0027s
+2025-03-17 23:28:05,245 - trivia_app - INFO - Request: POST /questions/generate-complete from 127.0.0.1
+2025-03-17 23:28:20,878 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:28:29,069 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:28:37,517 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:28:51,802 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:29:01,512 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:29:13,966 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:29:27,850 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:29:36,550 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:29:55,394 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:30:08,402 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:30:17,030 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:30:31,789 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:30:44,343 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:30:56,528 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:31:15,268 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-17 23:31:16,169 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-17 23:31:17,752 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22user_id%22%2C%22category%22 "HTTP/2 201 Created"
+2025-03-17 23:31:48,549 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-17 23:32:22,441 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-17 23:32:22,668 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22created_at%22%2C%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22 "HTTP/2 201 Created"
+2025-03-17 23:32:22,683 - trivia_app - INFO - Response: POST /questions/generate-complete - Status: 200 - Time: 257.4377s

@@ -7,7 +7,7 @@ from models.complete_question import CompleteQuestion
 # Pydantic models for API requests/responses
 class QuestionGenerationRequest(BaseModel):
     category: str
-    count: int = Field(default=10, ge=1, le=100)
+    count: int = Field(default=10, ge=1, le=500)
     deduplicate: bool = True
     difficulties: Optional[List[str]] = None  # Add difficulties parameter
     user_id: Optional[str] = None
