@@ -1,7 +1,11 @@
 import numpy as np
+import logging
 from openai import OpenAI
 from config.environment import Environment
 from models.question import Question
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 class Deduplicator:
     """
@@ -24,27 +28,38 @@ class Deduplicator:
         Returns:
             list[Question]: Deduplicated questions
         """
+        # Check if we have questions to process
+        if not questions or len(questions) <= 1:
+            return questions
+            
         # Extract question content
         question_texts = [q.content for q in questions]
         
-        # Get embeddings
-        embeddings = self._get_embeddings(question_texts)
-        
-        # Find duplicates
-        duplicate_indices = set()
-        num_questions = len(embeddings)
+        try:
+            # Get embeddings
+            embeddings = self._get_embeddings(question_texts)
+            
+            # Find duplicates
+            duplicate_indices = set()
+            num_questions = len(embeddings)
 
-        for i in range(num_questions):
-            if i in duplicate_indices:
-                continue
-            for j in range(i + 1, num_questions):
-                if j in duplicate_indices:
+            for i in range(num_questions):
+                if i in duplicate_indices:
                     continue
-                if self._cosine_similarity(embeddings[i], embeddings[j]) > threshold:
-                    duplicate_indices.add(j)
-        
-        # Return non-duplicate questions
-        return [q for idx, q in enumerate(questions) if idx not in duplicate_indices]
+                for j in range(i + 1, num_questions):
+                    if j in duplicate_indices:
+                        continue
+                    if self._cosine_similarity(embeddings[i], embeddings[j]) > threshold:
+                        duplicate_indices.add(j)
+            
+            # Return non-duplicate questions
+            return [q for idx, q in enumerate(questions) if idx not in duplicate_indices]
+            
+        except Exception as e:
+            logger.error(f"Error in deduplication process: {e}")
+            # If embedding fails, just return the original questions
+            logger.warning("Returning original questions without deduplication due to error")
+            return questions
     
     def _get_embeddings(self, texts):
         """
@@ -56,11 +71,43 @@ class Deduplicator:
         Returns:
             list: List of embedding vectors
         """
-        response = self.openai_client.embeddings.create(
-            model=self.embedding_model,
-            input=texts
-        )
-        return [item.embedding for item in response.data]
+        if not texts:
+            return []
+            
+        # Ensure all items are strings
+        processed_texts = []
+        for text in texts:
+            if not isinstance(text, str):
+                logger.warning(f"Converting non-string item to string: {type(text)}")
+                processed_texts.append(str(text))
+            else:
+                processed_texts.append(text)
+        
+        try:
+            logger.info(f"Getting embeddings for {len(processed_texts)} texts")
+            
+            # Process texts in batches to avoid API limitations
+            batch_size = 100  # OpenAI recommends batches of 100 or fewer
+            all_embeddings = []
+            
+            for i in range(0, len(processed_texts), batch_size):
+                batch = processed_texts[i:i + batch_size]
+                logger.info(f"Processing batch {i//batch_size + 1} of {(len(processed_texts)-1)//batch_size + 1}")
+                
+                response = self.openai_client.embeddings.create(
+                    model=self.embedding_model,
+                    input=batch
+                )
+                
+                batch_embeddings = [item.embedding for item in response.data]
+                all_embeddings.extend(batch_embeddings)
+            
+            return all_embeddings
+            
+        except Exception as e:
+            logger.error(f"Error getting embeddings: {e}")
+            # Raise the exception to be handled by the caller
+            raise
     
     def _cosine_similarity(self, vec1, vec2):
         """

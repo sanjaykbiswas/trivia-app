@@ -2,6 +2,7 @@
 """
 Manual test script for trivia app functionality
 This script allows you to manually test various functionalities
+with enhanced debugging for LLM responses
 """
 
 import asyncio
@@ -30,9 +31,109 @@ from models.question import Question
 from models.answer import Answer
 from models.complete_question import CompleteQuestion
 from utils.logging_config import setup_logging
+from utils.question_generator.category_helper import CategoryHelper
+from utils.question_generator.difficulty_helper import DifficultyHelper
 
 # Setup logging
 logger = setup_logging(app_name="manual_test", log_level=logging.INFO)
+
+# Monkey patch the _call_llm_for_questions method to capture raw responses
+original_call_llm_for_questions = QuestionGenerator._call_llm_for_questions
+def patched_call_llm_for_questions(self, category, count, category_guidelines, difficulty_context=""):
+    print(f"\n======= Calling LLM for {count} {category} questions =======")
+    print(f"Using model: {self.model} from provider: {self.provider}")
+    
+    raw_response = original_call_llm_for_questions(self, category, count, category_guidelines, difficulty_context)
+    
+    print(f"\n======= Raw LLM Response =======")
+    print(raw_response)
+    print("================================\n")
+    
+    # Try parsing to catch errors early with better messages
+    try:
+        json.loads(raw_response)
+        print("✅ Response is valid JSON")
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON: {e}")
+        print("Attempting to fix JSON...")
+        # Try to extract valid JSON from the response
+        fixed_json = try_fix_json(raw_response)
+        if fixed_json:
+            print("✅ Fixed JSON successfully")
+            return fixed_json
+    
+    return raw_response
+
+# Monkey patch CategoryHelper to show responses
+original_generate_category_guidelines = CategoryHelper.generate_category_guidelines
+def patched_generate_category_guidelines(self, category):
+    print(f"\n======= Generating Category Guidelines for '{category}' =======")
+    guidelines = original_generate_category_guidelines(self, category)
+    print(f"\n======= Category Guidelines =======")
+    print(guidelines)
+    print("================================\n")
+    return guidelines
+
+# Monkey patch DifficultyHelper to show responses
+original_generate_difficulty_guidelines = DifficultyHelper.generate_difficulty_guidelines
+def patched_generate_difficulty_guidelines(self, category):
+    print(f"\n======= Generating Difficulty Guidelines for '{category}' =======")
+    guidelines = original_generate_difficulty_guidelines(self, category)
+    print(f"\n======= Difficulty Guidelines =======")
+    print(json.dumps(guidelines, indent=2))
+    print("================================\n")
+    return guidelines
+
+# Add monkey patching
+QuestionGenerator._call_llm_for_questions = patched_call_llm_for_questions
+CategoryHelper.generate_category_guidelines = patched_generate_category_guidelines
+DifficultyHelper.generate_difficulty_guidelines = patched_generate_difficulty_guidelines
+
+def try_fix_json(raw_text):
+    """
+    Attempt to extract or fix JSON from raw text
+    """
+    # Try to find JSON array in the response
+    json_start = raw_text.find('[')
+    json_end = raw_text.rfind(']')
+    
+    if json_start != -1 and json_end != -1:
+        # Extract only the JSON array part
+        json_text = raw_text[json_start:json_end+1]
+        try:
+            # Check if it's valid JSON
+            json_data = json.loads(json_text)
+            return json_data
+        except json.JSONDecodeError:
+            # Still not valid
+            pass
+    
+    # Try more advanced fixes
+    # 1. Replace common markdown formatting
+    clean_text = raw_text.replace("```json", "").replace("```", "")
+    
+    # 2. Try to extract JSON array again
+    json_start = clean_text.find('[')
+    json_end = clean_text.rfind(']')
+    
+    if json_start != -1 and json_end != -1:
+        json_text = clean_text[json_start:json_end+1]
+        try:
+            json_data = json.loads(json_text)
+            return json_data
+        except json.JSONDecodeError:
+            # Still not valid
+            pass
+    
+    # 3. Try to extract questions directly if JSON isn't working
+    # Look for patterns like "Question?", with quotes
+    import re
+    questions = re.findall(r'"([^"]+\?)"', raw_text)
+    if questions and len(questions) > 0:
+        print(f"Extracted {len(questions)} questions using regex")
+        return questions
+    
+    return None
 
 async def setup_supabase():
     """Create Supabase client for testing"""
@@ -84,10 +185,10 @@ async def test_single_difficulty_generation():
     if not difficulty:
         difficulty = "Medium"
     
-    count = input("Number of questions to generate (1-10): ")
+    count = input("Number of questions to generate (1-100): ")
     try:
         count = int(count)
-        if count < 1 or count > 10:
+        if count < 1 or count > 100:
             count = 3
     except ValueError:
         count = 3
@@ -131,10 +232,10 @@ async def test_complete_question_generation():
     if not difficulty:
         difficulty = "Medium"
     
-    count = input("Number of questions to generate (1-10): ")
+    count = input("Number of questions to generate (1-100): ")
     try:
         count = int(count)
-        if count < 1 or count > 10:
+        if count < 1 or count > 100:
             count = 3
     except ValueError:
         count = 3
@@ -161,7 +262,12 @@ async def test_complete_question_generation():
         return True
     except Exception as e:
         print(f"Error during complete question generation: {e}")
+        # Add more detailed exception info
+        import traceback
+        traceback.print_exc()
         return False
+
+# The rest of the functions remain the same
 
 async def test_user_creation():
     """Test creating a new user"""
@@ -284,9 +390,6 @@ async def test_guidelines_generation():
     llm_config = LLMConfigFactory.create_default()
     
     # Initialize helpers
-    from utils.question_generator.category_helper import CategoryHelper
-    from utils.question_generator.difficulty_helper import DifficultyHelper
-    
     category_helper = CategoryHelper(llm_config)
     difficulty_helper = DifficultyHelper(llm_config)
     
@@ -298,7 +401,6 @@ async def test_guidelines_generation():
     # Get category guidelines
     print(f"\n--- CATEGORY GUIDELINES FOR '{category}' ---")
     category_guidelines = category_helper.generate_category_guidelines(category)
-    print(category_guidelines)
     
     # Generate difficulty tiers
     print(f"\n--- DIFFICULTY TIERS FOR '{category}' ---")
@@ -313,7 +415,7 @@ async def test_guidelines_generation():
 async def main():
     """Main interactive test function"""
     print("=" * 50)
-    print("MANUAL TEST FOR TRIVIA APP".center(50))
+    print("MANUAL TEST FOR TRIVIA APP (ENHANCED)".center(50))
     print("=" * 50)
     print("\nWhat would you like to test?")
     print("1. Create a new user")

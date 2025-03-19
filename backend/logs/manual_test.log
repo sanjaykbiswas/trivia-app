@@ -1510,3 +1510,96 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-18 21:31:02,640 - manual_test - INFO - Logging configured for manual_test
 2025-03-18 21:31:20,320 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-03-18 21:31:24,975 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:00:10,609 - manual_test - INFO - Logging configured for manual_test
+2025-03-18 22:00:56,018 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:01:03,080 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:01:07,279 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:06:30,521 - manual_test - INFO - Logging configured for manual_test
+2025-03-18 22:06:55,752 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:07:00,768 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:07:10,597 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:07:11,212 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-18 22:07:11,659 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22user_id%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-18 22:07:20,018 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:07:20,198 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22question_id%22%2C%22created_at%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-18 22:08:24,315 - manual_test - INFO - Logging configured for manual_test
+2025-03-18 22:08:51,260 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:08:55,501 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:09:27,966 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:09:29,213 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-18 22:09:30,774 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22user_id%22%2C%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22category%22 "HTTP/2 201 Created"
+2025-03-18 22:09:59,103 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:10:25,261 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:10:25,462 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22created_at%22%2C%22correct_answer%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-18 22:23:47,215 - manual_test - INFO - Logging configured for manual_test
+2025-03-18 22:24:04,532 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:24:10,033 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:24:32,997 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:24:33,001 - utils.question_generator.generator - ERROR - Error parsing questions: the JSON object must be str, bytes or bytearray, not list
+2025-03-18 22:24:33,610 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 400 Bad Request"
+2025-03-18 22:27:26,830 - manual_test - INFO - Logging configured for manual_test
+2025-03-18 22:27:42,746 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:27:46,635 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:27:46,638 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-18 22:28:08,447 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:28:08,449 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which ancient civilization is credited with building the pyramids of Giza?",
+  "Who was...
+2025-03-18 22:28:08,450 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-18 22:28:08,450 - utils.question_generator.generator - INFO - Successfully parsed 73 questions out of 75 requested
+2025-03-18 22:28:08,450 - utils.question_generator.deduplicator - INFO - Getting embeddings for 73 texts
+2025-03-18 22:28:08,450 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-18 22:28:12,027 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-18 22:28:13,297 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22user_id%22%2C%22created_at%22%2C%22content%22%2C%22category%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-18 22:28:33,328 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:28:42,238 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:28:42,503 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22question_id%22%2C%22correct_answer%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-18 22:31:01,182 - manual_test - INFO - Logging configured for manual_test
+2025-03-18 22:31:21,267 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:31:29,150 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:31:29,153 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-18 22:32:28,647 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:32:28,650 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which iconic Bollywood film from the 90s launched Shah Rukh Khan to superstardom?",
+  "...
+2025-03-18 22:32:28,651 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-18 22:32:28,651 - utils.question_generator.generator - INFO - Successfully parsed 73 questions out of 75 requested
+2025-03-18 22:32:28,651 - utils.question_generator.deduplicator - INFO - Getting embeddings for 73 texts
+2025-03-18 22:32:28,651 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-18 22:32:29,463 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-18 22:32:30,731 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22user_id%22%2C%22difficulty%22%2C%22content%22%2C%22category%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-18 22:32:30,748 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-18 22:32:30,748 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-18 22:33:01,207 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:33:01,210 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-18 22:33:01,212 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-18 22:33:01,212 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (23 questions)
+2025-03-18 22:33:01,212 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-18 22:33:15,234 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:33:15,248 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-18 22:33:15,249 - utils.question_generator.answer_generator - INFO - Successfully parsed 23 answers in batch 2
+2025-03-18 22:33:15,249 - utils.question_generator.answer_generator - INFO - Generated 73 answers for 73 questions
+2025-03-18 22:33:15,469 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22created_at%22%2C%22question_id%22%2C%22correct_answer%22 "HTTP/2 201 Created"
+2025-03-18 22:34:21,694 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:34:26,302 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:34:26,305 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-18 22:34:33,060 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:34:33,062 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which author envisioned the Three Laws of Robotics in their science fiction works?",
+  ...
+2025-03-18 22:34:33,063 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-18 22:34:33,063 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-18 22:34:33,063 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-18 22:34:33,063 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-18 22:34:34,084 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-18 22:34:34,828 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22user_id%22%2C%22difficulty%22%2C%22content%22%2C%22category%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-18 22:34:34,832 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (20 questions)
+2025-03-18 22:34:34,832 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-18 22:34:46,064 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-18 22:34:46,080 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-18 22:34:46,080 - utils.question_generator.answer_generator - INFO - Successfully parsed 20 answers in batch 1
+2025-03-18 22:34:46,080 - utils.question_generator.answer_generator - INFO - Generated 20 answers for 20 questions
+2025-03-18 22:34:46,258 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22created_at%22%2C%22question_id%22%2C%22correct_answer%22 "HTTP/2 201 Created"
