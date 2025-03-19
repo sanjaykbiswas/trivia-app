@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# React Native
+.expo/
+dist/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# macOS
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Testing
+/coverage
+
+# Build
+/build
+android/app/build/
+ios/build/
+ios/Pods/
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.bak
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# CocoaPods
+/ios/Pods/
