@@ -20,6 +20,9 @@ class CategoryHelper:
         self.client = self.llm_config.get_client()
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
+        
+        # Add a cache for guidelines
+        self._guidelines_cache = {}
     
     def generate_category_guidelines(self, category):
         """
@@ -31,6 +34,13 @@ class CategoryHelper:
         Returns:
             str: Guidelines text
         """
+        # Check cache first
+        category_key = category.lower().strip()
+        if category_key in self._guidelines_cache:
+            logger.info(f"Using cached category guidelines for '{category}'")
+            return self._guidelines_cache[category_key]
+            
+        # Generate new guidelines
         prompt = f"""
         Create a comprehensive guide for generating exceptional trivia questions in the category: '{category}'.
 
@@ -53,12 +63,7 @@ class CategoryHelper:
 
         [Continue with additional guidelines, maximum of 10 total]
 
-        Important: Do not include guidelines about the following:
-        -- Visual questions
-        -- Difficulty balancing
-        -- Question format
-        -- Question clarity
-        -- Hypothetical scenarios
+        Important: DO NOT INCLUDE ANY guidelines about the following: Visual Questions, Difficulty Balancing, Question Formats, Question Clarity, or Hypothetical Scenarios.
 
         Focus exclusively on content and quality considerations for text-based trivia questions.
         """
@@ -77,11 +82,16 @@ class CategoryHelper:
                     # Check if the response is already a string
                     content = response.choices[0].message.content
                     if isinstance(content, str):
+                        # Cache the result before returning
+                        self._guidelines_cache[category_key] = content
                         return content
                     else:
                         # Try to convert to string if it's not already
                         logger.warning(f"Unexpected response type: {type(content)}. Converting to string.")
-                        return str(content)
+                        content_str = str(content)
+                        # Cache the result before returning
+                        self._guidelines_cache[category_key] = content_str
+                        return content_str
                 else:
                     logger.warning("No choices in OpenAI response")
                     return "No guidelines available"
@@ -97,11 +107,16 @@ class CategoryHelper:
                     logger.info(f"Received response from {self.provider}")
                     content = response.content[0].text
                     if isinstance(content, str):
+                        # Cache the result before returning
+                        self._guidelines_cache[category_key] = content
                         return content
                     else:
                         # Try to convert to string if it's not already
                         logger.warning(f"Unexpected response type: {type(content)}. Converting to string.")
-                        return str(content)
+                        content_str = str(content)
+                        # Cache the result before returning
+                        self._guidelines_cache[category_key] = content_str
+                        return content_str
                 else:
                     logger.warning("No content in Anthropic response")
                     return "No guidelines available"
@@ -113,7 +128,7 @@ class CategoryHelper:
         except Exception as e:
             logger.error(f"Error generating category guidelines: {e}")
             # Provide a simple fallback
-            return f"""
+            fallback = f"""
             ### {category} Trivia Question Guidelines
 
             **Cover diverse topics within {category}**
@@ -125,3 +140,5 @@ class CategoryHelper:
             **Focus on factual accuracy**
             Ensure all questions are based on verified information.
             """
+            # Don't cache error responses
+            return fallback

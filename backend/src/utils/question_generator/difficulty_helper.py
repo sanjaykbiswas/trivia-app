@@ -25,6 +25,9 @@ class DifficultyHelper:
         
         # Five standard difficulty levels
         self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
+        
+        # Add a cache for difficulty guidelines
+        self._difficulty_cache = {}
     
     def generate_difficulty_guidelines(self, category):
         """
@@ -36,6 +39,12 @@ class DifficultyHelper:
         Returns:
             dict: Structured difficulty guidelines with keys for each tier
         """
+        # Check cache first
+        category_key = category.lower().strip()
+        if category_key in self._difficulty_cache:
+            logger.info(f"Using cached difficulty guidelines for '{category}'")
+            return self._difficulty_cache[category_key]
+            
         prompt = f"""
         Create 5 distinct difficulty tiers for the category: '{category}'.
 
@@ -73,7 +82,9 @@ class DifficultyHelper:
                     raw_response = response.choices[0].message.content
                 else:
                     logger.warning("No choices in OpenAI response")
-                    return self._get_default_difficulties(category)
+                    result = self._get_default_difficulties(category)
+                    self._difficulty_cache[category_key] = result
+                    return result
             
             elif self.provider == "anthropic":
                 response = self.client.messages.create(
@@ -87,7 +98,9 @@ class DifficultyHelper:
                     raw_response = response.content[0].text
                 else:
                     logger.warning("No content in Anthropic response")
-                    return self._get_default_difficulties(category)
+                    result = self._get_default_difficulties(category)
+                    self._difficulty_cache[category_key] = result
+                    return result
             
             else:
                 logger.error(f"Unsupported provider: {self.provider}")
@@ -96,7 +109,9 @@ class DifficultyHelper:
             # Check if raw_response is already a dictionary
             if isinstance(raw_response, dict):
                 logger.info("Response is already a dictionary, no parsing needed")
-                return self._validate_difficulty_levels(raw_response, category)
+                result = self._validate_difficulty_levels(raw_response, category)
+                self._difficulty_cache[category_key] = result
+                return result
                 
             # Parse the response into a structured format using the utility
             try:
@@ -105,15 +120,21 @@ class DifficultyHelper:
                     default_value={}
                 )
                 
-                return self._validate_difficulty_levels(parsed_data, category)
+                result = self._validate_difficulty_levels(parsed_data, category)
+                self._difficulty_cache[category_key] = result
+                return result
                 
             except Exception as e:
                 logger.error(f"Error parsing difficulty response: {e}")
-                return self._get_default_difficulties(category)
+                result = self._get_default_difficulties(category)
+                self._difficulty_cache[category_key] = result
+                return result
                 
         except Exception as e:
             logger.error(f"Error generating difficulty guidelines: {e}")
-            return self._get_default_difficulties(category)
+            result = self._get_default_difficulties(category)
+            # Don't cache error responses
+            return result
     
     def _validate_difficulty_levels(self, parsed_data, category):
         """

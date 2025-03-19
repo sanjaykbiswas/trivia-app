@@ -662,6 +662,73 @@ async def test_concurrent_guideline_generation():
             print(f"\n{level}:")
             print(difficulty_tiers[level])
 
+async def test_multi_difficulty_generation():
+    """Test generating questions with multiple difficulty levels concurrently"""
+    question_service, _ = await setup_question_service()
+    
+    # Get test parameters
+    print("\nMULTI-DIFFICULTY QUESTION GENERATION")
+    print("=" * 40)
+    
+    category = input("Enter category (e.g., History, Science, Movies): ")
+    if not category:
+        category = "General Knowledge"
+    
+    # Get difficulty counts
+    difficulty_counts = {}
+    print("\nEnter question counts for each difficulty (0 to skip):")
+    for difficulty in ["Easy", "Medium", "Hard", "Expert", "Master"]:
+        count_input = input(f"{difficulty}: ")
+        try:
+            count = int(count_input)
+            if count > 0:
+                difficulty_counts[difficulty] = count
+        except ValueError:
+            pass  # Skip if invalid
+    
+    if not difficulty_counts:
+        print("No valid difficulties specified, using defaults...")
+        difficulty_counts = {"Easy": 2, "Medium": 2}
+    
+    total_count = sum(difficulty_counts.values())
+    print(f"\nGenerating {total_count} '{category}' questions across {len(difficulty_counts)} difficulty levels...")
+    print(f"Difficulty distribution: {difficulty_counts}")
+    
+    # Timing starts before any operations begin
+    start_time = time.time()
+    
+    try:
+        result = await question_service.create_multi_difficulty_question_set(
+            category=category,
+            difficulty_counts=difficulty_counts,
+            deduplicate=True
+        )
+        
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        
+        # Count total questions generated
+        total_generated = sum(len(questions) for questions in result.values())
+        
+        print(f"Successfully generated {total_generated} questions in {elapsed_time:.2f} seconds")
+        
+        # Print summary for each difficulty
+        for difficulty, questions in result.items():
+            print(f"\n{difficulty} difficulty: {len(questions)} questions")
+            if questions:
+                # Show a sample question from each difficulty
+                sample = questions[0]
+                print(f"Sample: {sample.content}")
+                print(f"Answer: {sample.correct_answer}")
+                print(f"Incorrect options: {', '.join(sample.incorrect_answers)}")
+        
+        return True
+    except Exception as e:
+        print(f"Error during multi-difficulty generation: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 async def main():
     """Main interactive test function"""
     print("=" * 50)
@@ -678,9 +745,10 @@ async def main():
     print("8. Generate questions using ASYNC method (concurrent)")
     print("9. Generate complete questions using ASYNC methods (concurrent)")
     print("10. Generate guidelines concurrently")
-    print("11. Exit")
+    print("11. Generate questions with multiple difficulties concurrently")
+    print("12. Exit")
     
-    choice = input("\nEnter your choice (1-11): ")
+    choice = input("\nEnter your choice (1-12): ")
     
     if choice == "1":
         await test_user_creation()
@@ -705,6 +773,8 @@ async def main():
     elif choice == "10":
         await test_concurrent_guideline_generation()
     elif choice == "11":
+        await test_multi_difficulty_generation()
+    elif choice == "12":
         print("Exiting...")
         return
     else:

@@ -12,6 +12,16 @@ class QuestionGenerationRequest(BaseModel):
     difficulty: Optional[str] = None  # Changed from List[str] to single str
     user_id: Optional[str] = None
 
+class MultiDifficultyRequest(BaseModel):
+    category: str
+    difficulty_counts: Dict[str, int] = Field(
+        ..., 
+        description="Map of difficulty levels to counts",
+        example={"Easy": 5, "Medium": 8, "Hard": 3}
+    )
+    deduplicate: bool = True
+    user_id: Optional[str] = None
+
 class QuestionResponse(BaseModel):
     id: str
     content: str
@@ -32,6 +42,10 @@ class CompleteQuestionResponse(BaseModel):
     difficulty: Optional[str] = None
     user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
+class MultiDifficultyResponse(BaseModel):
+    difficulty: str
+    questions: List[CompleteQuestionResponse]
+
 class QuestionController:
     """
     Controller for question-related API endpoints
@@ -45,6 +59,7 @@ class QuestionController:
         """Set up API routes"""
         self.router.post("/generate", response_model=List[QuestionResponse])(self.generate_questions)
         self.router.post("/generate-complete", response_model=List[CompleteQuestionResponse])(self.generate_complete_questions)
+        self.router.post("/generate-multi-difficulty", response_model=List[MultiDifficultyResponse])(self.generate_multi_difficulty_questions)
         self.router.get("/category/{category}", response_model=List[QuestionResponse])(self.get_by_category)
         self.router.get("/game", response_model=List[CompleteQuestionResponse])(self.get_game_questions)
         self.router.get("/{question_id}", response_model=CompleteQuestionResponse)(self.get_question)
@@ -96,6 +111,48 @@ class QuestionController:
         )
         
         return [self._format_complete_question(q) for q in complete_questions]
+    
+    async def generate_multi_difficulty_questions(self, request: MultiDifficultyRequest) -> List[MultiDifficultyResponse]:
+        """
+        Generate questions with multiple difficulties
+        
+        Args:
+            request (MultiDifficultyRequest): Generation parameters with difficulty counts
+            
+        Returns:
+            List[MultiDifficultyResponse]: Questions grouped by difficulty
+        """
+        try:
+            result = await self.question_service.create_multi_difficulty_question_set(
+                category=request.category,
+                difficulty_counts=request.difficulty_counts,
+                deduplicate=request.deduplicate,
+                user_id=request.user_id
+            )
+            
+            # Format the response
+            response = []
+            for difficulty, questions in result.items():
+                response.append(
+                    MultiDifficultyResponse(
+                        difficulty=difficulty,
+                        questions=[
+                            CompleteQuestionResponse(
+                                id=q.question.id,
+                                content=q.content,
+                                category=q.category,
+                                correct_answer=q.correct_answer,
+                                incorrect_answers=q.incorrect_answers,
+                                difficulty=q.difficulty,
+                                user_id=q.user_id
+                            ) for q in questions
+                        ]
+                    )
+                )
+            
+            return response
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Multi-difficulty generation failed: {str(e)}")
     
     async def get_by_category(self, category: str, limit: int = 50) -> List[QuestionResponse]:
         """

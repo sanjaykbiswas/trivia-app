@@ -12,8 +12,9 @@ from utils.question_generator.deduplicator import Deduplicator
 from utils.supabase_actions import SupabaseActions
 from services.question_service import QuestionService
 from services.upload_service import UploadService
-from controllers.question_controller import QuestionController
+from controllers.question_controller import QuestionController, MultiDifficultyRequest, MultiDifficultyResponse
 from controllers.upload_controller import UploadController
+from typing import List
 
 # Set up logging
 logger = setup_logging()
@@ -21,7 +22,14 @@ logger = setup_logging()
 # Create FastAPI app
 app = FastAPI(
     title="Trivia App API",
-    description="API for managing trivia questions and games",
+    description="""API for managing trivia questions and games. 
+    
+Features:
+- Generate trivia questions in various categories and difficulty levels
+- Generate questions with multiple difficulties concurrently
+- Upload custom questions and answers
+- Retrieve questions for trivia games
+    """,
     version="1.0.0"
 )
 
@@ -102,6 +110,39 @@ question_controller = QuestionController(question_service)
 # Include router
 app.include_router(upload_controller.router)
 app.include_router(question_controller.router)
+
+# Add more detailed documentation for the multi-difficulty endpoint
+@app.post(
+    "/questions/generate-multi-difficulty",
+    response_model=List[MultiDifficultyResponse],
+    tags=["questions"],
+    summary="Generate questions with multiple difficulties concurrently",
+    description="""
+    Generate trivia questions with different difficulty levels concurrently.
+    
+    This endpoint allows you to specify how many questions to generate for each difficulty level,
+    and processes all requests concurrently for faster generation.
+    
+    The response is grouped by difficulty level, making it easy to organize questions
+    for games with progressive difficulty.
+    
+    Example request:
+    ```json
+    {
+      "category": "Science",
+      "difficulty_counts": {
+        "Easy": 5,
+        "Medium": 8,
+        "Hard": 3
+      },
+      "deduplicate": true
+    }
+    ```
+    """
+)
+async def generate_multi_difficulty_questions_proxy(request: MultiDifficultyRequest):
+    """Proxy to controller method"""
+    return await question_controller.generate_multi_difficulty_questions(request)
 
 # Root endpoint
 @app.get("/")

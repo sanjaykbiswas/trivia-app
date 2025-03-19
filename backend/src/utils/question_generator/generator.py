@@ -33,6 +33,10 @@ class QuestionGenerator:
         
         # Standard difficulty levels (5 tiers)
         self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
+        
+        # Add a cache for category guidelines and difficulty contexts
+        self._category_guidelines_cache = {}
+        self._difficulty_context_cache = {}
     
     async def _fetch_guidelines_concurrently(self, category, difficulty=None):
         """
@@ -45,24 +49,39 @@ class QuestionGenerator:
         Returns:
             tuple: (category_guidelines, difficulty_context)
         """
-        # Create tasks for concurrent execution
-        category_task = asyncio.create_task(
-            self._get_category_guidelines(category)
-        )
+        # Check cache for category guidelines
+        category_key = category.lower().strip()
+        if category_key in self._category_guidelines_cache:
+            logger.info(f"Using cached category guidelines for '{category}'")
+            category_guidelines = self._category_guidelines_cache[category_key]
+        else:
+            # Create task for category guidelines
+            category_task = asyncio.create_task(
+                self._get_category_guidelines(category)
+            )
+            # Wait for category guidelines
+            category_guidelines = await category_task
+            # Cache the result
+            self._category_guidelines_cache[category_key] = category_guidelines
         
-        difficulty_task = None
-        if difficulty:
+        # If no difficulty specified, return early
+        if not difficulty:
+            return category_guidelines, ""
+        
+        # Check cache for difficulty context
+        difficulty_cache_key = f"{category_key}:{difficulty.lower().strip()}"
+        if difficulty_cache_key in self._difficulty_context_cache:
+            logger.info(f"Using cached difficulty context for '{category}' - '{difficulty}'")
+            difficulty_context = self._difficulty_context_cache[difficulty_cache_key]
+        else:
+            # Create task for difficulty context
             difficulty_task = asyncio.create_task(
                 self._get_difficulty_context(category, difficulty)
             )
-        
-        # Wait for category guidelines
-        category_guidelines = await category_task
-        
-        # Wait for difficulty context if needed
-        difficulty_context = ""
-        if difficulty_task:
+            # Wait for difficulty context
             difficulty_context = await difficulty_task
+            # Cache the result
+            self._difficulty_context_cache[difficulty_cache_key] = difficulty_context
         
         return category_guidelines, difficulty_context
     
@@ -278,7 +297,9 @@ class QuestionGenerator:
         **Question Style**
         -- Trivia style, but keep the question style somewhat diverse so it is not monotonous.
         -- Ensure questions are suitable for multiple-choice trivia answers (e.g., the correct answer should not be a paragraph long)
-        -- Do not do riddles.
+        -- Do not create riddles.
+        -- Do not create true or false questions.
+        -- Do not create fill in the blank questions
         -- Avoid ambiguity in questions.
         -- Ensure questions are well-phrased, avoiding jargon or overly complex language that might confuse participants. 
         --Aim for succinct questions that clearly define what is being asked, reducing the chance of multiple interpretations and leading to a more straightforward answering process.

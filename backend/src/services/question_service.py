@@ -236,6 +236,128 @@ class QuestionService:
                 complete_questions.append(complete_question)
         
         return complete_questions
+
+    async def create_multi_difficulty_question_set(
+        self,
+        category: str,
+        difficulty_counts: Dict[str, int],
+        deduplicate: bool = True,
+        batch_size: int = 50,
+        user_id: Optional[str] = None
+    ) -> Dict[str, List[CompleteQuestion]]:
+        """
+        Generate complete question sets with different difficulties concurrently
+        
+        Args:
+            category (str): Question category
+            difficulty_counts (Dict[str, int]): Dictionary mapping difficulty levels to counts
+                Example: {"Easy": 5, "Hard": 10, "Master": 3}
+            deduplicate (bool): Whether to deduplicate questions within each difficulty
+            batch_size (int): Processing batch size for answer generation
+            user_id (Optional[str]): user_id who created the questions
+            
+        Returns:
+            Dict[str, List[CompleteQuestion]]: Dictionary mapping difficulty levels to complete questions
+        """
+        # Validate difficulty levels
+        valid_difficulties = {}
+        for difficulty, count in difficulty_counts.items():
+            if difficulty in self.difficulty_levels and count > 0:
+                valid_difficulties[difficulty] = min(count, 100)  # Limit to 100 questions per difficulty
+        
+        if not valid_difficulties:
+            raise ValueError(f"No valid difficulties specified. Valid options are: {self.difficulty_levels}")
+        
+        # Pre-generate category guidelines and difficulty contexts for all difficulties once
+        print(f"Pre-generating shared guidelines for category: '{category}'")
+        
+        # Use the generator's helpers to pre-generate category guidelines
+        category_guidelines = await asyncio.to_thread(
+            self.generator.category_helper.generate_category_guidelines,
+            category
+        )
+        
+        # Pre-generate all difficulty tiers at once
+        difficulty_tiers = await asyncio.to_thread(
+            self.generator.difficulty_helper.generate_difficulty_guidelines,
+            category
+        )
+        
+        # Cache the generated guidelines in the generator's caches
+        category_key = category.lower().strip()
+        self.generator._category_guidelines_cache[category_key] = category_guidelines
+        
+        # Cache each difficulty context
+        for difficulty in valid_difficulties.keys():
+            standard_difficulty = self.generator._standardize_difficulty(difficulty)
+            difficulty_context = self.generator.difficulty_helper.get_difficulty_by_tier(
+                difficulty_tiers, 
+                standard_difficulty
+            )
+            if difficulty_context:
+                difficulty_context = f"\nDifficulty Level:\n{difficulty_context}"
+                
+            # Cache the context
+            difficulty_cache_key = f"{category_key}:{standard_difficulty.lower().strip()}"
+            self.generator._difficulty_context_cache[difficulty_cache_key] = difficulty_context
+        
+        # Now create tasks for generating questions for each difficulty concurrently
+        question_tasks = {}
+        for difficulty, count in valid_difficulties.items():
+            # Create a task for each difficulty
+            task = asyncio.create_task(
+                self.generate_and_save_questions(
+                    category=category,
+                    count=count,
+                    deduplicate=deduplicate,
+                    difficulty=difficulty,
+                    user_id=user_id
+                )
+            )
+            question_tasks[difficulty] = task
+        
+        # Wait for all question generation tasks to complete
+        questions_by_difficulty = {}
+        for difficulty, task in question_tasks.items():
+            try:
+                questions_by_difficulty[difficulty] = await task
+            except Exception as e:
+                print(f"Error generating questions for {difficulty} difficulty: {e}")
+                questions_by_difficulty[difficulty] = []
+        
+        # Flatten all questions for answer generation
+        all_questions = []
+        for questions in questions_by_difficulty.values():
+            all_questions.extend(questions)
+        
+        # If no questions were generated, return empty result
+        if not all_questions:
+            return {difficulty: [] for difficulty in valid_difficulties}
+        
+        # Generate answers for all questions at once
+        answers = await self.generate_answers_for_questions(
+            questions=all_questions,
+            category=category,
+            batch_size=batch_size
+        )
+        
+        # Create a mapping of question_id to answer
+        answer_map = {a.question_id: a for a in answers}
+        
+        # Organize complete questions by difficulty
+        result = {}
+        for difficulty, questions in questions_by_difficulty.items():
+            complete_questions = []
+            for question in questions:
+                if question.id in answer_map:
+                    complete_question = CompleteQuestion(
+                        question=question,
+                        answer=answer_map[question.id]
+                    )
+                    complete_questions.append(complete_question)
+            result[difficulty] = complete_questions
+        
+        return result
     
     # The rest of the methods remain unchanged
     async def get_questions_by_category(
