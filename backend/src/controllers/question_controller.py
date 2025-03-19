@@ -7,7 +7,7 @@ from models.complete_question import CompleteQuestion
 # Pydantic models for API requests/responses
 class QuestionGenerationRequest(BaseModel):
     category: str
-    count: int = Field(default=10, ge=1, le=500)
+    count: int = Field(default=10, ge=1, le=100)
     deduplicate: bool = True
     difficulties: Optional[List[str]] = None  # Add difficulties parameter
     user_id: Optional[str] = None
@@ -59,13 +59,40 @@ class QuestionController:
         Returns:
             List[QuestionResponse]: Generated questions
         """
-        questions = await self.question_service.generate_and_save_questions(
-            category=request.category,
-            count=request.count,
-            deduplicate=request.deduplicate,
-            difficulty=request.difficulties[0] if request.difficulties and len(request.difficulties) == 1 else None,
-            user_id=request.user_id
-        )
+        # If multiple difficulties are specified, generate questions for each
+        if request.difficulties and len(request.difficulties) > 1:
+            all_questions = []
+            
+            # Calculate questions per difficulty
+            questions_per_difficulty = max(1, request.count // len(request.difficulties))
+            remainder = request.count % len(request.difficulties)
+            
+            # Generate questions for each difficulty
+            for i, difficulty in enumerate(request.difficulties):
+                difficulty_count = questions_per_difficulty + (1 if i < remainder else 0)
+                if difficulty_count <= 0:
+                    continue
+                    
+                questions = await self.question_service.generate_and_save_questions(
+                    category=request.category,
+                    count=difficulty_count,
+                    deduplicate=request.deduplicate,
+                    difficulty=difficulty,
+                    user_id=request.user_id
+                )
+                all_questions.extend(questions)
+                
+            questions = all_questions
+        else:
+            # For a single difficulty, use the first one or None
+            difficulty = request.difficulties[0] if request.difficulties and len(request.difficulties) > 0 else None
+            questions = await self.question_service.generate_and_save_questions(
+                category=request.category,
+                count=request.count,
+                deduplicate=request.deduplicate,
+                difficulty=difficulty,
+                user_id=request.user_id
+            )
         
         return [
             QuestionResponse(

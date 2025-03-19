@@ -79,13 +79,8 @@ class QuestionService:
         Returns:
             List[Question]: Generated and saved questions
         """
-        # Generate questions
-        if difficulty:
-            # Generate questions for a specific difficulty
-            questions = self.generator.generate_questions(category, count, difficulty)
-        else:
-            # Use the new multi-difficulty generation method
-            questions = await self.generate_questions_across_difficulties(category, count)
+        # Generate questions with specific difficulty
+        questions = self.generator.generate_questions(category, count, difficulty)
         
         # Set user_id for all questions
         if user_id:
@@ -100,109 +95,6 @@ class QuestionService:
         saved_questions = await self.repository.bulk_create(questions)
         
         return saved_questions
-    
-    async def generate_questions_across_difficulties(
-        self,
-        category: str,
-        count: int = 10,
-        difficulties: List[str] = None,
-        user_id: Optional[str] = None
-    ) -> List[Question]:
-        """
-        Generate questions across multiple difficulty tiers concurrently
-        
-        Args:
-            category (str): Question category
-            count (int): Total number of questions to generate
-            difficulties (List[str], optional): List of difficulties to include
-                                            Defaults to all five difficulty levels
-            user_id (str, optional): user_id who created the questions
-            
-        Returns:
-            List[Question]: Generated questions across all difficulty tiers
-        """
-        # Default to all five difficulty levels if not specified
-        if difficulties is None:
-            difficulties = self.difficulty_levels
-        else:
-            # Filter to only include valid difficulty levels
-            difficulties = [d for d in difficulties if d in self.difficulty_levels]
-            if not difficulties:
-                difficulties = ["Medium"]  # Default to Medium if none are valid
-            
-            # Print for debugging
-            print(f"Generating questions with difficulties: {difficulties}")
-        
-        # Calculate questions per difficulty, distributing evenly
-        questions_per_difficulty = max(1, count // len(difficulties))
-        remainder = count % len(difficulties)
-        
-        # Distribute the remainder among the first few difficulties
-        counts = [questions_per_difficulty + (1 if i < remainder else 0) for i in range(len(difficulties))]
-        
-        # Generate questions for each difficulty tier concurrently
-        all_questions = []
-        
-        # Use asyncio.gather instead of ThreadPoolExecutor for async operation
-        tasks = []
-        
-        for i, difficulty in enumerate(difficulties):
-            # Schedule the task
-            task = asyncio.create_task(
-                self._generate_questions_for_difficulty(
-                    category,
-                    counts[i],
-                    difficulty
-                )
-            )
-            tasks.append((task, difficulty))
-        
-        # Wait for all tasks to complete
-        for task, difficulty in tasks:
-            try:
-                questions = await task
-                
-                # Verify questions have the correct difficulty
-                for question in questions:
-                    # Ensure the difficulty is set correctly
-                    if question.difficulty != difficulty:
-                        print(f"Fixing difficulty: {question.difficulty} -> {difficulty}")
-                        question.difficulty = difficulty
-                
-                # Set user_id for all questions
-                if user_id:
-                    for question in questions:
-                        question.user_id = user_id
-                
-                all_questions.extend(questions)
-            except Exception as exc:
-                print(f"Generation for {difficulty} generated an exception: {exc}")
-        
-        # Final verification of difficulties
-        difficulty_counts = {}
-        for q in all_questions:
-            difficulty_counts[q.difficulty] = difficulty_counts.get(q.difficulty, 0) + 1
-        
-        print(f"Generated questions by difficulty: {difficulty_counts}")
-        
-        return all_questions
-
-    async def _generate_questions_for_difficulty(self, category, count, difficulty):
-        """
-        Helper method to generate questions for a specific difficulty
-        Used by generate_questions_across_difficulties for concurrent generation
-        
-        Args:
-            category (str): Question category
-            count (int): Number of questions
-            difficulty (str): Difficulty level
-            
-        Returns:
-            List[Question]: Generated questions
-        """
-        # This is a wrapper in case the generator.generate_questions method isn't async
-        # If it is already async, you can call it directly
-        return self.generator.generate_questions(category, count, difficulty)
     
     async def generate_answers_for_questions(
         self,
@@ -256,18 +148,56 @@ class QuestionService:
         Returns:
             List[CompleteQuestion]: Complete questions with answers
         """
-        # Generate and save questions across difficulty tiers
-        questions = await self.generate_and_save_questions(
-            category=category,
-            count=count,
-            deduplicate=deduplicate,
-            difficulty=None,  # Use multi-difficulty generation
-            user_id=user_id
-        )
+        all_questions = []
         
-        # Generate and save answers
+        # Default to Medium difficulty if none specified
+        if not difficulties:
+            difficulties = ["Medium"]
+        
+        # Filter to only include valid difficulty levels
+        valid_difficulties = [d for d in difficulties if d in self.difficulty_levels]
+        if not valid_difficulties:
+            valid_difficulties = ["Medium"]  # Default to Medium if none are valid
+            
+        # Print for debugging
+        print(f"Generating questions with difficulties: {valid_difficulties}")
+        
+        # Calculate questions per difficulty, distributing evenly
+        questions_per_difficulty = max(1, count // len(valid_difficulties))
+        remainder = count % len(valid_difficulties)
+        
+        # Generate questions for each difficulty level
+        for i, difficulty in enumerate(valid_difficulties):
+            # Calculate how many questions to generate for this difficulty
+            difficulty_count = questions_per_difficulty + (1 if i < remainder else 0)
+            
+            # Skip if no questions to generate
+            if difficulty_count <= 0:
+                continue
+                
+            try:
+                # Generate questions for this difficulty
+                questions = await self.generate_and_save_questions(
+                    category=category,
+                    count=difficulty_count,
+                    deduplicate=deduplicate,
+                    difficulty=difficulty,
+                    user_id=user_id
+                )
+                all_questions.extend(questions)
+            except Exception as exc:
+                print(f"Generation for {difficulty} generated an exception: {exc}")
+        
+        # Final verification of difficulties
+        difficulty_counts = {}
+        for q in all_questions:
+            difficulty_counts[q.difficulty] = difficulty_counts.get(q.difficulty, 0) + 1
+        
+        print(f"Generated questions by difficulty: {difficulty_counts}")
+        
+        # Generate and save answers for all questions
         answers = await self.generate_answers_for_questions(
-            questions=questions,
+            questions=all_questions,
             category=category,
             batch_size=batch_size
         )
@@ -276,7 +206,7 @@ class QuestionService:
         complete_questions = []
         answer_map = {a.question_id: a for a in answers}
         
-        for question in questions:
+        for question in all_questions:
             if question.id in answer_map:
                 complete_question = CompleteQuestion(
                     question=question,
