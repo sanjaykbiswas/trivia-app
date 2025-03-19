@@ -49,7 +49,7 @@ class CategoryHelper:
 
         [Continue with additional guidelines, maximum of 10 total]
 
-        Important: Do not include guidelines about visual questions or difficulty balancing. Focus exclusively on content, format, and quality considerations for text-based trivia questions.
+        Important: Do not include guidelines about visual questions, difficulty balancing, question format, or question clarity. Focus exclusively on content and quality considerations for text-based trivia questions.
         """
         
         if self.provider == "openai":

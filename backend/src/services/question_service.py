@@ -131,7 +131,7 @@ class QuestionService:
         count: int = 10,
         deduplicate: bool = True,
         batch_size: int = 50,
-        difficulties: List[str] = None,
+        difficulty: Optional[str] = None,
         user_id: Optional[str] = None
     ) -> List[CompleteQuestion]:
         """
@@ -142,62 +142,39 @@ class QuestionService:
             count (int): Number of questions
             deduplicate (bool): Whether to deduplicate
             batch_size (int): Processing batch size
-            difficulties (List[str], optional): List of difficulties to include
-            user_id (str, optional): user_id who created the questions
+            difficulty (Optional[str]): Single difficulty level
+            user_id (Optional[str]): user_id who created the questions
             
         Returns:
             List[CompleteQuestion]: Complete questions with answers
         """
-        all_questions = []
-        
         # Default to Medium difficulty if none specified
-        if not difficulties:
-            difficulties = ["Medium"]
+        if not difficulty:
+            difficulty = "Medium"
         
-        # Filter to only include valid difficulty levels
-        valid_difficulties = [d for d in difficulties if d in self.difficulty_levels]
-        if not valid_difficulties:
-            valid_difficulties = ["Medium"]  # Default to Medium if none are valid
-            
+        # Verify the difficulty is valid
+        if difficulty not in self.difficulty_levels:
+            difficulty = "Medium"  # Default to Medium if not valid
+        
         # Print for debugging
-        print(f"Generating questions with difficulties: {valid_difficulties}")
+        print(f"Generating {count} '{category}' questions with '{difficulty}' difficulty...")
         
-        # Calculate questions per difficulty, distributing evenly
-        questions_per_difficulty = max(1, count // len(valid_difficulties))
-        remainder = count % len(valid_difficulties)
-        
-        # Generate questions for each difficulty level
-        for i, difficulty in enumerate(valid_difficulties):
-            # Calculate how many questions to generate for this difficulty
-            difficulty_count = questions_per_difficulty + (1 if i < remainder else 0)
-            
-            # Skip if no questions to generate
-            if difficulty_count <= 0:
-                continue
-                
-            try:
-                # Generate questions for this difficulty
-                questions = await self.generate_and_save_questions(
-                    category=category,
-                    count=difficulty_count,
-                    deduplicate=deduplicate,
-                    difficulty=difficulty,
-                    user_id=user_id
-                )
-                all_questions.extend(questions)
-            except Exception as exc:
-                print(f"Generation for {difficulty} generated an exception: {exc}")
-        
-        # Final verification of difficulties
-        difficulty_counts = {}
-        for q in all_questions:
-            difficulty_counts[q.difficulty] = difficulty_counts.get(q.difficulty, 0) + 1
-        
-        print(f"Generated questions by difficulty: {difficulty_counts}")
+        try:
+            # Generate questions for this difficulty
+            questions = await self.generate_and_save_questions(
+                category=category,
+                count=count,
+                deduplicate=deduplicate,
+                difficulty=difficulty,
+                user_id=user_id
+            )
+        except Exception as exc:
+            print(f"Generation for {difficulty} generated an exception: {exc}")
+            raise
         
         # Generate and save answers for all questions
         answers = await self.generate_answers_for_questions(
-            questions=all_questions,
+            questions=questions,
             category=category,
             batch_size=batch_size
         )
@@ -206,7 +183,7 @@ class QuestionService:
         complete_questions = []
         answer_map = {a.question_id: a for a in answers}
         
-        for question in all_questions:
+        for question in questions:
             if question.id in answer_map:
                 complete_question = CompleteQuestion(
                     question=question,

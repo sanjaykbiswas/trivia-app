@@ -9,14 +9,14 @@ class QuestionGenerationRequest(BaseModel):
     category: str
     count: int = Field(default=10, ge=1, le=100)
     deduplicate: bool = True
-    difficulties: Optional[List[str]] = None  # Add difficulties parameter
+    difficulty: Optional[str] = None  # Changed from List[str] to single str
     user_id: Optional[str] = None
 
 class QuestionResponse(BaseModel):
     id: str
     content: str
     category: str
-    difficulty: Optional[str] = None  # Support the 5 difficulty levels
+    difficulty: Optional[str] = None
     user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
 class AnswerResponse(BaseModel):
@@ -29,7 +29,7 @@ class CompleteQuestionResponse(BaseModel):
     category: str
     correct_answer: str
     incorrect_answers: List[str]
-    difficulty: Optional[str] = None  # Support the 5 difficulty levels
+    difficulty: Optional[str] = None
     user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
 class QuestionController:
@@ -59,40 +59,13 @@ class QuestionController:
         Returns:
             List[QuestionResponse]: Generated questions
         """
-        # If multiple difficulties are specified, generate questions for each
-        if request.difficulties and len(request.difficulties) > 1:
-            all_questions = []
-            
-            # Calculate questions per difficulty
-            questions_per_difficulty = max(1, request.count // len(request.difficulties))
-            remainder = request.count % len(request.difficulties)
-            
-            # Generate questions for each difficulty
-            for i, difficulty in enumerate(request.difficulties):
-                difficulty_count = questions_per_difficulty + (1 if i < remainder else 0)
-                if difficulty_count <= 0:
-                    continue
-                    
-                questions = await self.question_service.generate_and_save_questions(
-                    category=request.category,
-                    count=difficulty_count,
-                    deduplicate=request.deduplicate,
-                    difficulty=difficulty,
-                    user_id=request.user_id
-                )
-                all_questions.extend(questions)
-                
-            questions = all_questions
-        else:
-            # For a single difficulty, use the first one or None
-            difficulty = request.difficulties[0] if request.difficulties and len(request.difficulties) > 0 else None
-            questions = await self.question_service.generate_and_save_questions(
-                category=request.category,
-                count=request.count,
-                deduplicate=request.deduplicate,
-                difficulty=difficulty,
-                user_id=request.user_id
-            )
+        questions = await self.question_service.generate_and_save_questions(
+            category=request.category,
+            count=request.count,
+            deduplicate=request.deduplicate,
+            difficulty=request.difficulty,
+            user_id=request.user_id
+        )
         
         return [
             QuestionResponse(
@@ -118,7 +91,7 @@ class QuestionController:
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
-            difficulties=request.difficulties,
+            difficulty=request.difficulty,
             user_id=request.user_id
         )
         

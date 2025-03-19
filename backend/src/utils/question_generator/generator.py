@@ -125,7 +125,10 @@ class QuestionGenerator:
         -- Trivia style, but keep the question style somewhat diverse so it is not monotonous.
         -- Ensure questions are suitable for multiple-choice trivia answers (e.g., the correct answer should not be a paragraph long)
         -- Do not do riddles.
-
+        -- Avoid ambiguity in questions.
+        -- Ensure questions are well-phrased, avoiding jargon or overly complex language that might confuse participants. 
+        --Aim for succinct questions that clearly define what is being asked, reducing the chance of multiple interpretations and leading to a more straightforward answering process.
+        
         **Difficulty**
         -- Questions should match the difficulty context, if provided: {difficulty_context}.
 
