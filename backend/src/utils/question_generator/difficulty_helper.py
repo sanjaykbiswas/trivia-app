@@ -1,6 +1,11 @@
-from config.llm_config import LLMConfigFactory
 import json
 import re
+import logging
+from config.llm_config import LLMConfigFactory
+from utils.json_parsing import JSONParsingUtils
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 class DifficultyHelper:
     """
@@ -54,69 +59,101 @@ class DifficultyHelper:
         Ensure you include all 5 tiers exactly as named above and provide detailed, unique descriptions for each level.
         """
         
-        raw_response = ""
-        if self.provider == "openai":
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw_response = response.choices[0].message.content
-        
-        elif self.provider == "anthropic":
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            raw_response = response.content[0].text
-        
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
-        
-        # Parse the response into a structured format
-        return self._parse_difficulty_response(raw_response)
+        try:
+            logger.info(f"Calling {self.provider} model {self.model} for difficulty guidelines")
+            
+            if self.provider == "openai":
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                
+                if response.choices:
+                    logger.info(f"Received response from {self.provider}")
+                    raw_response = response.choices[0].message.content
+                else:
+                    logger.warning("No choices in OpenAI response")
+                    return self._get_default_difficulties(category)
+            
+            elif self.provider == "anthropic":
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1024,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                
+                if isinstance(response.content, list) and len(response.content) > 0:
+                    logger.info(f"Received response from {self.provider}")
+                    raw_response = response.content[0].text
+                else:
+                    logger.warning("No content in Anthropic response")
+                    return self._get_default_difficulties(category)
+            
+            else:
+                logger.error(f"Unsupported provider: {self.provider}")
+                raise ValueError(f"Unsupported provider: {self.provider}")
+            
+            # Check if raw_response is already a dictionary
+            if isinstance(raw_response, dict):
+                logger.info("Response is already a dictionary, no parsing needed")
+                return self._validate_difficulty_levels(raw_response, category)
+                
+            # Parse the response into a structured format using the utility
+            try:
+                parsed_data = JSONParsingUtils.parse_json_with_fallbacks(
+                    raw_response, 
+                    default_value={}
+                )
+                
+                return self._validate_difficulty_levels(parsed_data, category)
+                
+            except Exception as e:
+                logger.error(f"Error parsing difficulty response: {e}")
+                return self._get_default_difficulties(category)
+                
+        except Exception as e:
+            logger.error(f"Error generating difficulty guidelines: {e}")
+            return self._get_default_difficulties(category)
     
-    def _parse_difficulty_response(self, raw_response):
+    def _validate_difficulty_levels(self, parsed_data, category):
         """
-        Parse the LLM response into a structured format
+        Validate that all required difficulty levels are present
         
         Args:
-            raw_response (str): Raw text response from the LLM
+            parsed_data (dict): Parsed difficulty data
+            category (str): Category name for default values
             
         Returns:
-            dict: Structured difficulty guidelines
+            dict: Validated difficulty guidelines
         """
-        # Try to parse as JSON first
-        try:
-            return json.loads(raw_response)
-        except json.JSONDecodeError:
-            pass
-        
-        # Fall back to regex parsing if JSON parsing fails
-        structured_difficulties = {}
-        
-        # Clean up the response - find content between triple backticks if present
-        json_content = re.search(r'```(?:json)?\s*(.*?)\s*```', raw_response, re.DOTALL)
-        if json_content:
-            try:
-                return json.loads(json_content.group(1))
-            except json.JSONDecodeError:
-                pass
-        
-        # Try to extract using regex as a last resort
+        # Ensure all difficulty levels are present
+        result = {}
         for level in self.difficulty_levels:
-            pattern = rf'"{level}":\s*"(.*?)"(?=,|\s*}})'
-            match = re.search(pattern, raw_response, re.DOTALL)
-            if match:
-                description = match.group(1).strip()
-                structured_difficulties[level] = description
+            if level in parsed_data:
+                result[level] = parsed_data[level]
+            else:
+                logger.warning(f"Missing difficulty level: {level}")
+                result[level] = f"Default {level.lower()} difficulty for {category}."
+                
+        return result
+    
+    def _get_default_difficulties(self, category):
+        """
+        Generate default difficulty tiers if parsing fails
         
-        # If we couldn't parse the structure properly, create a default structure
-        if not structured_difficulties:
-            for level in self.difficulty_levels:
-                structured_difficulties[level] = f"Default {level.lower()} difficulty for {level.lower()} questions."
-        
-        return structured_difficulties
+        Args:
+            category (str): Category name
+            
+        Returns:
+            dict: Default difficulty guidelines
+        """
+        return {
+            "Easy": f"Basic knowledge of {category} suitable for beginners. Questions focus on common facts and well-known information that most people with casual interest would know.",
+            "Medium": f"Intermediate knowledge of {category} for hobbyists. Questions require some specific knowledge and may cover less commonly known facts or events.",
+            "Hard": f"Advanced knowledge of {category} for enthusiasts. Questions involve detailed information, connections between concepts, and some obscure facts.",
+            "Expert": f"Specialized knowledge of {category} for professionals or serious enthusiasts. Questions require deep understanding of complex topics and obscure details.",
+            "Master": f"Comprehensive mastery of {category} at an academic level. Questions demand exceptional knowledge, including obscure facts, technical details, and cutting-edge developments."
+        }
     
     def get_difficulty_by_tier(self, difficulty_guidelines, tier):
         """

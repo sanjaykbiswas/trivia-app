@@ -1,4 +1,8 @@
+import logging
 from config.llm_config import LLMConfigFactory
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 class CategoryHelper:
     """
@@ -59,20 +63,65 @@ class CategoryHelper:
         Focus exclusively on content and quality considerations for text-based trivia questions.
         """
         
-        if self.provider == "openai":
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            return response.choices[0].message.content
-        
-        elif self.provider == "anthropic":
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            return response.content[0].text
-        
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
+        try:
+            logger.info(f"Calling {self.provider} model {self.model} for category guidelines")
+            
+            if self.provider == "openai":
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                
+                if response.choices:
+                    logger.info(f"Received response from {self.provider}")
+                    # Check if the response is already a string
+                    content = response.choices[0].message.content
+                    if isinstance(content, str):
+                        return content
+                    else:
+                        # Try to convert to string if it's not already
+                        logger.warning(f"Unexpected response type: {type(content)}. Converting to string.")
+                        return str(content)
+                else:
+                    logger.warning("No choices in OpenAI response")
+                    return "No guidelines available"
+            
+            elif self.provider == "anthropic":
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1024,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                
+                if isinstance(response.content, list) and len(response.content) > 0:
+                    logger.info(f"Received response from {self.provider}")
+                    content = response.content[0].text
+                    if isinstance(content, str):
+                        return content
+                    else:
+                        # Try to convert to string if it's not already
+                        logger.warning(f"Unexpected response type: {type(content)}. Converting to string.")
+                        return str(content)
+                else:
+                    logger.warning("No content in Anthropic response")
+                    return "No guidelines available"
+            
+            else:
+                logger.error(f"Unsupported provider: {self.provider}")
+                raise ValueError(f"Unsupported provider: {self.provider}")
+                
+        except Exception as e:
+            logger.error(f"Error generating category guidelines: {e}")
+            # Provide a simple fallback
+            return f"""
+            ### {category} Trivia Question Guidelines
+
+            **Cover diverse topics within {category}**
+            Include questions from various sub-domains and time periods within {category}.
+
+            **Include a mix of easy and challenging questions**
+            Balance between common knowledge and more specialized information.
+
+            **Focus on factual accuracy**
+            Ensure all questions are based on verified information.
+            """
