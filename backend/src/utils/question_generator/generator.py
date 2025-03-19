@@ -1,10 +1,11 @@
 import json
 import logging
+import asyncio
 from config.llm_config import LLMConfigFactory
 from utils.question_generator.category_helper import CategoryHelper
 from utils.question_generator.difficulty_helper import DifficultyHelper
 from models.question import Question
-from utils.json_parsing import JSONParsingUtils  # Import the new utility
+from utils.json_parsing import JSONParsingUtils
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -26,63 +27,188 @@ class QuestionGenerator:
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
         
-        # CategoryHelper can use its own LLM configuration if needed
-        self.category_helper = CategoryHelper()
-        self.difficulty_helper = DifficultyHelper()
+        # CategoryHelper and DifficultyHelper can use their own LLM configuration
+        self.category_helper = CategoryHelper(self.llm_config)
+        self.difficulty_helper = DifficultyHelper(self.llm_config)
         
         # Standard difficulty levels (5 tiers)
         self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
-    def generate_questions(self, category, count=10, difficulty=None):
+    async def _fetch_guidelines_concurrently(self, category, difficulty=None):
         """
-        Generate trivia questions for a specific category
+        Fetch category guidelines and difficulty tiers concurrently
+        
+        Args:
+            category (str): The category to generate guidelines for
+            difficulty (str, optional): Specific difficulty level
+            
+        Returns:
+            tuple: (category_guidelines, difficulty_context)
+        """
+        # Create tasks for concurrent execution
+        category_task = asyncio.create_task(
+            self._get_category_guidelines(category)
+        )
+        
+        difficulty_task = None
+        if difficulty:
+            difficulty_task = asyncio.create_task(
+                self._get_difficulty_context(category, difficulty)
+            )
+        
+        # Wait for category guidelines
+        category_guidelines = await category_task
+        
+        # Wait for difficulty context if needed
+        difficulty_context = ""
+        if difficulty_task:
+            difficulty_context = await difficulty_task
+        
+        return category_guidelines, difficulty_context
+    
+    async def _get_category_guidelines(self, category):
+        """
+        Get category-specific guidelines asynchronously
+        
+        Args:
+            category (str): The category to generate guidelines for
+            
+        Returns:
+            str: Guidelines text
+        """
+        # Wrap the synchronous method in an executor to make it async
+        return await asyncio.to_thread(
+            self.category_helper.generate_category_guidelines,
+            category
+        )
+    
+    async def _get_difficulty_context(self, category, difficulty):
+        """
+        Get difficulty-specific context asynchronously
+        
+        Args:
+            category (str): The category
+            difficulty (str): The difficulty level
+            
+        Returns:
+            str: Difficulty context
+        """
+        # Standardize difficulty
+        standard_difficulty = self._standardize_difficulty(difficulty)
+        
+        # Generate all difficulty tiers
+        difficulty_tiers = await asyncio.to_thread(
+            self.difficulty_helper.generate_difficulty_guidelines,
+            category
+        )
+        
+        # Get the specific tier description
+        if difficulty_tiers:
+            difficulty_context = self.difficulty_helper.get_difficulty_by_tier(
+                difficulty_tiers, 
+                standard_difficulty
+            )
+            if difficulty_context:
+                return f"\nDifficulty Level:\n{difficulty_context}"
+        
+        return ""
+    
+    def _standardize_difficulty(self, difficulty):
+        """
+        Convert difficulty input to standard format
+        
+        Args:
+            difficulty: Input difficulty (str or int)
+            
+        Returns:
+            str: Standardized difficulty level
+        """
+        # Convert to standard difficulty format
+        if isinstance(difficulty, int) and 1 <= difficulty <= 5:
+            return self.difficulty_levels[difficulty-1]
+        elif isinstance(difficulty, str) and difficulty in self.difficulty_levels:
+            return difficulty
+        elif isinstance(difficulty, str):
+            # Try to match difficulty string to standard level
+            for level in self.difficulty_levels:
+                if level.lower() in difficulty.lower():
+                    return level
+            
+        # Default to Medium if not matched
+        return "Medium"
+    
+    async def generate_questions_async(self, category, count=10, difficulty=None):
+        """
+        Generate trivia questions for a specific category (async version)
         
         Args:
             category (str): The category to generate questions for
             count (int): Number of questions to generate
-            difficulty (str or int, optional): Specific difficulty level to target
-                                              (Easy, Medium, Hard, Expert, Master) or tier number (1-5)
+            difficulty (str or int, optional): Specific difficulty level
             
         Returns:
             list[Question]: Generated Question objects
         """
-        # Get category-specific guidelines
-        category_guidelines = self.category_helper.generate_category_guidelines(category)
+        # Get guidelines concurrently
+        category_guidelines, difficulty_context = await self._fetch_guidelines_concurrently(
+            category, 
+            difficulty
+        )
         
         # Standardize difficulty if provided
         standard_difficulty = None
-        difficulty_context = ""
-        
         if difficulty:
-            # Convert to standard difficulty format
-            if isinstance(difficulty, int) and 1 <= difficulty <= 5:
-                standard_difficulty = self.difficulty_levels[difficulty-1]
-            elif isinstance(difficulty, str) and difficulty in self.difficulty_levels:
-                standard_difficulty = difficulty
-            elif isinstance(difficulty, str):
-                # Try to match difficulty string to standard level
-                for level in self.difficulty_levels:
-                    if level.lower() in difficulty.lower():
-                        standard_difficulty = level
-                        break
-                
-            # If still not matched, default to Medium
-            if not standard_difficulty:
-                standard_difficulty = "Medium"
-                
-            # Generate all difficulty tiers
-            difficulty_tiers = self.difficulty_helper.generate_difficulty_guidelines(category)
-            
-            # Get the specific tier description requested
-            if difficulty_tiers:
-                difficulty_context = self.difficulty_helper.get_difficulty_by_tier(difficulty_tiers, standard_difficulty)
-                if difficulty_context:
-                    difficulty_context = f"\nDifficulty Level:\n{difficulty_context}"
+            standard_difficulty = self._standardize_difficulty(difficulty)
         
         # Generate raw questions
-        raw_response = self._call_llm_for_questions(category, count, category_guidelines, difficulty_context)
+        raw_response = await asyncio.to_thread(
+            self._call_llm_for_questions,
+            category, 
+            count, 
+            category_guidelines, 
+            difficulty_context
+        )
         
-        # Use the new robust JSON parsing utility
+        # Parse and process questions
+        return self._process_raw_questions(raw_response, category, count, standard_difficulty)
+    
+    def generate_questions(self, category, count=10, difficulty=None):
+        """
+        Generate trivia questions for a specific category (sync wrapper)
+        
+        Args:
+            category (str): The category to generate questions for
+            count (int): Number of questions to generate
+            difficulty (str or int, optional): Specific difficulty level
+            
+        Returns:
+            list[Question]: Generated Question objects
+        """
+        # Create event loop if needed
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run the async version in the event loop
+        return loop.run_until_complete(
+            self.generate_questions_async(category, count, difficulty)
+        )
+    
+    def _process_raw_questions(self, raw_response, category, count, standard_difficulty):
+        """
+        Process raw questions from LLM response
+        
+        Args:
+            raw_response: Raw LLM response
+            category (str): Question category
+            count (int): Requested count
+            standard_difficulty (str): Standardized difficulty level
+            
+        Returns:
+            list[Question]: Question objects
+        """
         try:
             # Check if raw_response is already a Python object (list)
             if isinstance(raw_response, list):

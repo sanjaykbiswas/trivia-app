@@ -1,5 +1,5 @@
 from typing import List, Dict, Any, Optional
-import concurrent.futures
+import asyncio
 from models.question import Question
 from models.answer import Answer
 from models.complete_question import CompleteQuestion
@@ -8,7 +8,6 @@ from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
 from config.llm_config import LLMConfigFactory
-import asyncio
 
 class QuestionService:
     """
@@ -79,8 +78,25 @@ class QuestionService:
         Returns:
             List[Question]: Generated and saved questions
         """
-        # Generate questions with specific difficulty
-        questions = self.generator.generate_questions(category, count, difficulty)
+        # Generate questions with specific difficulty using async method
+        try:
+            # Use the async version if available
+            if hasattr(self.generator, 'generate_questions_async'):
+                questions = await self.generator.generate_questions_async(
+                    category=category, 
+                    count=count, 
+                    difficulty=difficulty
+                )
+            else:
+                # Fall back to sync version if async not available
+                questions = self.generator.generate_questions(
+                    category=category, 
+                    count=count,
+                    difficulty=difficulty
+                )
+        except Exception as e:
+            print(f"Error in question generation: {e}")
+            raise
         
         # Set user_id for all questions
         if user_id:
@@ -113,12 +129,40 @@ class QuestionService:
         Returns:
             List[Answer]: Generated answers
         """
-        # Generate answers
-        answers = self.answer_generator.generate_answers(
-            questions=questions,
-            category=category,
-            batch_size=batch_size
-        )
+        # Check if we already have an asyncio event loop running
+        try:
+            loop = asyncio.get_running_loop()
+            # We're already in an event loop
+            try:
+                # Try using the async version if available
+                if hasattr(self.answer_generator, 'generate_answers_async'):
+                    answers = await self.answer_generator.generate_answers_async(
+                        questions=questions,
+                        category=category,
+                        batch_size=batch_size
+                    )
+                else:
+                    # Use the synchronous version which should handle this case
+                    answers = self.answer_generator.generate_answers(
+                        questions=questions,
+                        category=category,
+                        batch_size=batch_size
+                    )
+            except RuntimeError as e:
+                # If we get an event loop error, use the sync version
+                print(f"Warning: Using synchronous answer generation due to: {e}")
+                answers = self.answer_generator.generate_answers(
+                    questions=questions,
+                    category=category,
+                    batch_size=batch_size
+                )
+        except RuntimeError:
+            # No event loop is running, call the regular generate_answers
+            answers = self.answer_generator.generate_answers(
+                questions=questions,
+                category=category,
+                batch_size=batch_size
+            )
         
         # Save answers
         saved_answers = await self.repository.bulk_save_answers(answers)
@@ -193,6 +237,7 @@ class QuestionService:
         
         return complete_questions
     
+    # The rest of the methods remain unchanged
     async def get_questions_by_category(
         self,
         category: str,

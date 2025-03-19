@@ -1,14 +1,14 @@
 import json
 import re
 import logging
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 class JSONParsingUtils:
     """
-    Utilities for robust JSON parsing from LLM responses
+    Enhanced utilities for robust JSON parsing from LLM responses
     """
     
     @staticmethod
@@ -146,6 +146,105 @@ class JSONParsingUtils:
             return json_str
     
     @staticmethod
+    def extract_questions_and_answers(text: str) -> List[Dict[str, Any]]:
+        """
+        Extract questions and answers from text by looking for patterns
+        
+        Args:
+            text (str): Text containing questions and answers
+            
+        Returns:
+            List[Dict]: List of question/answer dictionaries
+        """
+        results = []
+        
+        # Look for patterns like "Question: What...?" followed by "Correct Answer: ..." 
+        # and "Incorrect Answer Array: [...]" or similar variations
+        question_pattern = r'(?:"|\')?(?:Question|Question:|"Question"|\'Question\')\s*(?:"|\')?:\s*(?:"|\')?([^"\']+)(?:"|\')?'
+        correct_answer_pattern = r'(?:"|\')?(?:Correct Answer|Correct Answer:|"Correct Answer"|\'Correct Answer\')\s*(?:"|\')?:\s*(?:"|\')?([^"\']+)(?:"|\')?'
+        incorrect_answers_start = r'(?:"|\')?(?:Incorrect Answer Array|Incorrect Answer Array:|Incorrect Answers|Incorrect Answers:|"Incorrect Answer Array"|\'Incorrect Answer Array\'|"Incorrect Answers"|\'Incorrect Answers\')\s*(?:"|\')?:\s*(?:\[|\()'
+        incorrect_answer_pattern = r'(?:"|\')?([^"\']+)(?:"|\')?'
+        
+        # Find all questions
+        questions = re.findall(question_pattern, text)
+        correct_answers = re.findall(correct_answer_pattern, text)
+        
+        # Find incorrect answers sections
+        incorrect_sections = []
+        for match in re.finditer(incorrect_answers_start, text):
+            start_idx = match.end()
+            # Find closing bracket
+            depth = 1
+            in_string = False
+            end_idx = start_idx
+            
+            for i in range(start_idx, len(text)):
+                if text[i] == '"' and (i == 0 or text[i-1] != '\\'):
+                    in_string = not in_string
+                
+                if not in_string:
+                    if text[i] in ('[', '('):
+                        depth += 1
+                    elif text[i] in (']', ')'):
+                        depth -= 1
+                        if depth == 0:
+                            end_idx = i + 1
+                            break
+            
+            if end_idx > start_idx:
+                incorrect_section = text[start_idx:end_idx]
+                incorrect_sections.append(incorrect_section)
+        
+        # Extract individual incorrect answers from each section
+        all_incorrect_answers = []
+        for section in incorrect_sections:
+            # Clean the section
+            section = section.strip('[]() \t\n\r,')
+            section_answers = []
+            
+            # Handle comma-separated values
+            items = []
+            current_item = ""
+            in_quotes = False
+            
+            for char in section:
+                if char == '"' and (not current_item or current_item[-1] != '\\'):
+                    in_quotes = not in_quotes
+                    current_item += char
+                elif char == ',' and not in_quotes:
+                    items.append(current_item.strip())
+                    current_item = ""
+                else:
+                    current_item += char
+            
+            if current_item:
+                items.append(current_item.strip())
+            
+            # Clean up items
+            for item in items:
+                item = item.strip('"\'[] \t\n\r,')
+                if item:
+                    section_answers.append(item)
+            
+            if not section_answers and section:
+                # Try simpler approach - just split by comma
+                section_answers = [s.strip('"\'[] \t\n\r,') for s in section.split(',')]
+                section_answers = [s for s in section_answers if s]
+            
+            if section_answers:
+                all_incorrect_answers.append(section_answers)
+        
+        # Match everything together
+        for i in range(min(len(questions), len(correct_answers), len(all_incorrect_answers))):
+            results.append({
+                "Question": questions[i],
+                "Correct Answer": correct_answers[i],
+                "Incorrect Answer Array": all_incorrect_answers[i]
+            })
+        
+        return results
+    
+    @staticmethod
     def parse_json_with_fallbacks(json_str: str, default_value: Any = None) -> Any:
         """
         Parse JSON with multiple fallback strategies
@@ -185,9 +284,21 @@ class JSONParsingUtils:
         try:
             return json.loads(sanitized_json)
         except json.JSONDecodeError:
-            # All fallbacks failed, return default
-            logger.error(f"Failed to parse JSON after all fallback attempts: {json_str[:100]}...")
-            return default_value
+            pass  # Move to next fallback
+        
+        # Last resort: try to extract questions and answers using regex
+        if '[' in json_str and ']' in json_str:
+            try:
+                extracted_data = JSONParsingUtils.extract_questions_and_answers(json_str)
+                if extracted_data:
+                    logger.info(f"Successfully extracted {len(extracted_data)} Q&A pairs using regex")
+                    return extracted_data
+            except Exception as e:
+                logger.warning(f"Error during regex extraction: {e}")
+        
+        # All fallbacks failed, return default
+        logger.error(f"Failed to parse JSON after all fallback attempts: {json_str[:100]}...")
+        return default_value
     
     @staticmethod
     def sanitize_json(json_str: str) -> str:
@@ -205,7 +316,7 @@ class JSONParsingUtils:
         
         # Fix unescaped quotes in strings
         # This is a simplistic approach - full JSON parsing would be more robust
-        sanitized = re.sub(r'(?<!\\)"([^"]*?)(?<!\\)"([^"]*?)(?<!\\)"', r'"\1\\\"\2"', sanitized)
+        sanitized = re.sub(r'(?<!\\)"([^"]*?)(?<!\\)"([^"]*?)(?<!\\)"', r'"\1\\"\2"', sanitized)
         
         # Fix trailing commas in arrays/objects
         sanitized = re.sub(r',\s*}', '}', sanitized)
@@ -288,8 +399,8 @@ class JSONParsingUtils:
                 
             # Map of possible field names to our standard names
             field_mappings = {
-                'correct_answer': ['Correct Answer', 'correctAnswer', 'correct', 'answer'],
-                'incorrect_answers': ['Incorrect Answer Array', 'Incorrect Answers', 'incorrectAnswers', 'incorrect', 'distractors']
+                'correct_answer': ['Correct Answer', 'Correct_Answer', 'correctAnswer', 'correct', 'answer'],
+                'incorrect_answers': ['Incorrect Answer Array', 'Incorrect_Answer_Array', 'Incorrect Answers', 'Incorrect_Answers', 'incorrectAnswers', 'incorrect', 'distractors']
             }
             
             standardized = {}

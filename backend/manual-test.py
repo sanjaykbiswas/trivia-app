@@ -11,6 +11,7 @@ import json
 import sys
 import os
 import logging
+import time
 from datetime import datetime
 from typing import Dict, Any, List
 
@@ -195,6 +196,9 @@ async def test_single_difficulty_generation():
     
     print(f"\nGenerating {count} '{category}' questions with '{difficulty}' difficulty...")
     
+    # Timing starts before any operations begin
+    start_time = time.time()
+    
     try:
         questions = await question_service.generate_and_save_questions(
             category=category,
@@ -203,17 +207,94 @@ async def test_single_difficulty_generation():
             difficulty=difficulty
         )
         
-        print(f"Successfully generated {len(questions)} questions")
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
         
-        # Display questions
-        for i, question in enumerate(questions):
-            print(f"\nQuestion {i+1}: {question.content}")
-            print(f"Difficulty: {question.difficulty}")
-            print(f"ID: {question.id}")
+        print(f"Successfully generated {len(questions)} questions in {elapsed_time:.2f} seconds")
+        
+        # Summarize question data instead of showing all questions
+        print(f"\nGenerated {len(questions)} questions with difficulty: {difficulty}")
+        print(f"First few questions: {questions[0].content[:50]}...")
+        if len(questions) > 1:
+            print(f"Last question: {questions[-1].content[:50]}...")
         
         return True
     except Exception as e:
         print(f"Error during question generation: {e}")
+        return False
+
+async def test_async_question_generation():
+    """Test generating questions using the concurrent async method"""
+    # Get Supabase client and create repository
+    client = await setup_supabase()
+    question_repository = QuestionRepository(client)
+    
+    # Create LLM config directly
+    llm_config = LLMConfigFactory.create_default()
+    
+    # Create the generators directly to access the async methods
+    question_generator = QuestionGenerator(llm_config)
+    
+    # Get test parameters
+    print("\nASYNC QUESTION GENERATION (CONCURRENT)")
+    print("=" * 40)
+    
+    category = input("Enter category (e.g., History, Science, Movies): ")
+    if not category:
+        category = "General Knowledge"
+    
+    difficulty = input("Enter difficulty (Easy, Medium, Hard, Expert, Master): ")
+    if not difficulty:
+        difficulty = "Medium"
+    
+    count = input("Number of questions to generate (1-100): ")
+    try:
+        count = int(count)
+        if count < 1 or count > 100:
+            count = 3
+    except ValueError:
+        count = 3
+    
+    print(f"\nGenerating {count} '{category}' questions with '{difficulty}' difficulty using async method...")
+    
+    # Timing starts before any operations begin
+    start_time = time.time()
+    
+    try:
+        # Generate questions using the async method
+        if hasattr(question_generator, 'generate_questions_async'):
+            questions = await question_generator.generate_questions_async(
+                category=category,
+                count=count,
+                difficulty=difficulty
+            )
+        else:
+            print("Async method not available, falling back to sync method")
+            questions = question_generator.generate_questions(
+                category=category,
+                count=count,
+                difficulty=difficulty
+            )
+        
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        
+        print(f"Successfully generated {len(questions)} questions in {elapsed_time:.2f} seconds")
+        
+        # Save questions to database
+        saved_questions = await question_repository.bulk_create(questions)
+        
+        # Summarize question data instead of showing all questions
+        print(f"\nGenerated {len(saved_questions)} questions with difficulty: {difficulty}")
+        print(f"First few questions: {saved_questions[0].content[:50]}...")
+        if len(saved_questions) > 1:
+            print(f"Last question: {saved_questions[-1].content[:50]}...")
+        
+        return True
+    except Exception as e:
+        print(f"Error during async question generation: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 async def test_complete_question_generation():
@@ -242,6 +323,9 @@ async def test_complete_question_generation():
     
     print(f"\nGenerating {count} '{category}' complete questions with '{difficulty}' difficulty...")
     
+    # Timing starts before any operations begin
+    start_time = time.time()
+    
     try:
         complete_questions = await question_service.create_complete_question_set(
             category=category,
@@ -250,14 +334,18 @@ async def test_complete_question_generation():
             difficulty=difficulty
         )
         
-        print(f"Successfully generated {len(complete_questions)} complete questions with answers")
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        
+        print(f"Successfully generated {len(complete_questions)} complete questions in {elapsed_time:.2f} seconds")
                 
-        # Display questions
-        for i, question in enumerate(complete_questions):
-            print(f"\nQuestion {i+1}: {question.content}")
-            print(f"Difficulty: {question.difficulty}")
-            print(f"Correct answer: {question.correct_answer}")
-            print(f"Incorrect answers: {question.incorrect_answers}")
+        # Summarize complete question data instead of showing all questions/answers
+        print(f"\nGenerated {len(complete_questions)} complete questions with difficulty: {difficulty}")
+        if len(complete_questions) > 0:
+            print(f"First question: {complete_questions[0].content[:50]}...")
+            print(f"First question answer: {complete_questions[0].correct_answer}")
+        if len(complete_questions) > 1:
+            print(f"Last question: {complete_questions[-1].content[:50]}...")
         
         return True
     except Exception as e:
@@ -267,7 +355,119 @@ async def test_complete_question_generation():
         traceback.print_exc()
         return False
 
-# The rest of the functions remain the same
+async def test_async_complete_generation():
+    """Test generating questions and answers using the async methods directly"""
+    # Get Supabase client and create repository
+    client = await setup_supabase()
+    question_repository = QuestionRepository(client)
+    
+    # Create LLM config directly
+    llm_config = LLMConfigFactory.create_default()
+    
+    # Create the generators directly to access the async methods
+    question_generator = QuestionGenerator(llm_config)
+    answer_generator = AnswerGenerator(llm_config)
+    deduplicator = Deduplicator()
+    
+    # Get test parameters
+    print("\nASYNC COMPLETE QUESTION GENERATION (CONCURRENT)")
+    print("=" * 40)
+    
+    category = input("Enter category (e.g., History, Science, Movies): ")
+    if not category:
+        category = "General Knowledge"
+    
+    difficulty = input("Enter difficulty (Easy, Medium, Hard, Expert, Master): ")
+    if not difficulty:
+        difficulty = "Medium"
+    
+    count = input("Number of questions to generate (1-100): ")
+    try:
+        count = int(count)
+        if count < 1 or count > 100:
+            count = 3
+    except ValueError:
+        count = 3
+    
+    print(f"\nGenerating {count} '{category}' complete questions with '{difficulty}' difficulty using async methods...")
+    
+    # Timing starts before any operations begin
+    start_time = time.time()
+    
+    try:
+        # Step 1: Generate questions asynchronously
+        print("\nStep 1: Generating questions asynchronously...")
+        if hasattr(question_generator, 'generate_questions_async'):
+            questions = await question_generator.generate_questions_async(
+                category=category,
+                count=count,
+                difficulty=difficulty
+            )
+        else:
+            print("Async question method not available, falling back to sync method")
+            questions = question_generator.generate_questions(
+                category=category,
+                count=count,
+                difficulty=difficulty
+            )
+        
+        # Optional deduplication if needed
+        if hasattr(deduplicator, 'remove_duplicates'):
+            questions = deduplicator.remove_duplicates(questions)
+            
+        # Save questions to database
+        saved_questions = await question_repository.bulk_create(questions)
+        
+        print(f"Successfully generated and saved {len(saved_questions)} questions")
+        
+        # Step 2: Generate answers asynchronously
+        print("\nStep 2: Generating answers asynchronously...")
+        if hasattr(answer_generator, 'generate_answers_async'):
+            answers = await answer_generator.generate_answers_async(
+                questions=saved_questions,
+                category=category
+            )
+        else:
+            print("Async answer method not available, falling back to sync method")
+            answers = answer_generator.generate_answers(
+                questions=saved_questions,
+                category=category
+            )
+        
+        # Save answers to database
+        saved_answers = await question_repository.bulk_save_answers(answers)
+        
+        # Create complete questions from questions and answers
+        complete_questions = []
+        answer_map = {a.question_id: a for a in saved_answers}
+        
+        for question in saved_questions:
+            if question.id in answer_map:
+                complete_question = CompleteQuestion(
+                    question=question,
+                    answer=answer_map[question.id]
+                )
+                complete_questions.append(complete_question)
+        
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        
+        print(f"Successfully generated {len(complete_questions)} complete questions in {elapsed_time:.2f} seconds")
+                
+        # Summarize complete question data instead of showing all questions/answers
+        print(f"\nGenerated {len(complete_questions)} complete questions with difficulty: {difficulty}")
+        if len(complete_questions) > 0:
+            print(f"First question: {complete_questions[0].content[:50]}...")
+            print(f"First question answer: {complete_questions[0].correct_answer}")
+        if len(complete_questions) > 1:
+            print(f"Last question: {complete_questions[-1].content[:50]}...")
+        
+        return True
+    except Exception as e:
+        print(f"Error during async complete question generation: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 async def test_user_creation():
     """Test creating a new user"""
@@ -412,6 +612,56 @@ async def test_guidelines_generation():
             print(f"\n{level}:")
             print(difficulty_tiers[level])
 
+async def test_concurrent_guideline_generation():
+    """Test concurrent generation of guidelines using asyncio"""
+    # Create LLM config
+    llm_config = LLMConfigFactory.create_default()
+    
+    # Initialize helpers
+    category_helper = CategoryHelper(llm_config)
+    difficulty_helper = DifficultyHelper(llm_config)
+    
+    # Get category input
+    category = input("Enter category to generate guidelines for: ")
+    if not category:
+        category = "General Knowledge"
+    
+    print(f"\nGenerating guidelines concurrently for '{category}'...")
+    
+    # Timing the operation
+    start_time = time.time()
+    
+    # Create tasks for concurrent execution
+    category_task = asyncio.create_task(
+        asyncio.to_thread(category_helper.generate_category_guidelines, category)
+    )
+    
+    difficulty_task = asyncio.create_task(
+        asyncio.to_thread(difficulty_helper.generate_difficulty_guidelines, category)
+    )
+    
+    # Wait for both to complete concurrently
+    category_guidelines, difficulty_tiers = await asyncio.gather(
+        category_task, 
+        difficulty_task
+    )
+    
+    # Calculate elapsed time
+    elapsed_time = time.time() - start_time
+    
+    print(f"\nGuidelines generated concurrently in {elapsed_time:.2f} seconds")
+    
+    # Display category guidelines
+    print(f"\n--- CATEGORY GUIDELINES FOR '{category}' ---")
+    print(category_guidelines)
+    
+    # Display each difficulty tier
+    print(f"\n--- DIFFICULTY TIERS FOR '{category}' ---")
+    for level in ["Easy", "Medium", "Hard", "Expert", "Master"]:
+        if level in difficulty_tiers:
+            print(f"\n{level}:")
+            print(difficulty_tiers[level])
+
 async def main():
     """Main interactive test function"""
     print("=" * 50)
@@ -425,9 +675,12 @@ async def main():
     print("5. Generate questions with a specific difficulty")
     print("6. Generate complete questions with answers")
     print("7. Generate category guidelines and difficulty tiers")
-    print("8. Exit")
+    print("8. Generate questions using ASYNC method (concurrent)")
+    print("9. Generate complete questions using ASYNC methods (concurrent)")
+    print("10. Generate guidelines concurrently")
+    print("11. Exit")
     
-    choice = input("\nEnter your choice (1-8): ")
+    choice = input("\nEnter your choice (1-11): ")
     
     if choice == "1":
         await test_user_creation()
@@ -446,6 +699,12 @@ async def main():
     elif choice == "7": 
         await test_guidelines_generation()
     elif choice == "8":
+        await test_async_question_generation()
+    elif choice == "9":
+        await test_async_complete_generation()
+    elif choice == "10":
+        await test_concurrent_guideline_generation()
+    elif choice == "11":
         print("Exiting...")
         return
     else:
