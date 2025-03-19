@@ -13,7 +13,6 @@ class DifficultyHelper:
             llm_config (LLMConfig, optional): Specific LLM configuration to use
         """
         # Use provided config or create default
-        # For DifficultyHelper, we might want to use a less expensive model
         self.llm_config = llm_config or LLMConfigFactory.create_default()
         self.client = self.llm_config.get_client()
         self.model = self.llm_config.get_model()

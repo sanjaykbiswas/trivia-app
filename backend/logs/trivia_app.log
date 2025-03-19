@@ -229,3 +229,95 @@
 2025-03-17 23:32:22,441 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-03-17 23:32:22,668 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22created_at%22%2C%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22 "HTTP/2 201 Created"
 2025-03-17 23:32:22,683 - trivia_app - INFO - Response: POST /questions/generate-complete - Status: 200 - Time: 257.4377s
+2025-03-18 18:57:14,784 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-18 18:58:30,332 - trivia_app - INFO - Request: POST /questions/generate-complete from 127.0.0.1
+2025-03-18 18:58:42,453 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:58:42,455 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.490639 seconds
+2025-03-18 18:58:54,378 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:58:54,379 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.818698 seconds
+2025-03-18 18:59:06,094 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:59:19,400 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:59:19,401 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.414219 seconds
+2025-03-18 18:59:30,427 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:59:30,429 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.938661 seconds
+2025-03-18 18:59:42,022 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:59:52,795 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 18:59:52,797 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.487093 seconds
+2025-03-18 19:00:04,334 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:00:04,336 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.761720 seconds
+2025-03-18 19:00:16,198 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:00:26,739 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:00:26,741 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.482774 seconds
+2025-03-18 19:00:38,008 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:00:38,009 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.889503 seconds
+2025-03-18 19:00:50,214 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:01:01,299 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:01:01,302 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.425444 seconds
+2025-03-18 19:01:12,649 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:01:12,651 - anthropic._base_client - INFO - Retrying request to /v1/messages in 0.768568 seconds
+2025-03-18 19:01:24,500 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 529 "
+2025-03-18 19:01:25,993 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 400 Bad Request"
+2025-03-18 19:38:01,121 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-18 19:38:01,233 - api_tests - INFO - === STARTING API ENDPOINT TESTS ===
+2025-03-18 19:38:01,233 - api_tests - INFO - TESTING ENDPOINT: POST /upload/question
+2025-03-18 19:38:01,235 - trivia_app - INFO - Request: POST /upload/question from testclient
+2025-03-18 19:38:01,236 - utils.supabase_actions - INFO - Saving question: What is the capital of France?...
+2025-03-18 19:38:01,236 - utils.supabase_actions - INFO - Ensuring user exists: 92408dd5-6efd-4cbe-a605-478a76d282d2
+2025-03-18 19:38:01,394 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.92408dd5-6efd-4cbe-a605-478a76d282d2 "HTTP/2 200 OK"
+2025-03-18 19:38:01,398 - utils.supabase_actions - INFO - Creating new user: 92408dd5-6efd-4cbe-a605-478a76d282d2
+2025-03-18 19:38:01,528 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-18 19:38:01,529 - utils.supabase_actions - INFO - User 92408dd5-6efd-4cbe-a605-478a76d282d2 created successfully
+2025-03-18 19:38:01,643 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-18 19:38:01,645 - utils.supabase_actions - INFO - Question saved with ID: f040f68d-185c-4cd7-b2c9-a9f5d89781b8
+2025-03-18 19:38:01,645 - utils.supabase_actions - INFO - Saving answer for question ID: f040f68d-185c-4cd7-b2c9-a9f5d89781b8
+2025-03-18 19:38:01,752 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-18 19:38:01,755 - utils.supabase_actions - INFO - Answer saved with ID: 4f7b552e-35c6-4f7f-85d1-a148520fde83
+2025-03-18 19:38:01,757 - trivia_app - INFO - Response: POST /upload/question - Status: 200 - Time: 0.5211s
+2025-03-18 19:38:01,758 - httpx - INFO - HTTP Request: POST http://testserver/upload/question "HTTP/1.1 200 OK"
+2025-03-18 19:38:01,759 - api_tests - INFO - Created question with ID: f040f68d-185c-4cd7-b2c9-a9f5d89781b8
+2025-03-18 19:38:01,759 - api_tests - INFO - Test PASSED
+2025-03-18 19:38:01,759 - api_tests - INFO - TESTING ENDPOINT: POST /upload/questions/bulk
+2025-03-18 19:38:01,761 - trivia_app - INFO - Request: POST /upload/questions/bulk from testclient
+2025-03-18 19:38:01,763 - utils.supabase_actions - INFO - Saving question: What is the smallest prime num...
+2025-03-18 19:38:01,763 - utils.supabase_actions - INFO - Ensuring user exists: 98d1eac1-b536-4e7e-a92f-7cee4644ef19
+2025-03-18 19:38:01,854 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.98d1eac1-b536-4e7e-a92f-7cee4644ef19 "HTTP/2 200 OK"
+2025-03-18 19:38:01,855 - utils.supabase_actions - INFO - Creating new user: 98d1eac1-b536-4e7e-a92f-7cee4644ef19
+2025-03-18 19:38:01,999 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-18 19:38:02,000 - utils.supabase_actions - INFO - User 98d1eac1-b536-4e7e-a92f-7cee4644ef19 created successfully
+2025-03-18 19:38:02,104 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-18 19:38:02,105 - utils.supabase_actions - INFO - Question saved with ID: 09c2781f-4fd5-4247-bbe0-5722d44c3048
+2025-03-18 19:38:02,106 - utils.supabase_actions - INFO - Saving answer for question ID: 09c2781f-4fd5-4247-bbe0-5722d44c3048
+2025-03-18 19:38:02,179 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-18 19:38:02,183 - utils.supabase_actions - INFO - Answer saved with ID: 9293df6e-3241-412d-9ef9-4776667a3ed3
+2025-03-18 19:38:02,183 - utils.supabase_actions - INFO - Saving question: Who painted the Mona Lisa?...
+2025-03-18 19:38:02,184 - utils.supabase_actions - INFO - Ensuring user exists: 98d1eac1-b536-4e7e-a92f-7cee4644ef19
+2025-03-18 19:38:02,253 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.98d1eac1-b536-4e7e-a92f-7cee4644ef19 "HTTP/2 200 OK"
+2025-03-18 19:38:02,255 - utils.supabase_actions - INFO - User 98d1eac1-b536-4e7e-a92f-7cee4644ef19 already exists
+2025-03-18 19:38:02,336 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions "HTTP/2 201 Created"
+2025-03-18 19:38:02,338 - utils.supabase_actions - INFO - Question saved with ID: f9a58322-3d4a-4d8c-b3bc-0ffe8d92606b
+2025-03-18 19:38:02,338 - utils.supabase_actions - INFO - Saving answer for question ID: f9a58322-3d4a-4d8c-b3bc-0ffe8d92606b
+2025-03-18 19:38:02,447 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers "HTTP/2 201 Created"
+2025-03-18 19:38:02,450 - utils.supabase_actions - INFO - Answer saved with ID: b1a92979-64c2-4f5d-a9ef-ca7091bf1563
+2025-03-18 19:38:02,460 - trivia_app - INFO - Response: POST /upload/questions/bulk - Status: 200 - Time: 0.6997s
+2025-03-18 19:38:02,466 - httpx - INFO - HTTP Request: POST http://testserver/upload/questions/bulk "HTTP/1.1 200 OK"
+2025-03-18 19:38:02,466 - api_tests - INFO - Created 2 questions in bulk
+2025-03-18 19:38:02,467 - api_tests - INFO - Test PASSED
+2025-03-18 19:38:02,467 - api_tests - INFO - TESTING ENDPOINT: POST /upload/user
+2025-03-18 19:38:02,468 - trivia_app - INFO - Request: POST /upload/user from testclient
+2025-03-18 19:38:02,470 - utils.supabase_actions - INFO - Ensuring user exists: b59ad1e6-bc84-431a-a67e-8bb2fc3dc6a2
+2025-03-18 19:38:02,543 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.b59ad1e6-bc84-431a-a67e-8bb2fc3dc6a2 "HTTP/2 200 OK"
+2025-03-18 19:38:02,549 - utils.supabase_actions - INFO - Creating new user: b59ad1e6-bc84-431a-a67e-8bb2fc3dc6a2
+2025-03-18 19:38:02,652 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-18 19:38:02,653 - utils.supabase_actions - INFO - User b59ad1e6-bc84-431a-a67e-8bb2fc3dc6a2 created successfully
+2025-03-18 19:38:02,655 - trivia_app - INFO - Response: POST /upload/user - Status: 200 - Time: 0.1864s
+2025-03-18 19:38:02,656 - httpx - INFO - HTTP Request: POST http://testserver/upload/user "HTTP/1.1 200 OK"
+2025-03-18 19:38:02,656 - api_tests - INFO - Registered user with ID: b59ad1e6-bc84-431a-a67e-8bb2fc3dc6a2
+2025-03-18 19:38:02,656 - api_tests - INFO - Test PASSED
+2025-03-18 19:38:02,656 - api_tests - INFO - TESTING ENDPOINT: GET /questions/f040f68d-185c-4cd7-b2c9-a9f5d89781b8
+2025-03-18 19:38:02,658 - trivia_app - INFO - Request: GET /questions/f040f68d-185c-4cd7-b2c9-a9f5d89781b8 from testclient
+2025-03-18 19:38:02,853 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A&id=eq.f040f68d-185c-4cd7-b2c9-a9f5d89781b8 "HTTP/2 200 OK"
+2025-03-18 19:38:02,916 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=eq.f040f68d-185c-4cd7-b2c9-a9f5d89781b8 "HTTP/2 200 OK"
+2025-03-18 19:38:02,920 - trivia_app - INFO - Response: GET /questions/f040f68d-185c-4cd7-b2c9-a9f5d89781b8 - Status: 200 - Time: 0.2627s
+2025-03-18 19:38:02,922 - httpx - INFO - HTTP Request: GET http://testserver/questions/f040f68d-185c-4cd7-b2c9-a9f5d89781b8 "HTTP/1.1 200 OK"
+2025-03-18 19:38:02,922 - api_tests - INFO - Test PASSED
+2025-03-18 19:38:02,923 - api_tests - INFO - === ALL API TESTS PASSED ===

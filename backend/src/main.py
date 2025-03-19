@@ -66,17 +66,17 @@ def create_question_repository():
     return QuestionRepository(create_supabase_client())
 
 def create_question_generator():
-    """Create question generator with Claude for rich, creative questions"""
-    config = LLMConfigFactory.create_anthropic("claude-3-7-sonnet-20250219")
+    """Create question generator using the default provider from environment"""
+    config = LLMConfigFactory.create_default()
     return QuestionGenerator(config)
 
 def create_answer_generator():
-    """Create answer generator with GPT for fast, structured answers"""
-    config = LLMConfigFactory.create_openai("gpt-4o")
+    """Create answer generator using the default provider from environment"""
+    config = LLMConfigFactory.create_default()
     return AnswerGenerator(config)
 
 def create_deduplicator():
-    """Create deduplicator"""
+    """Create deduplicator - this still uses OpenAI for embeddings"""
     return Deduplicator()
 
 # Create actual service instances

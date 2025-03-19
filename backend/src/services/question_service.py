@@ -40,15 +40,15 @@ class QuestionService:
         
         # Create default generators with appropriate configs if not provided
         if question_generator is None:
-            # For questions, we might want a more powerful model
-            question_config = LLMConfigFactory.create_anthropic("claude-3-7-sonnet-20250219")
+            # Use the default config based on environment variable
+            question_config = LLMConfigFactory.create_default()
             self.generator = QuestionGenerator(question_config)
         else:
             self.generator = question_generator
             
         if answer_generator is None:
-            # For answers, we might want a faster model
-            answer_config = LLMConfigFactory.create_openai("gpt-3.5-turbo")
+            # Use the default config based on environment variable
+            answer_config = LLMConfigFactory.create_default()
             self.answer_generator = AnswerGenerator(answer_config)
         else:
             self.answer_generator = answer_generator
