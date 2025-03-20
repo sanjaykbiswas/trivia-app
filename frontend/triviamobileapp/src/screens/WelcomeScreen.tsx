@@ -41,6 +41,11 @@ const WelcomeScreen: React.FC = () => {
   // Animation value for floating effect
   const floatAnim = useRef(new Animated.Value(0)).current;
   
+  // Animations for floating elements
+  const element1Anim = useRef(new Animated.Value(0)).current;
+  const element2Anim = useRef(new Animated.Value(0)).current;
+  const element3Anim = useRef(new Animated.Value(0)).current;
+  const element4Anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     // Create a reusable animation
     const createAnimation = (toValue: number) => {
@@ -60,15 +65,68 @@ const WelcomeScreen: React.FC = () => {
       ])
     ).start();
     
-    // Clean up animation when component unmounts
-    return () => floatAnim.stopAnimation();
-  }, [floatAnim]);
+    // Create and start animations for the floating elements
+    const animateFloatingElement = (animValue: Animated.Value, duration: number) => {
+      // Reset the animation value to 0 before starting a new cycle
+      animValue.setValue(0);
+      
+      Animated.timing(animValue, {
+        toValue: 1,
+        duration: duration,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start((result) => {
+        // When animation completes, restart it for a continuous loop
+        if (result.finished) {
+          animateFloatingElement(animValue, duration);
+        }
+      });
+    };
+    
+    // Start all floating element animations with different durations
+    animateFloatingElement(element1Anim, 14000);
+    animateFloatingElement(element2Anim, 11000);
+    animateFloatingElement(element3Anim, 10000);
+    animateFloatingElement(element4Anim, 17000);
+    
+    // Clean up only the brain floating animation when component unmounts
+    // We don't need to clean up the floating element animations as they'll stop naturally with component unmount
+    return () => {
+      floatAnim.stopAnimation();
+    };
+  }, [floatAnim, element1Anim, element2Anim, element3Anim, element4Anim]);
 
   // Transform for floating effect
   const floatTransform = floatAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -spacing(10)], // Scale the animation too
   });
+  
+  // Transforms for floating elements
+  const getFloatingElementTransforms = (animValue: Animated.Value, startRotation = 0) => {
+    const translateX = animValue.interpolate({
+      inputRange: [0, 0.25, 0.5, 0.75, 1],
+      outputRange: [0, spacing(8), 0, -spacing(8), 0],
+    });
+    
+    const translateY = animValue.interpolate({
+      inputRange: [0, 0.25, 0.5, 0.75, 1],
+      outputRange: [0, -spacing(5), -spacing(10), -spacing(5), 0],
+    });
+    
+    const rotate = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [`${startRotation}deg`, `${startRotation + 360}deg`],
+    });
+    
+    return {
+      transform: [
+        { translateX },
+        { translateY },
+        { rotate },
+      ],
+    };
+  };
 
   return (
     <View style={styles.container}>
@@ -82,10 +140,38 @@ const WelcomeScreen: React.FC = () => {
       
       {/* Floating elements */}
       <View style={styles.floatingElementsContainer}>
-        <Text style={[styles.element, { top: '15%', left: '10%' }]}>❓</Text>
-        <Text style={[styles.element, { top: '25%', right: '10%' }]}>💡</Text>
-        <Text style={[styles.element, { bottom: '30%', left: '15%' }]}>🧠</Text>
-        <Text style={[styles.element, { bottom: '25%', right: '20%' }]}>🎓</Text>
+        <Animated.Text 
+          style={[
+            styles.element, 
+            { top: '15%', left: '10%' },
+            getFloatingElementTransforms(element1Anim, 0)
+          ]}>
+          ❓
+        </Animated.Text>
+        <Animated.Text 
+          style={[
+            styles.element, 
+            { top: '25%', right: '10%' },
+            getFloatingElementTransforms(element2Anim, 90)
+          ]}>
+          💡
+        </Animated.Text>
+        <Animated.Text 
+          style={[
+            styles.element, 
+            { bottom: '30%', left: '15%' },
+            getFloatingElementTransforms(element3Anim, 180)
+          ]}>
+          🧠
+        </Animated.Text>
+        <Animated.Text 
+          style={[
+            styles.element, 
+            { bottom: '25%', right: '20%' },
+            getFloatingElementTransforms(element4Anim, 270)
+          ]}>
+          🎓
+        </Animated.Text>
       </View>
       
       {/* Main content */}
@@ -151,7 +237,7 @@ const WelcomeScreen: React.FC = () => {
           </Animated.View>
           
           {/* Title and subtitle */}
-          <Text style={styles.title}>Welcome to Synquizitive</Text>
+          <Text style={styles.title}>Welcome to {'\n'}Open Trivia!</Text>
           <Text style={styles.subtitle}>Get ready to challenge your knowledge in exciting new ways</Text>
           
           {/* Pagination dots */}
