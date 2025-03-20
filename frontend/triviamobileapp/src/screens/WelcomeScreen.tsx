@@ -4,108 +4,150 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Animated,
   Easing,
+  Dimensions,
+  Platform,
+  PixelRatio,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const WelcomeScreen = () => {
-  // Animation value for floating effect using useRef to persist between renders
+// Get screen dimensions
+const { width, height } = Dimensions.get('window');
+
+// Create a scale based on screen size
+const scale = Math.min(width, height) / 375; // Base scale on iPhone 8 dimensions (375pt width)
+
+// Function to normalize font sizes for different screen densities
+const normalize = (size: number): number => {
+  const newSize = size * scale;
+  if (Platform.OS === 'ios') {
+    return Math.round(PixelRatio.roundToNearestPixel(newSize));
+  }
+  return Math.round(PixelRatio.roundToNearestPixel(newSize)) - 2; // Slightly smaller text on Android
+};
+
+// Function to create responsive spacing
+const spacing = (size: number): number => {
+  return Math.round(size * scale);
+};
+
+const WelcomeScreen: React.FC = () => {
+  // Get safe area insets
+  const insets = useSafeAreaInsets();
+  
+  // Animation value for floating effect
   const floatAnim = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
-    // Create and start the floating animation
-    const startFloatingAnimation = () => {
-      // Reset the animation value before starting a new animation cycle
-      floatAnim.setValue(0);
-      
-      // Create a sequence of up and down movements
-      Animated.loop(
-        Animated.sequence([
-          // Float up
-          Animated.timing(floatAnim, {
-            toValue: 1,
-            duration: 1500,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true, // Better performance on native thread
-          }),
-          // Float down
-          Animated.timing(floatAnim, {
-            toValue: 0,
-            duration: 1500,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+    // Create a reusable animation
+    const createAnimation = (toValue: number) => {
+      return Animated.timing(floatAnim, {
+        toValue,
+        duration: 1500,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      });
     };
 
-    // Start the animation when the component mounts
-    startFloatingAnimation();
+    // Setup a looping animation sequence
+    Animated.loop(
+      Animated.sequence([
+        createAnimation(1),
+        createAnimation(0),
+      ])
+    ).start();
     
-    // Clean up the animation when the component unmounts
-    return () => {
-      floatAnim.stopAnimation();
-    };
-  }, []); // Empty dependency array means this runs once on mount
+    // Clean up animation when component unmounts
+    return () => floatAnim.stopAnimation();
+  }, [floatAnim]);
 
-  // Transform for the floating animation
+  // Transform for floating effect
   const floatTransform = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -10], // Move up by 10 units
+    outputRange: [0, -spacing(10)], // Scale the animation too
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+    <View style={styles.container}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor="#f8f9ff" 
+        translucent={Platform.OS === 'android'}
+      />
       
-      <View style={styles.floatingElements}>
-        <Text style={[styles.element, styles.element1]}>❓</Text>
-        <Text style={[styles.element, styles.element2]}>💡</Text>
-        <Text style={[styles.element, styles.element3]}>🧠</Text>
-        <Text style={[styles.element, styles.element4]}>🎓</Text>
+      <View style={styles.backgroundFill} />
+      
+      {/* Floating elements */}
+      <View style={styles.floatingElementsContainer}>
+        <Text style={[styles.element, { top: '15%', left: '10%' }]}>❓</Text>
+        <Text style={[styles.element, { top: '25%', right: '10%' }]}>💡</Text>
+        <Text style={[styles.element, { bottom: '30%', left: '15%' }]}>🧠</Text>
+        <Text style={[styles.element, { bottom: '25%', right: '20%' }]}>🎓</Text>
       </View>
       
-      <View style={styles.mainContent}>
-        <Animated.View 
-          style={[
-            styles.iconContainer, 
-            { transform: [{ translateY: floatTransform }] }
-          ]}
-        >
-          <View style={styles.iconInner}>
-            <View style={styles.icon}>
-              <View style={[styles.sparkle, styles.sparkle1]} />
-              <View style={[styles.sparkle, styles.sparkle2]} />
-              <View style={[styles.sparkle, styles.sparkle3]} />
-              <Text style={styles.iconText}>🧠</Text>
+      {/* Main content */}
+      <SafeAreaView edges={['right', 'left', 'top']} style={styles.safeContainer}>
+        <View style={styles.mainContent}>
+          {/* Floating brain icon */}
+          <Animated.View 
+            style={[
+              styles.iconContainer, 
+              { transform: [{ translateY: floatTransform }] }
+            ]}
+          >
+            <View style={styles.iconInner}>
+              <View style={styles.icon}>
+                <View style={[styles.sparkle, { width: spacing(8), height: spacing(8), top: '20%', left: '20%' }]} />
+                <View style={[styles.sparkle, { width: spacing(6), height: spacing(6), top: '30%', right: '20%' }]} />
+                <View style={[styles.sparkle, { width: spacing(10), height: spacing(10), bottom: '20%', right: '30%' }]} />
+                <Text style={styles.iconText}>🧠</Text>
+              </View>
             </View>
+          </Animated.View>
+          
+          {/* Title and subtitle */}
+          <Text style={styles.title}>Welcome to Synquizitive</Text>
+          <Text style={styles.subtitle}>Get ready to challenge your knowledge in exciting new ways</Text>
+          
+          {/* Pagination dots */}
+          <View style={styles.pagination}>
+            <View style={[styles.dot, styles.activeDot]} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
           </View>
-        </Animated.View>
-        
-        <Text style={styles.title}>Welcome to Synquizitive</Text>
-        <Text style={styles.subtitle}>Get ready to challenge your knowledge in exciting new ways</Text>
-        
-        <View style={styles.pagination}>
-          <View style={[styles.dot, styles.activeDot]} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
         </View>
-      </View>
-      
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity 
-          style={styles.continueButton}
-          onPress={() => {
-            console.log('Continue button pressed');
-          }}
+      </SafeAreaView>
+
+      {/* Continue button */}
+      <View 
+        style={[
+          styles.buttonContainer, 
+          { 
+            paddingBottom: Math.max(insets.bottom, spacing(20)),
+            paddingTop: spacing(20) 
+          }
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.touchableWrapper}
+          activeOpacity={0.8}
+          onPress={() => console.log('Continue button pressed')}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <LinearGradient
+            colors={['#7B61FF', '#899DFF']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.gradientButton}
+          >
+            <Text style={styles.buttonText}>Continue</Text>
+          </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -113,97 +155,75 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9ff',
-    position: 'relative',
   },
-  floatingElements: {
+  backgroundFill: {
     position: 'absolute',
-    width: '100%',
-    height: '100%',
-    zIndex: 1,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#f8f9ff',
+  },
+  safeContainer: {
+    flex: 1,
+  },
+  floatingElementsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
   },
   element: {
     position: 'absolute',
-    fontSize: 24,
+    fontSize: normalize(24),
     opacity: 0.4,
-  },
-  element1: {
-    top: '15%',
-    left: '10%',
-  },
-  element2: {
-    top: '25%',
-    right: '10%',
-  },
-  element3: {
-    bottom: '30%',
-    left: '15%',
-  },
-  element4: {
-    bottom: '25%',
-    right: '20%',
   },
   mainContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: spacing(20),
   },
   iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: spacing(160),
+    height: spacing(160),
+    borderRadius: spacing(80),
     backgroundColor: 'rgba(123, 97, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: spacing(40),
   },
   iconInner: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
+    width: spacing(130),
+    height: spacing(130),
+    borderRadius: spacing(65),
     backgroundColor: 'rgba(123, 97, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   icon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: spacing(100),
+    height: spacing(100),
+    borderRadius: spacing(50),
     backgroundColor: '#7B61FF',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   iconText: {
-    fontSize: 40,
+    fontSize: normalize(40),
   },
   sparkle: {
     position: 'absolute',
-    borderRadius: 25,
+    borderRadius: spacing(25),
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
-  sparkle1: {
-    width: 8,
-    height: 8,
-    top: '20%',
-    left: '20%',
-  },
-  sparkle2: {
-    width: 6,
-    height: 6,
-    top: '30%',
-    right: '20%',
-  },
-  sparkle3: {
-    width: 10,
-    height: 10,
-    bottom: '20%',
-    right: '30%',
-  },
   title: {
-    fontSize: 32,
+    fontSize: normalize(32),
     fontWeight: '800',
-    marginBottom: 20,
+    marginBottom: spacing(20),
     textAlign: 'center',
     color: '#7B61FF',
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
@@ -211,50 +231,61 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: normalize(18),
     textAlign: 'center',
     color: '#555',
-    marginBottom: 60,
-    maxWidth: 280,
-    lineHeight: 24,
+    marginBottom: spacing(60),
+    maxWidth: width * 0.8,
+    lineHeight: normalize(24),
   },
   pagination: {
     flexDirection: 'row',
-    marginBottom: 40,
+    marginBottom: spacing(40),
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: spacing(10),
+    height: spacing(10),
+    borderRadius: spacing(5),
     backgroundColor: '#ddd',
-    marginHorizontal: 6,
+    marginHorizontal: spacing(6),
   },
   activeDot: {
     backgroundColor: '#7B61FF',
     transform: [{ scale: 1.2 }],
   },
-  bottomContainer: {
-    padding: 20,
+  buttonContainer: {
     width: '100%',
-    position: 'absolute',
-    bottom: 40,
+    paddingHorizontal: spacing(20),
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9ff',
   },
-  continueButton: {
-    backgroundColor: '#7B61FF',
-    borderRadius: 30,
-    paddingVertical: 18,
-    width: '85%',
-    alignSelf: 'center',
-    overflow: 'hidden',
-    shadowColor: 'rgba(123, 97, 255, 0.3)',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 1,
-    shadowRadius: 15,
-    elevation: 6,
+  touchableWrapper: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  gradientButton: {
+    width: '100%',
+    maxWidth: spacing(320),
+    height: spacing(60),
+    borderRadius: spacing(30),
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#7B61FF',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.5,
+        shadowRadius: 15,
+      },
+      android: {
+        elevation: 8,
+      }
+    }),
   },
   buttonText: {
     color: 'white',
-    fontSize: 20,
+    fontSize: normalize(20),
     fontWeight: 'bold',
     textAlign: 'center',
   },

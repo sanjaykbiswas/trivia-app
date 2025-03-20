@@ -1,19 +1,15 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 
 function App(): React.JSX.Element {
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <WelcomeScreen />
-    </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
