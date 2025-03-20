@@ -100,9 +100,51 @@ const WelcomeScreen: React.FC = () => {
           >
             <View style={styles.iconInner}>
               <View style={styles.icon}>
-                <View style={[styles.sparkle, { width: spacing(8), height: spacing(8), top: '20%', left: '20%' }]} />
-                <View style={[styles.sparkle, { width: spacing(6), height: spacing(6), top: '30%', right: '20%' }]} />
-                <View style={[styles.sparkle, { width: spacing(10), height: spacing(10), bottom: '20%', right: '30%' }]} />
+                <Animated.View 
+                  style={[
+                    styles.sparkle, 
+                    { 
+                      width: spacing(8), 
+                      height: spacing(8), 
+                      top: '20%', 
+                      left: '20%',
+                      opacity: floatAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0.2, 0.8, 0.2]
+                      })
+                    }
+                  ]} 
+                />
+                <Animated.View 
+                  style={[
+                    styles.sparkle, 
+                    { 
+                      width: spacing(6), 
+                      height: spacing(6), 
+                      top: '30%', 
+                      right: '20%',
+                      opacity: floatAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0.8, 0.2, 0.8]
+                      })
+                    }
+                  ]} 
+                />
+                <Animated.View 
+                  style={[
+                    styles.sparkle, 
+                    { 
+                      width: spacing(10), 
+                      height: spacing(10), 
+                      bottom: '20%', 
+                      right: '30%',
+                      opacity: floatAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0.4, 0.9, 0.4]
+                      })
+                    }
+                  ]} 
+                />
                 <Text style={styles.iconText}>🧠</Text>
               </View>
             </View>
