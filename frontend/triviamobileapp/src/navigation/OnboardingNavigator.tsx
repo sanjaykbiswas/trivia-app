@@ -1,5 +1,5 @@
 // src/navigation/OnboardingNavigator.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -22,17 +22,44 @@ const SWIPE_THRESHOLD = width * 0.3;
 const OnboardingNavigator: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const translateX = useSharedValue(0);
-  const isGestureActive = useSharedValue(false);
+  const isAnimating = useSharedValue(false);
   
-  const screens = [
-    <Screen1 onContinue={() => handleContinue()} />,
-    <Screen2 onContinue={() => handleContinue()} />,
-    <Screen3 onContinue={() => handleContinue()} />,
-    <Screen4 onContinue={() => handleComplete()} />,
-  ];
+  // Create screen components with the proper props
+  const renderScreen = (index: number) => {
+    // Hide pagination dots from individual screens by passing empty function
+    const dummyPaginationHandler = () => {};
+    
+    switch(index) {
+      case 0:
+        return <Screen1 
+          onContinue={() => handleContinue()} 
+          // Pass null to hide pagination in the screen component
+          paginationVisibility={false}
+        />;
+      case 1:
+        return <Screen2 
+          onContinue={() => handleContinue()} 
+          paginationVisibility={false}
+        />;
+      case 2:
+        return <Screen3 
+          onContinue={() => handleContinue()} 
+          paginationVisibility={false}
+        />;
+      case 3:
+        return <Screen4 
+          onContinue={() => handleComplete()} 
+          paginationVisibility={false}
+        />;
+      default:
+        return null;
+    }
+  };
   
   const handleContinue = () => {
-    if (currentIndex < screens.length - 1) {
+    if (currentIndex < 3 && !isAnimating.value) {
+      isAnimating.value = true;
+      
       // Animate to the next screen
       translateX.value = withSpring(-width, { 
         damping: 20,
@@ -45,6 +72,7 @@ const OnboardingNavigator: React.FC = () => {
       setTimeout(() => {
         translateX.value = 0;
         setCurrentIndex(prev => prev + 1);
+        isAnimating.value = false;
       }, 300);
     }
   };
@@ -56,35 +84,43 @@ const OnboardingNavigator: React.FC = () => {
   };
 
   const updateIndex = (newIndex: number) => {
-    setCurrentIndex(newIndex);
+    if (newIndex >= 0 && newIndex <= 3) {
+      setCurrentIndex(newIndex);
+    }
   };
 
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, ctx: any) => {
+      if (isAnimating.value) return;
       ctx.startX = translateX.value;
-      isGestureActive.value = true;
     },
     onActive: (event, ctx) => {
+      if (isAnimating.value) return;
+      
       // Calculate resistance for boundary screens
       let delta = event.translationX;
       
       // Apply resistance when swiping past boundaries
       if ((currentIndex === 0 && delta > 0) || 
-          (currentIndex === screens.length - 1 && delta < 0)) {
+          (currentIndex === 3 && delta < 0)) {
         delta = delta * 0.3; // High resistance at boundaries
       }
       
       translateX.value = ctx.startX + delta;
     },
     onEnd: (event) => {
-      isGestureActive.value = false;
+      if (isAnimating.value) return;
       
       const velocity = event.velocityX;
       const isQuickSwipe = Math.abs(velocity) > 800;
       
       if ((event.translationX < -SWIPE_THRESHOLD || 
            (isQuickSwipe && velocity < 0)) && 
-          currentIndex < screens.length - 1) {
+          currentIndex < 3) {
+        
+        // Prevent additional gesture handling during animation
+        isAnimating.value = true;
+        
         // Swipe left to next screen
         translateX.value = withSpring(-width, { 
           velocity: velocity,
@@ -98,10 +134,15 @@ const OnboardingNavigator: React.FC = () => {
         setTimeout(() => {
           translateX.value = 0;
           runOnJS(updateIndex)(currentIndex + 1);
+          isAnimating.value = false;
         }, 300);
       } else if ((event.translationX > SWIPE_THRESHOLD || 
                  (isQuickSwipe && velocity > 0)) && 
                 currentIndex > 0) {
+        
+        // Prevent additional gesture handling during animation
+        isAnimating.value = true;
+        
         // Swipe right to previous screen
         translateX.value = withSpring(width, { 
           velocity: velocity,
@@ -115,6 +156,7 @@ const OnboardingNavigator: React.FC = () => {
         setTimeout(() => {
           translateX.value = 0;
           runOnJS(updateIndex)(currentIndex - 1);
+          isAnimating.value = false;
         }, 300);
       } else {
         // Return to current screen with a bounce-back animation
@@ -126,9 +168,6 @@ const OnboardingNavigator: React.FC = () => {
           overshootClamping: false,
         });
       }
-    },
-    onFinish: () => {
-      isGestureActive.value = false;
     },
   });
 
@@ -187,45 +226,40 @@ const OnboardingNavigator: React.FC = () => {
     };
   });
 
-  // Generate pagination dots
-  const renderPaginationDots = () => {
-    return screens.map((_, index) => (
-      <View 
-        key={index} 
-        style={[
-          styles.dot, 
-          index === currentIndex && styles.activeDot
-        ]} 
-      />
-    ));
-  };
-
   return (
     <View style={styles.container}>
       <PanGestureHandler onGestureEvent={gestureHandler}>
         <Animated.View style={styles.gestureContainer}>
           {/* Current Screen */}
           <Animated.View style={[styles.screenContainer, currentScreenStyle]}>
-            {screens[currentIndex]}
+            {renderScreen(currentIndex)}
           </Animated.View>
           
           {/* Previous Screen (if not on first screen) */}
           {currentIndex > 0 && (
             <Animated.View style={[styles.screenContainer, prevScreenStyle]}>
-              {screens[currentIndex - 1]}
+              {renderScreen(currentIndex - 1)}
             </Animated.View>
           )}
           
           {/* Next Screen (if not on last screen) */}
-          {currentIndex < screens.length - 1 && (
+          {currentIndex < 3 && (
             <Animated.View style={[styles.screenContainer, nextScreenStyle]}>
-              {screens[currentIndex + 1]}
+              {renderScreen(currentIndex + 1)}
             </Animated.View>
           )}
           
           {/* Pagination dots */}
           <View style={styles.pagination}>
-            {renderPaginationDots()}
+            {[0, 1, 2, 3].map((index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.dot, 
+                  index === currentIndex && styles.activeDot
+                ]} 
+              />
+            ))}
           </View>
         </Animated.View>
       </PanGestureHandler>
@@ -237,7 +271,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9ff',
-    overflow: 'hidden',
   },
   gestureContainer: {
     flex: 1,
@@ -249,7 +282,7 @@ const styles = StyleSheet.create({
   },
   pagination: {
     position: 'absolute',
-    bottom: 180, // Adjust based on your button position
+    bottom: 180,
     flexDirection: 'row',
     alignSelf: 'center',
     justifyContent: 'center',

@@ -5,9 +5,10 @@ import { onboardingData, themes } from '../../assets/onboardingData';
 
 interface Screen1Props {
   onContinue: () => void;
+  paginationVisibility?: boolean;
 }
 
-const Screen1: React.FC<Screen1Props> = ({ onContinue }) => {
+const Screen1: React.FC<Screen1Props> = ({ onContinue, paginationVisibility = true }) => {
   const data = onboardingData[0];
   const theme = themes[data.theme];
   
@@ -22,6 +23,7 @@ const Screen1: React.FC<Screen1Props> = ({ onContinue }) => {
       totalSteps={4}
       onContinue={onContinue}
       floatingEmojis={data.floatingEmojis}
+      paginationVisibility={paginationVisibility}
     />
   );
 };

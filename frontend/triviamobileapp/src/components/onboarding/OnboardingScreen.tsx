@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { normalize, spacing } from '../../utils/scaling.ts';
-import FloatingElements from './FloatingElements.tsx';
-import FloatingIcon from './FloatingIcon.tsx';
+import { normalize, spacing } from '../../utils/scaling';
+import FloatingElements from './FloatingElements';
+import FloatingIcon from './FloatingIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -42,6 +42,9 @@ export interface OnboardingScreenProps {
         right?: string | number;
       }
     }>;
+    
+    // Added prop to control pagination visibility
+    paginationVisibility?: boolean;
   }
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
@@ -59,7 +62,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     {emoji: '💡', position: {top: '25%', right: '10%'}},
     {emoji: '🧠', position: {bottom: '30%', left: '15%'}},
     {emoji: '🎓', position: {bottom: '25%', right: '20%'}}
-  ]
+  ],
+  paginationVisibility = true
 }) => {
   const insets = useSafeAreaInsets();
   
@@ -106,9 +110,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           <Text style={[styles.title, {color: primaryColor}]}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
           
-          <View style={styles.pagination}>
-            {renderPaginationDots()}
-          </View>
+          {/* Only render pagination dots if paginationVisibility is true */}
+          {paginationVisibility && (
+            <View style={styles.pagination}>
+              {renderPaginationDots()}
+            </View>
+          )}
         </View>
       </SafeAreaView>
 
