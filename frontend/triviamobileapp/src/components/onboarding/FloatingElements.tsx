@@ -21,22 +21,22 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
     animationType: 'floatingEmoji' // Use the floating emoji speed factor
   });
   
-  // Precalculate rotation offsets for elements
+  // Precalculate rotation offsets for elements with more variety
   const rotationOffsets = useMemo(() => 
-    elements.map((_, index) => (index * 90) % 360), 
+    elements.map((_, index) => (index * 90 + Math.floor(Math.random() * 45)) % 360), 
     [elements]
   );
   
-  // Pre-compute spacing values for animations
+  // Pre-compute spacing values for animations with larger movement range
   const spacingValues = useMemo(() => {
     return {
       x: {
-        p5: spacing(5),
-        n5: -spacing(5)
+        p20: spacing(20),
+        n20: -spacing(20)
       },
       y: {
-        p3: -spacing(3),
-        p5: -spacing(5)
+        p10: -spacing(10),
+        p20: -spacing(20)
       }
     };
   }, []);
@@ -52,27 +52,27 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
         
         // Create animated style for this element
         const animatedStyle = useAnimatedStyle(() => {
-          // Calculate translation with a circular path
+          // Calculate translation with a much larger circular path
           const translateX = interpolate(
             value.value,
             [0, 0.25, 0.5, 0.75, 1],
-            [0, spacingValues.x.p5, 0, spacingValues.x.n5, 0],
+            [0, spacingValues.x.p20, 0, spacingValues.x.n20, 0],
             Extrapolate.CLAMP
           );
           
           const translateY = interpolate(
             value.value,
             [0, 0.25, 0.5, 0.75, 1],
-            [0, spacingValues.y.p3, spacingValues.y.p5, spacingValues.y.p3, 0],
+            [0, spacingValues.y.p10, spacingValues.y.p20, spacingValues.y.p10, 0],
             Extrapolate.CLAMP
           );
           
-          // Calculate rotation
+          // Calculate rotation with larger range
           const rotate = `${
             interpolate(
               value.value,
               [0, 1],
-              [rotationOffset, rotationOffset + 40], // Smaller rotation range
+              [rotationOffset, rotationOffset + 120], // Much larger rotation range
               Extrapolate.CLAMP
             )
           }deg`;

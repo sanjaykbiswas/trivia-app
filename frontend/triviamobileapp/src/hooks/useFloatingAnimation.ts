@@ -14,7 +14,7 @@ import {
 // Separate animation speed controllers
 // Values < 1.0 make animations faster, values > 1.0 make animations slower
 export const CENTRAL_ICON_SPEED_FACTOR = 1.0;  // Controls the central bouncing icon
-export const FLOATING_EMOJI_SPEED_FACTOR = 1.0;  // Controls the background floating emojis
+export const FLOATING_EMOJI_SPEED_FACTOR = 1.2;  // Controls the background floating emojis - slightly slower for smoother large loops
 
 interface FloatingAnimationOptions {
   duration?: number;
@@ -102,16 +102,20 @@ export const useMultipleFloatingAnimations = (
     : FLOATING_EMOJI_SPEED_FACTOR;
   
   for (let i = 0; i < count; i++) {
+    // More variety in durations for more natural, less synchronized movement
+    const durationVariance = Math.random() * 800 + 1000; // 1000-1800ms variance
+    const delayVariance = Math.random() * 300; // 0-300ms additional random delay
+    
     // Create staggered animations with varying parameters
     // Apply the selected speed factor to all durations and delays
     const options = {
       ...baseOptions,
       duration: baseOptions.duration 
-        ? baseOptions.duration * speedFactor + (i * 200 * speedFactor)
-        : 1500 * speedFactor + (i * 200 * speedFactor),
+        ? baseOptions.duration * speedFactor + (i * 400 * speedFactor) + durationVariance
+        : 1500 * speedFactor + (i * 400 * speedFactor) + durationVariance,
       delay: baseOptions.delay 
-        ? baseOptions.delay * speedFactor + (i * 150 * speedFactor)
-        : i * 150 * speedFactor,
+        ? baseOptions.delay * speedFactor + (i * 300 * speedFactor) + delayVariance
+        : i * 300 * speedFactor + delayVariance,
     };
     
     animations.push(useFloatingAnimation(options));
