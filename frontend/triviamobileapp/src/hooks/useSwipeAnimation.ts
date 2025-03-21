@@ -17,12 +17,14 @@ export const useSwipeAnimation = (onTransitionComplete: (newIndex: number) => vo
   const translateX = useSharedValue(0);
   const isAnimating = useSharedValue(false);
   
-  // Default spring configuration
+  // Default spring configuration - adjusted for smoother animations
   const springConfig: WithSpringConfig = {
-    damping: 20,
-    stiffness: 90,
+    damping: 25,        // Increased damping for less oscillation
+    stiffness: 100,     // Slightly higher stiffness for faster initial movement
     mass: 1,
     overshootClamping: false,
+    restDisplacementThreshold: 0.01,  // More precise stopping point
+    restSpeedThreshold: 0.01,         // More precise stopping point
   };
   
   /**
@@ -47,7 +49,7 @@ export const useSwipeAnimation = (onTransitionComplete: (newIndex: number) => vo
     // Animate with completion callback
     translateX.value = withSpring(direction * width, config, (finished) => {
       if (finished) {
-        // Reset position after the animation completes
+        // Reset position immediately after the animation completes
         translateX.value = 0;
         // Notify parent component of index change
         runOnJS(onTransitionComplete)(newIndex);

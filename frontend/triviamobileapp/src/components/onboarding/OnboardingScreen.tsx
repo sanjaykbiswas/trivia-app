@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,8 @@ import { OnboardingScreenProps } from './types';
 
 const { width } = Dimensions.get('window');
 
-const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
+// Using memo to prevent unnecessary re-renders
+const OnboardingScreen: React.FC<OnboardingScreenProps> = memo(({
   icon,
   title,
   subtitle,
@@ -37,8 +38,10 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   
-  // Generate dots for pagination
+  // Generate dots for pagination (only if visible)
   const renderPaginationDots = () => {
+    if (!paginationVisibility) return null;
+    
     const dots = [];
     for (let i = 0; i < totalSteps; i++) {
       dots.push(
@@ -53,7 +56,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         />
       );
     }
-    return dots;
+    
+    return (
+      <View style={styles.pagination}>
+        {dots}
+      </View>
+    );
   };
 
   return (
@@ -66,8 +74,9 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       
       <View style={styles.backgroundFill} />
       
+      {/* Limit number of floating elements for better performance */}
       <FloatingElements 
-        elements={floatingEmojis}
+        elements={floatingEmojis.slice(0, 4)} 
       />
       
       <SafeAreaView edges={['right', 'left', 'top']} style={styles.safeContainer}>
@@ -80,12 +89,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           <Text style={[styles.title, {color: primaryColor}]}>{title}</Text>
           <Text style={styles.subtitle}>{subtitle}</Text>
           
-          {/* Only render pagination dots if paginationVisibility is true */}
-          {paginationVisibility && (
-            <View style={styles.pagination}>
-              {renderPaginationDots()}
-            </View>
-          )}
+          {renderPaginationDots()}
         </View>
       </SafeAreaView>
 
@@ -115,7 +119,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

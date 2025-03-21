@@ -5,17 +5,23 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import OnboardingNavigator from './src/navigation/OnboardingNavigator';
 
-// Silence reanimated warnings (if any)
+// Silence warnings that might appear with animations
 LogBox.ignoreLogs([
   'Sending `onAnimatedValueUpdate` with no listeners registered',
-  'Non-serializable values were found in the navigation state'
+  'Non-serializable values were found in the navigation state',
+  'Animated: `useNativeDriver` was not specified',
+  'NativeAnimatedModule'
 ]);
 
 function App(): React.JSX.Element {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor="transparent" 
+          translucent 
+        />
         <OnboardingNavigator />
       </SafeAreaProvider>
     </GestureHandlerRootView>

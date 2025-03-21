@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import OnboardingScreen from '../../components/onboarding/OnboardingScreen';
 import { onboardingData, themes } from '../../assets/onboardingData';
 
@@ -7,7 +7,11 @@ interface Screen4Props {
   paginationVisibility?: boolean;
 }
 
-const Screen4: React.FC<Screen4Props> = ({ onContinue, paginationVisibility = true }) => {
+// Using memo to prevent unnecessary re-renders
+const Screen4: React.FC<Screen4Props> = memo(({ 
+  onContinue, 
+  paginationVisibility = true 
+}) => {
   const data = onboardingData[3];
   const theme = themes[data.theme];
   
@@ -26,6 +30,6 @@ const Screen4: React.FC<Screen4Props> = ({ onContinue, paginationVisibility = tr
       paginationVisibility={paginationVisibility}
     />
   );
-};
+});
 
 export default Screen4;

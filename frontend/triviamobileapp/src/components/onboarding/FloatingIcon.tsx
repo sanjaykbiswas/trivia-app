@@ -1,6 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { Animated, StyleSheet, View, Text, Easing } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import Animated, { useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 import { spacing, normalize } from '../../utils/scaling';
+import { useFloatingAnimation } from '../../hooks/useFloatingAnimation';
 
 interface FloatingIconProps {
   icon: string;
@@ -8,133 +10,142 @@ interface FloatingIconProps {
 }
 
 const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
-  // Animation value for the main floating effect
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  
-  // Animation values for the sparkles
-  const sparkle1Anim = useRef(new Animated.Value(0)).current;
-  const sparkle2Anim = useRef(new Animated.Value(0)).current;
-  const sparkle3Anim = useRef(new Animated.Value(0)).current;
-  
-  useEffect(() => {
-    // Create the looping animation for the icon
-    const createFloatAnimation = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(floatAnim, {
-            toValue: 1,
-            duration: 1500,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(floatAnim, {
-            toValue: 0,
-            duration: 1500,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    };
-    
-    // Create animations for the sparkles with different durations
-    const createSparkleAnimation = (
-      animValue: Animated.Value, 
-      duration: number, 
-      delay: number = 0
-    ) => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(animValue, {
-            toValue: 1,
-            duration: duration,
-            delay: delay,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-          Animated.timing(animValue, {
-            toValue: 0,
-            duration: duration,
-            easing: Easing.inOut(Easing.sin),
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    };
-    
-    // Start all animations
-    createFloatAnimation();
-    createSparkleAnimation(sparkle1Anim, 2000);
-    createSparkleAnimation(sparkle2Anim, 2500, 500);
-    createSparkleAnimation(sparkle3Anim, 1800, 1000);
-    
-    // Return cleanup function to stop animations
-    return () => {
-      floatAnim.stopAnimation();
-      sparkle1Anim.stopAnimation();
-      sparkle2Anim.stopAnimation();
-      sparkle3Anim.stopAnimation();
-    };
-  }, [floatAnim, sparkle1Anim, sparkle2Anim, sparkle3Anim]);
-
-  // Movement transform for the floating effect
-  const floatTransform = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -spacing(10)],
+  // Main floating animation with longer duration for smoother movement
+  const mainAnimation = useFloatingAnimation({
+    duration: 2000,
+    displacement: 10
   });
+  
+  // Sparkle animations with staggered delays
+  const sparkle1Animation = useFloatingAnimation({
+    duration: 2800,
+    delay: 0
+  });
+  
+  const sparkle2Animation = useFloatingAnimation({
+    duration: 3200,
+    delay: 1000
+  });
+  
+  const sparkle3Animation = useFloatingAnimation({
+    duration: 2400,
+    delay: 500
+  });
+  
+  // Pre-compute spacing values for animations
+  const floatDistance = useMemo(() => -spacing(10), []);
+  
+  // Sparkle dimensions (pre-computed)
+  const sparkle1Size = useMemo(() => ({
+    width: spacing(8),
+    height: spacing(8)
+  }), []);
+  
+  const sparkle2Size = useMemo(() => ({
+    width: spacing(6),
+    height: spacing(6)
+  }), []);
+  
+  const sparkle3Size = useMemo(() => ({
+    width: spacing(10),
+    height: spacing(10)
+  }), []);
+  
+  // Main floating animation style
+  const floatStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { 
+          translateY: interpolate(
+            mainAnimation.value.value,
+            [0, 1],
+            [0, floatDistance],
+            Extrapolate.CLAMP
+          ) 
+        }
+      ]
+    };
+  });
+  
+  // Styles for the three sparkles
+  const sparkle1Style = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      sparkle1Animation.value.value,
+      [0, 0.5, 1],
+      [0.2, 0.7, 0.2],
+      Extrapolate.CLAMP
+    )
+  }));
+  
+  const sparkle2Style = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      sparkle2Animation.value.value,
+      [0, 0.5, 1],
+      [0.3, 0.8, 0.3],
+      Extrapolate.CLAMP
+    )
+  }));
+  
+  const sparkle3Style = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      sparkle3Animation.value.value,
+      [0, 0.5, 1],
+      [0.1, 0.6, 0.1],
+      Extrapolate.CLAMP
+    )
+  }));
 
   return (
     <Animated.View 
       style={[
         styles.iconContainer, 
-        { 
-          transform: [{ translateY: floatTransform }],
-          backgroundColor: `${primaryColor}20` // 12% opacity
-        }
+        { backgroundColor: `${primaryColor}20` }, // 12% opacity
+        floatStyle
       ]}
     >
-      <View style={[
-        styles.iconInner,
-        { backgroundColor: `${primaryColor}40` } // 25% opacity
-      ]}>
-        <View style={[
-          styles.icon,
-          { backgroundColor: primaryColor }
-        ]}>
+      <View 
+        style={[
+          styles.iconInner,
+          { backgroundColor: `${primaryColor}40` } // 25% opacity
+        ]}
+      >
+        <View 
+          style={[
+            styles.icon,
+            { backgroundColor: primaryColor }
+          ]}
+        >
           <Animated.View 
             style={[
               styles.sparkle, 
+              sparkle1Size,
               { 
-                width: spacing(8), 
-                height: spacing(8), 
                 top: '20%', 
                 left: '20%',
-                opacity: sparkle1Anim,
-              }
+              },
+              sparkle1Style
             ]} 
           />
           <Animated.View 
             style={[
               styles.sparkle, 
+              sparkle2Size,
               { 
-                width: spacing(6), 
-                height: spacing(6), 
                 top: '30%', 
                 right: '20%',
-                opacity: sparkle2Anim,
-              }
+              },
+              sparkle2Style
             ]} 
           />
           <Animated.View 
             style={[
               styles.sparkle, 
+              sparkle3Size,
               { 
-                width: spacing(10), 
-                height: spacing(10), 
                 bottom: '20%', 
                 right: '30%',
-                opacity: sparkle3Anim,
-              }
+              },
+              sparkle3Style
             ]} 
           />
           <Text style={styles.iconText}>{icon}</Text>

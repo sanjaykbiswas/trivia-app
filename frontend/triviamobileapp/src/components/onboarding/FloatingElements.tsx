@@ -1,109 +1,103 @@
-import React, { useRef, useEffect, useMemo } from 'react';
-import { Animated, StyleSheet, Easing, View, DimensionValue } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { 
+  useAnimatedStyle, 
+  interpolate,
+  Extrapolate 
+} from 'react-native-reanimated';
 import { normalize, spacing } from '../../utils/scaling';
 import { FloatingElement } from './types';
+import { useMultipleFloatingAnimations } from '../../hooks/useFloatingAnimation';
 
 interface FloatingElementsProps {
   elements: FloatingElement[];
 }
 
 const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
-  // Create animation refs for each element
-  const animationsRef = useRef<Animated.Value[]>([]);
+  // Use optimized hook for multiple animations with staggered timing
+  const animations = useMultipleFloatingAnimations(elements.length, {
+    duration: 4000, // Base duration (will be varied per element)
+  });
   
-  // Initialize animations with proper cleanup
-  useEffect(() => {
-    // Create new animation values if needed
-    if (animationsRef.current.length !== elements.length) {
-      animationsRef.current = elements.map(() => new Animated.Value(0));
-    }
-    
-    // Store animation references for cleanup
-    const animations = animationsRef.current;
-    
-    // Create and start animations
-    const animationHandlers = animations.map((anim, index) => {
-      // Reset animation value
-      anim.setValue(0);
-      
-      // Stagger durations between 10-17 seconds to avoid synchronization
-      const duration = 10000 + (index * 1500);
-      
-      // Create the animation
-      return Animated.timing(anim, {
-        toValue: 1,
-        duration: duration,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      });
-    });
-    
-    // Start all animations in a loop
-    const loopedAnimations = animationHandlers.map((anim) => 
-      Animated.loop(anim)
-    );
-    
-    // Start all animations
-    loopedAnimations.forEach(anim => anim.start());
-    
-    // Cleanup function to stop animations
-    return () => {
-      animations.forEach(anim => anim.stopAnimation());
-      loopedAnimations.forEach(anim => anim.stop());
+  // Precalculate rotation offsets for elements
+  const rotationOffsets = useMemo(() => 
+    elements.map((_, index) => (index * 90) % 360), 
+    [elements]
+  );
+  
+  // Pre-compute spacing values for animations
+  const spacingValues = useMemo(() => {
+    return {
+      x: {
+        p5: spacing(5),
+        n5: -spacing(5)
+      },
+      y: {
+        p3: -spacing(3),
+        p5: -spacing(5)
+      }
     };
-  }, [elements.length]); // Only re-run if the number of elements changes
+  }, []);
   
-  // Generate transform functions for each element (memoized for performance)
-  const getElementTransforms = useMemo(() => {
-    return elements.map((_, index) => {
-      const startRotation = index * 90; // Different start rotation for each element
-      
-      return (animValue: Animated.Value) => {
-        const translateX = animValue.interpolate({
-          inputRange: [0, 0.25, 0.5, 0.75, 1],
-          outputRange: [0, spacing(8), 0, -spacing(8), 0],
-        });
-        
-        const translateY = animValue.interpolate({
-          inputRange: [0, 0.25, 0.5, 0.75, 1],
-          outputRange: [0, -spacing(5), -spacing(10), -spacing(5), 0],
-        });
-        
-        const rotate = animValue.interpolate({
-          inputRange: [0, 1],
-          outputRange: [`${startRotation}deg`, `${startRotation + 360}deg`],
-        });
-        
-        return {
-          transform: [
-            { translateX },
-            { translateY },
-            { rotate },
-          ],
-        };
-      };
-    });
-  }, [elements]);
-
   return (
     <View style={styles.container}>
       {elements.map((element, index) => {
-        // Ensure we have a valid animation value
-        const animValue = index < animationsRef.current.length ? 
-                         animationsRef.current[index] : 
-                         new Animated.Value(0);
+        // Skip rendering if out of bounds (safety check)
+        if (index >= animations.length) return null;
+        
+        const { value } = animations[index];
+        const rotationOffset = rotationOffsets[index];
+        
+        // Create animated style for this element
+        const animatedStyle = useAnimatedStyle(() => {
+          // Calculate translation with a circular path
+          const translateX = interpolate(
+            value.value,
+            [0, 0.25, 0.5, 0.75, 1],
+            [0, spacingValues.x.p5, 0, spacingValues.x.n5, 0],
+            Extrapolate.CLAMP
+          );
+          
+          const translateY = interpolate(
+            value.value,
+            [0, 0.25, 0.5, 0.75, 1],
+            [0, spacingValues.y.p3, spacingValues.y.p5, spacingValues.y.p3, 0],
+            Extrapolate.CLAMP
+          );
+          
+          // Calculate rotation
+          const rotate = `${
+            interpolate(
+              value.value,
+              [0, 1],
+              [rotationOffset, rotationOffset + 40], // Smaller rotation range
+              Extrapolate.CLAMP
+            )
+          }deg`;
+          
+          return {
+            transform: [
+              { translateX },
+              { translateY },
+              { rotate },
+            ],
+            opacity: interpolate(
+              value.value,
+              [0, 0.5, 1],
+              [0.3, 0.5, 0.3], // Subtle opacity changes
+              Extrapolate.CLAMP
+            ),
+          };
+        });
         
         // Create a position style object
-        const positionStyle: { [key: string]: DimensionValue } = {};
+        const positionStyle: { [key: string]: number | string | undefined } = {};
         
-        // Only add valid position properties
-        if (element.position.top !== undefined) positionStyle.top = element.position.top as DimensionValue;
-        if (element.position.bottom !== undefined) positionStyle.bottom = element.position.bottom as DimensionValue;
-        if (element.position.left !== undefined) positionStyle.left = element.position.left as DimensionValue;
-        if (element.position.right !== undefined) positionStyle.right = element.position.right as DimensionValue;
-        
-        // Get transform for this element
-        const transforms = getElementTransforms[index](animValue);
+        // Only add valid position properties with type casting for string values
+        if (element.position.top !== undefined) positionStyle.top = element.position.top as string | number;
+        if (element.position.bottom !== undefined) positionStyle.bottom = element.position.bottom as string | number;
+        if (element.position.left !== undefined) positionStyle.left = element.position.left as string | number;
+        if (element.position.right !== undefined) positionStyle.right = element.position.right as string | number;
         
         return (
           <Animated.Text 
@@ -111,7 +105,7 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
             style={[
               styles.element,
               positionStyle,
-              transforms
+              animatedStyle
             ]}>
             {element.emoji}
           </Animated.Text>
@@ -129,11 +123,11 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 0,
+    pointerEvents: 'none', // Don't interfere with touch events
   },
   element: {
     position: 'absolute',
     fontSize: normalize(24),
-    opacity: 0.4,
   },
 });
 
