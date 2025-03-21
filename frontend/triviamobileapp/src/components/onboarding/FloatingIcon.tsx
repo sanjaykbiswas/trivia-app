@@ -11,25 +11,31 @@ interface FloatingIconProps {
 
 const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
   // Main floating animation with longer duration for smoother movement
+  // Specify that this is a central icon animation
   const mainAnimation = useFloatingAnimation({
     duration: 2000,
-    displacement: 10
+    displacement: 10,
+    animationType: 'centralIcon'
   });
   
   // Sparkle animations with staggered delays
+  // All using the central icon animation type
   const sparkle1Animation = useFloatingAnimation({
     duration: 2800,
-    delay: 0
+    delay: 0,
+    animationType: 'centralIcon'
   });
   
   const sparkle2Animation = useFloatingAnimation({
     duration: 3200,
-    delay: 1000
+    delay: 1000,
+    animationType: 'centralIcon'
   });
   
   const sparkle3Animation = useFloatingAnimation({
     duration: 2400,
-    delay: 500
+    delay: 500,
+    animationType: 'centralIcon'
   });
   
   // Pre-compute spacing values for animations

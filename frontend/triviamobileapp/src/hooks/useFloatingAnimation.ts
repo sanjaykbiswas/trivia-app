@@ -11,20 +11,40 @@ import {
   withSequence
 } from 'react-native-reanimated';
 
+// Separate animation speed controllers
+// Values < 1.0 make animations faster, values > 1.0 make animations slower
+export const CENTRAL_ICON_SPEED_FACTOR = 1.0;  // Controls the central bouncing icon
+export const FLOATING_EMOJI_SPEED_FACTOR = 1.0;  // Controls the background floating emojis
+
 interface FloatingAnimationOptions {
   duration?: number;
   displacement?: number;
   delay?: number;
   easing?: EasingFunction;
+  animationType?: 'centralIcon' | 'floatingEmoji';
 }
 
 export const useFloatingAnimation = (options: FloatingAnimationOptions = {}) => {
   const {
-    duration = 1500,
+    // Choose the appropriate speed factor based on animation type
+    animationType = 'centralIcon',
     displacement = 10,
     delay = 0,
     easing = Easing.inOut(Easing.sin)
   } = options;
+  
+  // Select the speed factor based on animation type
+  const speedFactor = animationType === 'centralIcon' 
+    ? CENTRAL_ICON_SPEED_FACTOR 
+    : FLOATING_EMOJI_SPEED_FACTOR;
+  
+  // Apply the selected speed factor to the duration
+  const duration = options.duration 
+    ? options.duration * speedFactor 
+    : 1500 * speedFactor;
+  
+  // Calculate the actual delay with the speed factor
+  const scaledDelay = delay * speedFactor;
   
   // Use shared value for better performance
   const animatedValue = useSharedValue(0);
@@ -50,8 +70,8 @@ export const useFloatingAnimation = (options: FloatingAnimationOptions = {}) => 
     );
     
     // Add delay if needed
-    const animation = delay > 0 
-      ? withDelay(delay, repeatingAnimation)
+    const animation = scaledDelay > 0 
+      ? withDelay(scaledDelay, repeatingAnimation)
       : repeatingAnimation;
     
     // Start the animation
@@ -61,7 +81,7 @@ export const useFloatingAnimation = (options: FloatingAnimationOptions = {}) => 
     return () => {
       cancelAnimation(animatedValue);
     };
-  }, [animatedValue, duration, displacement, delay, easing]);
+  }, [animatedValue, duration, displacement, scaledDelay, easing]);
   
   return {
     value: animatedValue,
@@ -76,12 +96,22 @@ export const useMultipleFloatingAnimations = (
 ) => {
   const animations = [];
   
+  // Select the speed factor based on animation type
+  const speedFactor = baseOptions.animationType === 'centralIcon' 
+    ? CENTRAL_ICON_SPEED_FACTOR 
+    : FLOATING_EMOJI_SPEED_FACTOR;
+  
   for (let i = 0; i < count; i++) {
     // Create staggered animations with varying parameters
+    // Apply the selected speed factor to all durations and delays
     const options = {
       ...baseOptions,
-      duration: baseOptions.duration ? baseOptions.duration + (i * 200) : 1500 + (i * 200),
-      delay: baseOptions.delay ? baseOptions.delay + (i * 150) : i * 150,
+      duration: baseOptions.duration 
+        ? baseOptions.duration * speedFactor + (i * 200 * speedFactor)
+        : 1500 * speedFactor + (i * 200 * speedFactor),
+      delay: baseOptions.delay 
+        ? baseOptions.delay * speedFactor + (i * 150 * speedFactor)
+        : i * 150 * speedFactor,
     };
     
     animations.push(useFloatingAnimation(options));

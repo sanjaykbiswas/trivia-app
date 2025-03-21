@@ -46,7 +46,7 @@ export const onboardingData: OnboardingScreenData[] = [
         position: { top: '25%', right: '10%' }
       },
       {
-        emoji: '🧠',
+        emoji: '🚀',
         position: { bottom: '30%', left: '15%' }
       },
       {

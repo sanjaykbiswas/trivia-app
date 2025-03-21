@@ -15,8 +15,10 @@ interface FloatingElementsProps {
 
 const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
   // Use optimized hook for multiple animations with staggered timing
+  // Specify 'floatingEmoji' animation type to use the correct speed factor
   const animations = useMultipleFloatingAnimations(elements.length, {
-    duration: 4000, // Base duration (will be varied per element)
+    duration: 4000,
+    animationType: 'floatingEmoji' // Use the floating emoji speed factor
   });
   
   // Precalculate rotation offsets for elements
