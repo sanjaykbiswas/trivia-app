@@ -1,6 +1,5 @@
 // src/assets/onboardingData.ts
-
-import { TextStyle } from 'react-native';
+import { FloatingElement } from '../components/onboarding/types';
 
 export interface OnboardingScreenData {
   id: string;
@@ -8,15 +7,7 @@ export interface OnboardingScreenData {
   title: string;
   subtitle: string;
   theme: keyof typeof themes;
-  floatingEmojis: Array<{
-    emoji: string;
-    position: {
-      top?: string | number;
-      bottom?: string | number;
-      left?: string | number;
-      right?: string | number;
-    };
-  }>;
+  floatingEmojis: FloatingElement[];
 }
 
 export const themes = {

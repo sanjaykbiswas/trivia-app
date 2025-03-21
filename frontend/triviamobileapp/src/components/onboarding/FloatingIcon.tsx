@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Animated, StyleSheet, View, Text, Easing } from 'react-native';
-import { spacing, normalize } from '../../utils/scaling.ts';
+import { spacing, normalize } from '../../utils/scaling';
 
 interface FloatingIconProps {
   icon: string;
@@ -8,30 +8,76 @@ interface FloatingIconProps {
 }
 
 const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
+  // Animation value for the main floating effect
   const floatAnim = useRef(new Animated.Value(0)).current;
   
+  // Animation values for the sparkles
+  const sparkle1Anim = useRef(new Animated.Value(0)).current;
+  const sparkle2Anim = useRef(new Animated.Value(0)).current;
+  const sparkle3Anim = useRef(new Animated.Value(0)).current;
+  
   useEffect(() => {
-    const createAnimation = (toValue: number) => {
-      return Animated.timing(floatAnim, {
-        toValue,
-        duration: 1500,
-        easing: Easing.inOut(Easing.sin),
-        useNativeDriver: true,
-      });
+    // Create the looping animation for the icon
+    const createFloatAnimation = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(floatAnim, {
+            toValue: 1,
+            duration: 1500,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(floatAnim, {
+            toValue: 0,
+            duration: 1500,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     };
-
-    Animated.loop(
-      Animated.sequence([
-        createAnimation(1),
-        createAnimation(0),
-      ])
-    ).start();
     
+    // Create animations for the sparkles with different durations
+    const createSparkleAnimation = (
+      animValue: Animated.Value, 
+      duration: number, 
+      delay: number = 0
+    ) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: 1,
+            duration: duration,
+            delay: delay,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: duration,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    };
+    
+    // Start all animations
+    createFloatAnimation();
+    createSparkleAnimation(sparkle1Anim, 2000);
+    createSparkleAnimation(sparkle2Anim, 2500, 500);
+    createSparkleAnimation(sparkle3Anim, 1800, 1000);
+    
+    // Return cleanup function to stop animations
     return () => {
       floatAnim.stopAnimation();
+      sparkle1Anim.stopAnimation();
+      sparkle2Anim.stopAnimation();
+      sparkle3Anim.stopAnimation();
     };
-  }, [floatAnim]);
+  }, [floatAnim, sparkle1Anim, sparkle2Anim, sparkle3Anim]);
 
+  // Movement transform for the floating effect
   const floatTransform = floatAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -spacing(10)],
@@ -63,10 +109,7 @@ const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
                 height: spacing(8), 
                 top: '20%', 
                 left: '20%',
-                opacity: floatAnim.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [0.2, 0.8, 0.2]
-                })
+                opacity: sparkle1Anim,
               }
             ]} 
           />
@@ -78,10 +121,7 @@ const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
                 height: spacing(6), 
                 top: '30%', 
                 right: '20%',
-                opacity: floatAnim.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [0.8, 0.2, 0.8]
-                })
+                opacity: sparkle2Anim,
               }
             ]} 
           />
@@ -93,10 +133,7 @@ const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
                 height: spacing(10), 
                 bottom: '20%', 
                 right: '30%',
-                opacity: floatAnim.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [0.4, 0.9, 0.4]
-                })
+                opacity: sparkle3Anim,
               }
             ]} 
           />

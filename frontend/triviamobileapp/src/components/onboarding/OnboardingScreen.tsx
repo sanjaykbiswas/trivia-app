@@ -13,39 +13,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { normalize, spacing } from '../../utils/scaling';
 import FloatingElements from './FloatingElements';
 import FloatingIcon from './FloatingIcon';
+import { OnboardingScreenProps } from './types';
 
 const { width } = Dimensions.get('window');
-
-export interface OnboardingScreenProps {
-    // Content props
-    icon: string;
-    title: string;
-    subtitle: string;
-    
-    // Style props
-    primaryColor: string;
-    secondaryColor: string;
-    
-    // Navigation props
-    currentStep: number;
-    totalSteps: number;
-    onContinue: () => void;
-    
-    // Optional props
-    buttonText?: string;
-    floatingEmojis?: Array<{
-      emoji: string;
-      position: {
-        top?: string | number;
-        bottom?: string | number;
-        left?: string | number;
-        right?: string | number;
-      }
-    }>;
-    
-    // Added prop to control pagination visibility
-    paginationVisibility?: boolean;
-  }
 
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   icon,

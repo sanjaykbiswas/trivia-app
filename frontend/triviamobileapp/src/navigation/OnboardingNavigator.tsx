@@ -1,10 +1,7 @@
-// src/navigation/OnboardingNavigator.tsx
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  withSpring,
   useAnimatedGestureHandler,
   runOnJS,
   interpolate,
@@ -15,80 +12,57 @@ import Screen1 from '../screens/onboarding/Screen1';
 import Screen2 from '../screens/onboarding/Screen2';
 import Screen3 from '../screens/onboarding/Screen3';
 import Screen4 from '../screens/onboarding/Screen4';
+import { useSwipeAnimation } from '../hooks/useSwipeAnimation';
+import { themes } from '../assets/onboardingData';
 
 const { width } = Dimensions.get('window');
-const SWIPE_THRESHOLD = width * 0.3;
+const SWIPE_THRESHOLD = width * 0.25;
+const SCREEN_COUNT = 4;
 
 const OnboardingNavigator: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const translateX = useSharedValue(0);
-  const isAnimating = useSharedValue(false);
   
-  // Create screen components with the proper props
-  const renderScreen = (index: number) => {
-    // Hide pagination dots from individual screens by passing empty function
-    const dummyPaginationHandler = () => {};
-    
-    switch(index) {
-      case 0:
-        return <Screen1 
-          onContinue={() => handleContinue()} 
-          // Pass null to hide pagination in the screen component
-          paginationVisibility={false}
-        />;
-      case 1:
-        return <Screen2 
-          onContinue={() => handleContinue()} 
-          paginationVisibility={false}
-        />;
-      case 2:
-        return <Screen3 
-          onContinue={() => handleContinue()} 
-          paginationVisibility={false}
-        />;
-      case 3:
-        return <Screen4 
-          onContinue={() => handleComplete()} 
-          paginationVisibility={false}
-        />;
-      default:
-        return null;
+  // Handle screen index change
+  const handleIndexChange = useCallback((newIndex: number) => {
+    // Ensure index is within bounds
+    if (newIndex >= 0 && newIndex < SCREEN_COUNT) {
+      setCurrentIndex(newIndex);
     }
-  };
+  }, []);
   
-  const handleContinue = () => {
-    if (currentIndex < 3 && !isAnimating.value) {
-      isAnimating.value = true;
-      
-      // Animate to the next screen
-      translateX.value = withSpring(-width, { 
-        damping: 20,
-        stiffness: 90,
-        mass: 1,
-        overshootClamping: false,
-      });
-      
-      // After animation, reset translateX and update index
-      setTimeout(() => {
-        translateX.value = 0;
-        setCurrentIndex(prev => prev + 1);
-        isAnimating.value = false;
-      }, 300);
+  // Initialize the swipe animation hook
+  const { translateX, isAnimating, animateTransition, cancelSwipe } = useSwipeAnimation(handleIndexChange);
+  
+  // Handle continue button press
+  const handleContinue = useCallback(() => {
+    if (currentIndex < SCREEN_COUNT - 1) {
+      animateTransition(currentIndex, -1); // Go to next
     }
-  };
-
-  const handleComplete = () => {
+  }, [currentIndex, animateTransition]);
+  
+  // Handle completion (last screen)
+  const handleComplete = useCallback(() => {
     console.log('Onboarding complete');
     // Here you would navigate to your main app
     // navigation.replace('MainApp');
+  }, []);
+  
+  // Get active dot color based on current screen
+  const getActiveDotColor = (index: number): string => {
+    const themeKeys = Object.keys(themes);
+    const theme = themes[themeKeys[index] as keyof typeof themes];
+    return theme?.primary || '#7B61FF';
   };
-
-  const updateIndex = (newIndex: number) => {
-    if (newIndex >= 0 && newIndex <= 3) {
-      setCurrentIndex(newIndex);
-    }
-  };
-
+  
+  // Create memoized screen components to avoid re-renders
+  const screens = useMemo(() => [
+    <Screen1 onContinue={handleContinue} paginationVisibility={false} />,
+    <Screen2 onContinue={handleContinue} paginationVisibility={false} />,
+    <Screen3 onContinue={handleContinue} paginationVisibility={false} />,
+    <Screen4 onContinue={handleComplete} paginationVisibility={false} />,
+  ], [handleContinue, handleComplete]);
+  
+  // Gesture handler for swipe detection
   const gestureHandler = useAnimatedGestureHandler({
     onStart: (_, ctx: any) => {
       if (isAnimating.value) return;
@@ -97,13 +71,10 @@ const OnboardingNavigator: React.FC = () => {
     onActive: (event, ctx) => {
       if (isAnimating.value) return;
       
-      // Calculate resistance for boundary screens
+      // Apply resistance at boundaries
       let delta = event.translationX;
-      
-      // Apply resistance when swiping past boundaries
-      if ((currentIndex === 0 && delta > 0) || 
-          (currentIndex === 3 && delta < 0)) {
-        delta = delta * 0.3; // High resistance at boundaries
+      if ((currentIndex === 0 && delta > 0) || (currentIndex === SCREEN_COUNT - 1 && delta < 0)) {
+        delta = delta * 0.2; // Higher resistance at boundaries
       }
       
       translateX.value = ctx.startX + delta;
@@ -114,115 +85,70 @@ const OnboardingNavigator: React.FC = () => {
       const velocity = event.velocityX;
       const isQuickSwipe = Math.abs(velocity) > 800;
       
-      if ((event.translationX < -SWIPE_THRESHOLD || 
-           (isQuickSwipe && velocity < 0)) && 
-          currentIndex < 3) {
-        
-        // Prevent additional gesture handling during animation
-        isAnimating.value = true;
-        
-        // Swipe left to next screen
-        translateX.value = withSpring(-width, { 
-          velocity: velocity,
-          damping: 20,
-          stiffness: 90,
-          mass: 1,
-          overshootClamping: false,
-        });
-        
-        // After animation, reset translateX and update index
-        setTimeout(() => {
-          translateX.value = 0;
-          runOnJS(updateIndex)(currentIndex + 1);
-          isAnimating.value = false;
-        }, 300);
-      } else if ((event.translationX > SWIPE_THRESHOLD || 
-                 (isQuickSwipe && velocity > 0)) && 
+      if ((event.translationX < -SWIPE_THRESHOLD || (isQuickSwipe && velocity < 0)) && 
+          currentIndex < SCREEN_COUNT - 1) {
+        // Swipe left - go to next
+        runOnJS(animateTransition)(currentIndex, -1, velocity);
+      } else if ((event.translationX > SWIPE_THRESHOLD || (isQuickSwipe && velocity > 0)) && 
                 currentIndex > 0) {
-        
-        // Prevent additional gesture handling during animation
-        isAnimating.value = true;
-        
-        // Swipe right to previous screen
-        translateX.value = withSpring(width, { 
-          velocity: velocity,
-          damping: 20,
-          stiffness: 90,
-          mass: 1,
-          overshootClamping: false,
-        });
-        
-        // After animation, reset translateX and update index
-        setTimeout(() => {
-          translateX.value = 0;
-          runOnJS(updateIndex)(currentIndex - 1);
-          isAnimating.value = false;
-        }, 300);
+        // Swipe right - go to previous
+        runOnJS(animateTransition)(currentIndex, 1, velocity);
       } else {
-        // Return to current screen with a bounce-back animation
-        translateX.value = withSpring(0, { 
-          velocity: velocity / 2,
-          damping: 20,
-          stiffness: 90,
-          mass: 1,
-          overshootClamping: false,
-        });
+        // Return to current screen
+        cancelSwipe(velocity);
       }
     },
   });
 
-  // Style for the current screen
-  const currentScreenStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: translateX.value }],
-    };
-  });
+  // Animation styles
+  const currentScreenStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+    zIndex: 2, // Keep current screen on top during normal viewing
+  }));
   
-  // Style for the previous screen (if any)
   const prevScreenStyle = useAnimatedStyle(() => {
+    // Only show previous screen when swiping right
     const opacity = interpolate(
       translateX.value,
-      [0, width / 2, width],
+      [0, width * 0.3, width],
       [0, 0.5, 1],
       Extrapolate.CLAMP
     );
     
     return {
-      transform: [
-        { translateX: interpolate(
-            translateX.value,
-            [0, width],
-            [-width, 0],
-            Extrapolate.CLAMP
-          ) 
-        }
-      ],
+      transform: [{ 
+        translateX: interpolate(
+          translateX.value,
+          [0, width],
+          [-width * 0.3, 0], // Adjusted for better parallax effect
+          Extrapolate.CLAMP
+        ) 
+      }],
       opacity,
-      zIndex: translateX.value > 0 ? 1 : 0,
+      zIndex: translateX.value > 0 ? 3 : 1, // Bring to front when swiping right
     };
   });
   
-  // Style for the next screen (if any)
   const nextScreenStyle = useAnimatedStyle(() => {
+    // Only show next screen when swiping left
     const opacity = interpolate(
       translateX.value,
-      [-width, -width / 2, 0],
+      [-width, -width * 0.3, 0],
       [1, 0.5, 0],
       Extrapolate.CLAMP
     );
     
     return {
-      transform: [
-        { translateX: interpolate(
-            translateX.value,
-            [-width, 0],
-            [0, width],
-            Extrapolate.CLAMP
-          ) 
-        }
-      ],
+      transform: [{ 
+        translateX: interpolate(
+          translateX.value,
+          [-width, 0],
+          [0, width * 0.3], // Adjusted for better parallax effect
+          Extrapolate.CLAMP
+        ) 
+      }],
       opacity,
-      zIndex: translateX.value < 0 ? 1 : 0,
+      zIndex: translateX.value < 0 ? 3 : 1, // Bring to front when swiping left
     };
   });
 
@@ -232,31 +158,34 @@ const OnboardingNavigator: React.FC = () => {
         <Animated.View style={styles.gestureContainer}>
           {/* Current Screen */}
           <Animated.View style={[styles.screenContainer, currentScreenStyle]}>
-            {renderScreen(currentIndex)}
+            {screens[currentIndex]}
           </Animated.View>
           
           {/* Previous Screen (if not on first screen) */}
           {currentIndex > 0 && (
             <Animated.View style={[styles.screenContainer, prevScreenStyle]}>
-              {renderScreen(currentIndex - 1)}
+              {screens[currentIndex - 1]}
             </Animated.View>
           )}
           
           {/* Next Screen (if not on last screen) */}
-          {currentIndex < 3 && (
+          {currentIndex < SCREEN_COUNT - 1 && (
             <Animated.View style={[styles.screenContainer, nextScreenStyle]}>
-              {renderScreen(currentIndex + 1)}
+              {screens[currentIndex + 1]}
             </Animated.View>
           )}
           
-          {/* Pagination dots */}
-          <View style={styles.pagination}>
-            {[0, 1, 2, 3].map((index) => (
+          {/* Pagination dots - centralized here instead of in individual screens */}
+          <View style={styles.pagination} pointerEvents="none">
+            {Array.from({length: SCREEN_COUNT}).map((_, index) => (
               <View 
                 key={index} 
                 style={[
                   styles.dot, 
-                  index === currentIndex && styles.activeDot
+                  index === currentIndex && [
+                    styles.activeDot, 
+                    {backgroundColor: getActiveDotColor(index)}
+                  ]
                 ]} 
               />
             ))}
@@ -296,7 +225,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   activeDot: {
-    backgroundColor: '#7B61FF',
     transform: [{ scale: 1.2 }],
   },
 });

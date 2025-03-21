@@ -1,88 +1,89 @@
-import React, { useRef, useEffect } from 'react';
-import { Animated, StyleSheet, Easing, View, TextStyle, DimensionValue } from 'react-native';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { Animated, StyleSheet, Easing, View, DimensionValue } from 'react-native';
 import { normalize, spacing } from '../../utils/scaling';
+import { FloatingElement } from './types';
 
-// Updated interface with more specific types for position values
 interface FloatingElementsProps {
-  elements: Array<{
-    emoji: string;
-    position: {
-      top?: string | number;
-      bottom?: string | number;
-      left?: string | number;
-      right?: string | number;
-    };
-  }>;
+  elements: FloatingElement[];
 }
 
 const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
   // Create animation refs for each element
   const animationsRef = useRef<Animated.Value[]>([]);
   
-  // Initialize animations if needed
-  if (animationsRef.current.length !== elements.length) {
-    animationsRef.current = elements.map(() => new Animated.Value(0));
-  }
-  
+  // Initialize animations with proper cleanup
   useEffect(() => {
-    // Function to animate a single element
-    const animateFloatingElement = (animValue: Animated.Value, duration: number) => {
-      // Reset the animation value
-      animValue.setValue(0);
+    // Create new animation values if needed
+    if (animationsRef.current.length !== elements.length) {
+      animationsRef.current = elements.map(() => new Animated.Value(0));
+    }
+    
+    // Store animation references for cleanup
+    const animations = animationsRef.current;
+    
+    // Create and start animations
+    const animationHandlers = animations.map((anim, index) => {
+      // Reset animation value
+      anim.setValue(0);
       
-      // Create and start the animation
-      Animated.timing(animValue, {
+      // Stagger durations between 10-17 seconds to avoid synchronization
+      const duration = 10000 + (index * 1500);
+      
+      // Create the animation
+      return Animated.timing(anim, {
         toValue: 1,
         duration: duration,
         easing: Easing.linear,
         useNativeDriver: true,
-      }).start((result) => {
-        // Only restart if component is still mounted and animation completed normally
-        if (result.finished) {
-          animateFloatingElement(animValue, duration);
-        }
       });
-    };
-    
-    // Start all animations with different durations
-    const animations = animationsRef.current;
-    animations.forEach((anim, index) => {
-      // Stagger durations between 10-17 seconds
-      const duration = 10000 + (index * 2000);
-      animateFloatingElement(anim, duration);
     });
+    
+    // Start all animations in a loop
+    const loopedAnimations = animationHandlers.map((anim) => 
+      Animated.loop(anim)
+    );
+    
+    // Start all animations
+    loopedAnimations.forEach(anim => anim.start());
     
     // Cleanup function to stop animations
     return () => {
       animations.forEach(anim => anim.stopAnimation());
+      loopedAnimations.forEach(anim => anim.stop());
     };
   }, [elements.length]); // Only re-run if the number of elements changes
   
-  // Function to get transform styles for floating elements
-  const getFloatingElementTransforms = (animValue: Animated.Value, startRotation = 0) => {
-    const translateX = animValue.interpolate({
-      inputRange: [0, 0.25, 0.5, 0.75, 1],
-      outputRange: [0, spacing(8), 0, -spacing(8), 0],
+  // Generate transform functions for each element (memoized for performance)
+  const getElementTransforms = useMemo(() => {
+    return elements.map((_, index) => {
+      const startRotation = index * 90; // Different start rotation for each element
+      
+      return (animValue: Animated.Value) => {
+        const translateX = animValue.interpolate({
+          inputRange: [0, 0.25, 0.5, 0.75, 1],
+          outputRange: [0, spacing(8), 0, -spacing(8), 0],
+        });
+        
+        const translateY = animValue.interpolate({
+          inputRange: [0, 0.25, 0.5, 0.75, 1],
+          outputRange: [0, -spacing(5), -spacing(10), -spacing(5), 0],
+        });
+        
+        const rotate = animValue.interpolate({
+          inputRange: [0, 1],
+          outputRange: [`${startRotation}deg`, `${startRotation + 360}deg`],
+        });
+        
+        return {
+          transform: [
+            { translateX },
+            { translateY },
+            { rotate },
+          ],
+        };
+      };
     });
-    
-    const translateY = animValue.interpolate({
-      inputRange: [0, 0.25, 0.5, 0.75, 1],
-      outputRange: [0, -spacing(5), -spacing(10), -spacing(5), 0],
-    });
-    
-    const rotate = animValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [`${startRotation}deg`, `${startRotation + 360}deg`],
-    });
-    
-    return {
-      transform: [
-        { translateX },
-        { translateY },
-        { rotate },
-      ],
-    };
-  };
+  }, [elements]);
 
   return (
     <View style={styles.container}>
@@ -92,7 +93,7 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
                          animationsRef.current[index] : 
                          new Animated.Value(0);
         
-        // Create a valid style object from the position
+        // Create a position style object
         const positionStyle: { [key: string]: DimensionValue } = {};
         
         // Only add valid position properties
@@ -101,13 +102,16 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
         if (element.position.left !== undefined) positionStyle.left = element.position.left as DimensionValue;
         if (element.position.right !== undefined) positionStyle.right = element.position.right as DimensionValue;
         
+        // Get transform for this element
+        const transforms = getElementTransforms[index](animValue);
+        
         return (
           <Animated.Text 
             key={index}
             style={[
               styles.element,
               positionStyle,
-              getFloatingElementTransforms(animValue, index * 90)
+              transforms
             ]}>
             {element.emoji}
           </Animated.Text>

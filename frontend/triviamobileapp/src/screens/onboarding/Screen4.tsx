@@ -1,4 +1,3 @@
-// src/screens/onboarding/Screen4.tsx
 import React from 'react';
 import OnboardingScreen from '../../components/onboarding/OnboardingScreen';
 import { onboardingData, themes } from '../../assets/onboardingData';
