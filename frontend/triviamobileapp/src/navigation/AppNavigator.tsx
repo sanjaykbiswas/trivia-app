@@ -1,5 +1,8 @@
+// src/navigation/AppNavigator.tsx
+// Replace the current AppNavigator with this improved version
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StatusBar } from 'react-native';
+import { View, StatusBar, StyleSheet } from 'react-native';
 // Uncomment if implementing AsyncStorage for persistence
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -47,7 +50,7 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ skipOnboarding = false }) =
     );
   }, [onboardingComplete]);
   
-  // Handler for when onboarding is complete
+  // Handler for when onboarding is complete - improved transition timing
   const handleOnboardingComplete = useCallback(() => {
     setIsTransitioning(true);
     
@@ -55,19 +58,19 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ skipOnboarding = false }) =
     // AsyncStorage.setItem('@onboarding_complete', 'true')
     //   .catch(err => console.error('Error saving onboarding state:', err));
     
-    // Add delay to ensure clean transition
+    // Increased delay to ensure clean transition
     setTimeout(() => {
       setOnboardingComplete(true);
-      // Small additional delay before finishing transition
+      // Longer additional delay before finishing transition
       setTimeout(() => {
         setIsTransitioning(false);
-      }, 100);
-    }, 300);
+      }, 500); // Increased from 100ms to 500ms
+    }, 500); // Increased from 300ms to 500ms
   }, []);
   
   if (isTransitioning) {
-    // Simple loading screen during transition
-    return <View style={{ flex: 1, backgroundColor: '#f8f9ff' }} />;
+    // Simple loading screen during transition with explicit styles
+    return <View style={styles.loadingScreen} />;
   }
   
   return onboardingComplete ? (
@@ -78,5 +81,12 @@ const AppNavigator: React.FC<AppNavigatorProps> = ({ skipOnboarding = false }) =
     <OnboardingNavigator onComplete={handleOnboardingComplete} />
   );
 };
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: '#f8f9ff',
+  }
+});
 
 export default AppNavigator;

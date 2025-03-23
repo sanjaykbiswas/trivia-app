@@ -1,6 +1,13 @@
+// src/components/onboarding/FloatingIcon.tsx
+// Fixed version with safer animation handling
+
 import React, { useMemo } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import Animated, { useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
+import Animated, { 
+  useAnimatedStyle, 
+  interpolate, 
+  Extrapolate 
+} from 'react-native-reanimated';
 import { spacing, normalize } from '../../utils/scaling';
 import { useFloatingAnimation } from '../../hooks/useFloatingAnimation';
 
@@ -57,23 +64,24 @@ const FloatingIcon: React.FC<FloatingIconProps> = ({ icon, primaryColor }) => {
     height: spacing(10)
   }), []);
   
-  // Main floating animation style
+  // Main floating animation style with safer interpolation
   const floatStyle = useAnimatedStyle(() => {
+    // Ensure we're using numbers, not objects
+    const translateYValue = interpolate(
+      mainAnimation.value.value,
+      [0, 1],
+      [0, floatDistance],
+      Extrapolate.CLAMP
+    );
+    
     return {
       transform: [
-        { 
-          translateY: interpolate(
-            mainAnimation.value.value,
-            [0, 1],
-            [0, floatDistance],
-            Extrapolate.CLAMP
-          ) 
-        }
+        { translateY: translateYValue }
       ]
     };
   });
   
-  // Styles for the three sparkles
+  // Styles for the three sparkles with safer interpolation
   const sparkle1Style = useAnimatedStyle(() => ({
     opacity: interpolate(
       sparkle1Animation.value.value,

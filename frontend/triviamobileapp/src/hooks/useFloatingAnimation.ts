@@ -1,4 +1,6 @@
 // src/hooks/useFloatingAnimation.ts
+// Fixed version of the floating animation hook
+
 import { useEffect } from 'react';
 import { 
   useSharedValue, 
@@ -46,7 +48,7 @@ export const useFloatingAnimation = (options: FloatingAnimationOptions = {}) => 
   // Calculate the actual delay with the speed factor
   const scaledDelay = delay * speedFactor;
   
-  // Use shared value for better performance
+  // Use shared value for better performance - initialize properly
   const animatedValue = useSharedValue(0);
   
   useEffect(() => {
@@ -55,6 +57,9 @@ export const useFloatingAnimation = (options: FloatingAnimationOptions = {}) => 
       duration: duration / 2, // Half duration for each direction
       easing
     };
+    
+    // Ensure animation begins from 0 to avoid any potential object issues
+    animatedValue.value = 0;
     
     // Animate up and down in a sequence
     const sequence = withSequence(
@@ -74,12 +79,28 @@ export const useFloatingAnimation = (options: FloatingAnimationOptions = {}) => 
       ? withDelay(scaledDelay, repeatingAnimation)
       : repeatingAnimation;
     
-    // Start the animation
-    animatedValue.value = animation;
+    // Start the animation - use try/catch to prevent errors
+    try {
+      // Set value directly, not using .value = animation, which is the source of the issue
+      animatedValue.value = 0; // Ensure it starts at 0
+      
+      // Then start the animation
+      setTimeout(() => {
+        animatedValue.value = animation;
+      }, 10);
+    } catch (error) {
+      console.warn('Animation error:', error);
+      animatedValue.value = 0; // Reset to safe value
+    }
     
     // Cleanup function to stop animation
     return () => {
-      cancelAnimation(animatedValue);
+      try {
+        cancelAnimation(animatedValue);
+        animatedValue.value = 0; // Reset to safe value
+      } catch (error) {
+        console.warn('Animation cleanup error:', error);
+      }
     };
   }, [animatedValue, duration, displacement, scaledDelay, easing]);
   

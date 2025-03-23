@@ -1,3 +1,6 @@
+// src/components/onboarding/FloatingElements.tsx
+// Fixed version with safer animation handling
+
 import React, { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { 
@@ -50,7 +53,7 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
         const { value } = animations[index];
         const rotationOffset = rotationOffsets[index];
         
-        // Create animated style for this element
+        // Create animated style for this element with explicit numeric values
         const animatedStyle = useAnimatedStyle(() => {
           // Calculate translation with a much larger circular path
           const translateX = interpolate(
@@ -67,21 +70,19 @@ const FloatingElements: React.FC<FloatingElementsProps> = ({ elements }) => {
             Extrapolate.CLAMP
           );
           
-          // Calculate rotation with larger range
-          const rotate = `${
-            interpolate(
-              value.value,
-              [0, 1],
-              [rotationOffset, rotationOffset + 120], // Much larger rotation range
-              Extrapolate.CLAMP
-            )
-          }deg`;
+          // Calculate rotation with larger range - ensure numeric values
+          const rotateValue = interpolate(
+            value.value,
+            [0, 1],
+            [rotationOffset, rotationOffset + 120], // Much larger rotation range
+            Extrapolate.CLAMP
+          );
           
           return {
             transform: [
-              { translateX },
-              { translateY },
-              { rotate },
+              { translateX }, // Now a pure number
+              { translateY }, // Now a pure number
+              { rotate: `${rotateValue}deg` }, // Now correctly formatted
             ],
             opacity: interpolate(
               value.value,

@@ -1,3 +1,4 @@
+// src/screens/HomeScreen.tsx
 import React, { useRef, useEffect } from 'react';
 import {
   View,
@@ -47,9 +48,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   
-  // Animation values
+  // Animation values with initial values
   const logoAnimation = useRef(new Animated.Value(0)).current;
-  const circleAnimations = useRef(characters.map(() => new Animated.Value(0))).current;
+  const circleAnimations = useRef(
+    characters.map(() => new Animated.Value(0))
+  ).current;
   const blobAnimation1 = useRef(new Animated.Value(0)).current;
   const blobAnimation2 = useRef(new Animated.Value(0)).current;
   const emojiAnimation = useRef(new Animated.Value(0)).current;
@@ -67,8 +70,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     // For cleanup - set mounted flag
     isMounted.current = true;
     
-    // Initialize with a staggered approach
-    const initialDelay = 300; // Wait for component to fully mount
+    // Initialize with a staggered approach - with increased delay
+    const initialDelay = 500; // Increased initial delay for component to fully mount
     
     // Logo animation
     const logoAnimationTimeout = setTimeout(() => {
@@ -117,7 +120,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
         
         circleAnim.start();
         animationHandles.current.push(circleAnim);
-      }, initialDelay + (index * 100)); // Stagger start times
+      }, initialDelay + (index * 150)); // Increased stagger
       
       timeoutRefs.current.push(circleTimeout);
     });
@@ -163,7 +166,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       blobAnim1.start();
       blobAnim2.start();
       animationHandles.current.push(blobAnim1, blobAnim2);
-    }, initialDelay + 400);
+    }, initialDelay + 600); // Increased delay
     
     timeoutRefs.current.push(blobTimeout);
 
@@ -182,7 +185,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       
       emojiAnim.start();
       animationHandles.current.push(emojiAnim);
-    }, initialDelay + 500);
+    }, initialDelay + 800); // Increased delay
     
     timeoutRefs.current.push(emojiTimeout);
 
@@ -204,7 +207,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
     };
   }, [logoAnimation, circleAnimations, blobAnimation1, blobAnimation2, emojiAnimation]);
 
-  // Animated styles
+  // Animated styles - fixed to ensure they're properly formatted
   const logoStyle = {
     transform: [
       {
@@ -221,18 +224,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
       },
     ],
   };
-
-  // Calculate circle animation styles
-  const circleStyles = circleAnimations.map((anim) => ({
-    transform: [
-      {
-        translateY: anim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -20],
-        }),
-      },
-    ],
-  }));
 
   // Emoji rotation style
   const emojiStyle = {
@@ -264,23 +255,43 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
           </TouchableOpacity>
         </View>
         
-        {/* Decorative circles with characters */}
-        {characters.map((character, index) => (
-          <LinearGradientCircle
-            key={`circle-${index}`}
-            size={character.size}
-            colors={character.colors}
-            style={{
-              ...styles.decorativeCircle,
-              ...positions[index],
-            }}
-            animatedStyle={circleStyles[index]}
-          >
-            <View style={styles.character}>
-              <Text style={styles.characterText}>{character.emoji}</Text>
-            </View>
-          </LinearGradientCircle>
-        ))}
+        {/* Decorative circles with characters - FIXED CODE */}
+        {characters.map((character, index) => {
+          // Create a plain object style for animation
+          const animationStyle = {
+            transform: [
+              {
+                translateY: circleAnimations[index].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, -20],
+                }),
+              },
+            ],
+          };
+          
+          // Extract position styles from positions array
+          const positionStyle = positions[index];
+          
+          return (
+            <Animated.View
+              key={`circle-container-${index}`}
+              style={[
+                styles.decorativeCircle,
+                positionStyle,
+                animationStyle
+              ]}
+            >
+              <LinearGradientCircle
+                size={character.size}
+                colors={character.colors}
+              >
+                <View style={styles.character}>
+                  <Text style={styles.characterText}>{character.emoji}</Text>
+                </View>
+              </LinearGradientCircle>
+            </Animated.View>
+          );
+        })}
         
         {/* Emoji */}
         <Animated.Text 
