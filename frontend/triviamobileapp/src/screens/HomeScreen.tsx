@@ -21,7 +21,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { normalize, spacing } from '../utils/scaling';
 import LogoCard from '../components/LogoCard.tsx';
-import AnimatedBlob from '../components/AnimatedBlob.tsx';
 
 // Get screen dimensions
 const { width, height } = Dimensions.get('window');
@@ -106,22 +105,6 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
             <Text style={styles.navButtonText}>❓</Text>
           </TouchableOpacity>
         </View>
-        
-        {/* Background blobs */}
-        <AnimatedBlob 
-          color="rgba(255, 0, 255, 0.5)"
-          size={spacing(300)}
-          style={styles.blob1}
-          duration={7000}
-          delay={300}
-        />
-        <AnimatedBlob 
-          color="rgba(0, 229, 232, 0.5)"
-          size={spacing(350)} 
-          style={styles.blob2}
-          duration={10000}
-          delay={500}
-        />
         
         {/* Logo card */}
         <View style={styles.logoContainer}>
@@ -249,29 +232,6 @@ const styles = StyleSheet.create({
     width: '80%',
     height: 'auto',
     zIndex: 4,
-  },
-  // Styles for logo card are now in the LogoCard component
-  blob1: {
-    position: 'absolute',
-    width: spacing(300),
-    height: spacing(300),
-    backgroundColor: 'rgba(255, 0, 255, 0.5)',
-    borderRadius: spacing(150),
-    bottom: -spacing(150),
-    left: -spacing(100),
-    zIndex: 0,
-    opacity: 0.5,
-  },
-  blob2: {
-    position: 'absolute',
-    width: spacing(350),
-    height: spacing(350),
-    backgroundColor: 'rgba(0, 229, 232, 0.5)',
-    borderRadius: spacing(175),
-    bottom: -spacing(200),
-    right: -spacing(150),
-    zIndex: 0,
-    opacity: 0.5,
   },
   buttonContainer: {
     width: '100%',
