@@ -94,8 +94,8 @@ export const fontFamily = {
     // Button text styles
     buttonLarge: {
       fontFamily: fontFamily.primary,
-      fontSize: 18,
-      fontWeight: fontWeights.medium,
+      fontSize: 16,
+      fontWeight: fontWeights.bold,
       lineHeight: 24,
       letterSpacing: 0.5,
     },

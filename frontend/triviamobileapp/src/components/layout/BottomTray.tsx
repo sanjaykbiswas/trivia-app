@@ -17,7 +17,7 @@ interface BottomTrayProps {
   secondaryAction?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
-  hideBorder?: boolean; // New prop to control border visibility
+  hideBorder?: boolean;
 }
 
 /**
@@ -32,25 +32,33 @@ const BottomTray: React.FC<BottomTrayProps> = ({
   secondaryAction,
   style,
   testID,
-  hideBorder = false, // Default to showing the border
+  hideBorder = false,
 }) => {
   return (
     <View 
       style={[
         styles.container, 
-        hideBorder && styles.noBorder, // Apply noBorder style when hideBorder is true
+        hideBorder && styles.noBorder,
         style
       ]} 
       testID={testID}
     >
       {title && (
-        <Typography
-          variant="heading5"
-          align="center"
-          style={styles.title}
-        >
-          {title}
-        </Typography>
+        <View style={styles.titleContainer}>
+          <Typography
+            variant="heading2"
+            align="center"
+          >
+            {title.split(' ').slice(0, 2).join(' ')}
+          </Typography>
+          <Typography
+            variant="heading2"
+            align="center"
+            style={styles.title}
+          >
+            {title.split(' ').slice(2).join(' ')}
+          </Typography>
+        </View>
       )}
 
       <Button
@@ -68,13 +76,23 @@ const BottomTray: React.FC<BottomTrayProps> = ({
           style={styles.secondaryButton}
           disabled={!secondaryAction}
         >
-          <Typography
-            variant="bodyMedium"
-            color={colors.text.secondary}
-            align="center"
-          >
-            {secondaryText}
-          </Typography>
+          <View style={styles.secondaryTextContainer}>
+            <Typography
+              variant="bodyMedium"
+              color={colors.text.secondary}
+              align="center"
+            >
+              {secondaryText.split("Sign In")[0]}
+            </Typography>
+            <Typography
+              variant="bodyMedium"
+              color={colors.text.secondary}
+              align="center"
+              style={{ fontWeight: 'bold' }}
+            >
+              Sign In
+            </Typography>
+          </View>
         </TouchableOpacity>
       )}
     </View>
@@ -90,16 +108,24 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
   noBorder: {
-    borderTopWidth: 0, // Remove the border
+    borderTopWidth: 0,
+  },
+  titleContainer: {
+    marginBottom: spacing.md,
   },
   title: {
-    marginBottom: spacing.md,
+    marginTop: -4, // Reduced spacing between the two lines (negative value to bring lines closer)
   },
   primaryButton: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   secondaryButton: {
     paddingVertical: spacing.xs,
+  },
+  secondaryTextContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

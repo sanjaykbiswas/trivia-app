@@ -25,21 +25,18 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     >
       <View style={styles.container}>
         <View style={styles.contentContainer}>
-          <Typography variant="heading2" align="center">
-            Calorie tracking
-          </Typography>
-          <Typography variant="heading2" align="center">
-            made easy
-          </Typography>
+          {/* Main content area - now empty or could contain other elements */}
         </View>
 
-        {/* Bottom tray with actions - now with hideBorder set to true */}
+        {/* Bottom tray with customized title */}
         <BottomTray
-          primaryButtonText="Get Started"
+          title="Endless categories. No repeats." // Will be split into two lines in the BottomTray component
+          primaryButtonText="Start Playing"
           primaryButtonAction={onGetStarted}
-          secondaryText="Purchased on the web? Sign In"
+          secondaryText="Already have an account? Sign In"
           secondaryAction={onSignIn}
-          hideBorder={true} // Add this line to hide the border
+          hideBorder={true}
+          style={styles.bottomTray}
         />
       </View>
     </Container>
@@ -56,6 +53,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.page,
+  },
+  bottomTray: {
+    paddingTop: spacing.xl, // Add extra padding at the top for the larger title
   },
 });
 

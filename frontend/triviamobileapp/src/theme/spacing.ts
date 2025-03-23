@@ -9,6 +9,8 @@ const baseUnit = 8;
 export const spacing = {
   // Named spacing values
   none: 0,
+  xxxs: baseUnit / 8,       // 1px
+  xxs: baseUnit / 4,       // 2px
   xs: baseUnit / 2,       // 4px
   sm: baseUnit,           // 8px
   md: baseUnit * 2,       // 16px
@@ -28,7 +30,7 @@ export const spacing = {
   
   // Button spacing
   buttonPadding: {
-    vertical: baseUnit * 1.5,   // 12px
+    vertical: baseUnit * 1.25,   // 12px
     horizontal: baseUnit * 2.5, // 20px
   },
 };
