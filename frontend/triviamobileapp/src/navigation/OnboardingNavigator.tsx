@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -7,7 +7,6 @@ import Animated, {
   withTiming,
   runOnJS,
   Easing,
-  cancelAnimation,
 } from 'react-native-reanimated';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 import Screen1 from '../screens/onboarding/Screen1';
@@ -20,11 +19,7 @@ const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 60; // Reduced threshold for better responsiveness
 const SCREEN_COUNT = 4;
 
-interface OnboardingNavigatorProps {
-  onComplete: () => void;
-}
-
-const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onComplete }) => {
+const OnboardingNavigator: React.FC = () => {
   // Track current screen index
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -37,15 +32,6 @@ const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onComplete })
     duration: 250,
     easing: Easing.inOut(Easing.ease)
   };
-  
-  // Clean up animations when component unmounts
-  useEffect(() => {
-    return () => {
-      // Ensure animations are canceled when component unmounts
-      cancelAnimation(opacity);
-      isAnimating.value = false;
-    };
-  }, [opacity]);
   
   // Handle transition between screens
   const transitionToScreen = useCallback((nextIndex: number) => {
@@ -79,21 +65,9 @@ const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onComplete })
   // Handle completion (last screen)
   const handleComplete = useCallback(() => {
     console.log('Onboarding complete');
-    
-    // Stop any running animations before transitioning
-    isAnimating.value = true;
-    
-    // Add fade out animation with callback
-    opacity.value = withTiming(0, {
-      duration: 300,
-      easing: Easing.out(Easing.ease)
-    }, (finished) => {
-      if (finished) {
-        // Call completion callback
-        runOnJS(onComplete)();
-      }
-    });
-  }, [onComplete, opacity, isAnimating]);
+    // Here you would navigate to your main app
+    // navigation.replace('MainApp');
+  }, []);
   
   // Get active dot color based on current screen
   const getActiveDotColor = useCallback((index: number): string => {

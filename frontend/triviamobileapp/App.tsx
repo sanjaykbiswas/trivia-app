@@ -3,7 +3,7 @@ import React from 'react';
 import { StatusBar, LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import AppNavigator from './src/navigation/AppNavigator';
+import OnboardingNavigator from './src/navigation/OnboardingNavigator';
 
 // Silence warnings that might appear with animations
 LogBox.ignoreLogs([
@@ -14,9 +14,6 @@ LogBox.ignoreLogs([
 ]);
 
 function App(): React.JSX.Element {
-  // For development, you can skip onboarding by setting this to true
-  const skipOnboarding = false;
-  
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -25,7 +22,7 @@ function App(): React.JSX.Element {
           backgroundColor="transparent" 
           translucent 
         />
-        <AppNavigator skipOnboarding={skipOnboarding} />
+        <OnboardingNavigator />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
