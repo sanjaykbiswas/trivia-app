@@ -19,11 +19,7 @@ const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 60; // Reduced threshold for better responsiveness
 const SCREEN_COUNT = 4;
 
-interface OnboardingNavigatorProps {
-  onOnboardingComplete: () => void;
-}
-
-const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onOnboardingComplete }) => {
+const OnboardingNavigator: React.FC = () => {
   // Track current screen index
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -68,13 +64,10 @@ const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onOnboardingC
   
   // Handle completion (last screen)
   const handleComplete = useCallback(() => {
-    // Make sure onOnboardingComplete is defined before calling
-    if (onOnboardingComplete && typeof onOnboardingComplete === 'function') {
-      onOnboardingComplete();
-    } else {
-      console.warn('onOnboardingComplete is not defined or not a function');
-    }
-  }, [onOnboardingComplete]);
+    console.log('Onboarding complete');
+    // Here you would navigate to your main app
+    // navigation.replace('MainApp');
+  }, []);
   
   // Get active dot color based on current screen
   const getActiveDotColor = useCallback((index: number): string => {
@@ -163,7 +156,7 @@ const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onOnboardingC
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f8f9ff',
   },
   gestureContainer: {
     flex: 1,
