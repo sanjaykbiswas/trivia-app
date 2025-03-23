@@ -30,7 +30,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* Bottom tray with customized title */}
         <BottomTray
-          title="Endless categories. No repeats." // Will be split into two lines in the BottomTray component
+          title="Endless trivia.  No repeats." // Will be split into two lines in the BottomTray component
           primaryButtonText="Start Playing"
           primaryButtonAction={onGetStarted}
           secondaryText="Already have an account? Sign In"
