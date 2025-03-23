@@ -19,7 +19,11 @@ const { width } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 60; // Reduced threshold for better responsiveness
 const SCREEN_COUNT = 4;
 
-const OnboardingNavigator: React.FC = () => {
+interface OnboardingNavigatorProps {
+  onComplete: () => void;
+}
+
+const OnboardingNavigator: React.FC<OnboardingNavigatorProps> = ({ onComplete }) => {
   // Track current screen index
   const [currentIndex, setCurrentIndex] = useState(0);
   
@@ -65,9 +69,9 @@ const OnboardingNavigator: React.FC = () => {
   // Handle completion (last screen)
   const handleComplete = useCallback(() => {
     console.log('Onboarding complete');
-    // Here you would navigate to your main app
-    // navigation.replace('MainApp');
-  }, []);
+    // Call the onComplete callback to navigate to the main app
+    onComplete();
+  }, [onComplete]);
   
   // Get active dot color based on current screen
   const getActiveDotColor = useCallback((index: number): string => {
