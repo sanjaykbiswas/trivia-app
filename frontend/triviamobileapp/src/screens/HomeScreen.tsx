@@ -54,90 +54,152 @@ const HomeScreen: React.FC<HomeScreenProps> = ({
   const blobAnimation2 = useRef(new Animated.Value(0)).current;
   const emojiAnimation = useRef(new Animated.Value(0)).current;
   
+  // Track mount state to prevent animations after unmount
+  const isMounted = useRef(true);
+  
+  // Animation timeouts refs for cleanup
+  const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
+  
+  // Store animation handles for cleanup
+  const animationHandles = useRef<Animated.CompositeAnimation[]>([]);
+  
   useEffect(() => {
+    // For cleanup - set mounted flag
+    isMounted.current = true;
+    
+    // Initialize with a staggered approach
+    const initialDelay = 300; // Wait for component to fully mount
+    
     // Logo animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(logoAnimation, {
-          toValue: 1,
-          ...animationConfig,
-        }),
-        Animated.timing(logoAnimation, {
-          toValue: 0,
-          ...animationConfig,
-        }),
-      ])
-    ).start();
-
-    // Circle animations with different durations
-    circleAnimations.forEach((anim, index) => {
-      Animated.loop(
+    const logoAnimationTimeout = setTimeout(() => {
+      if (!isMounted.current) return;
+      
+      const logoAnim = Animated.loop(
         Animated.sequence([
-          Animated.timing(anim, {
+          Animated.timing(logoAnimation, {
             toValue: 1,
-            duration: 6000 + (index * 1000), // Staggered durations
+            ...animationConfig,
+          }),
+          Animated.timing(logoAnimation, {
+            toValue: 0,
+            ...animationConfig,
+          }),
+        ])
+      );
+      
+      logoAnim.start();
+      animationHandles.current.push(logoAnim);
+    }, initialDelay);
+    
+    timeoutRefs.current.push(logoAnimationTimeout);
+
+    // Circle animations with staggered start
+    circleAnimations.forEach((anim, index) => {
+      const circleTimeout = setTimeout(() => {
+        if (!isMounted.current) return;
+        
+        const circleAnim = Animated.loop(
+          Animated.sequence([
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: 6000 + (index * 1000), // Staggered durations
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim, {
+              toValue: 0,
+              duration: 6000 + (index * 1000),
+              easing: Easing.inOut(Easing.sin),
+              useNativeDriver: true,
+            }),
+          ])
+        );
+        
+        circleAnim.start();
+        animationHandles.current.push(circleAnim);
+      }, initialDelay + (index * 100)); // Stagger start times
+      
+      timeoutRefs.current.push(circleTimeout);
+    });
+
+    // Blob animations - start after circles
+    const blobTimeout = setTimeout(() => {
+      if (!isMounted.current) return;
+      
+      const blobAnim1 = Animated.loop(
+        Animated.sequence([
+          Animated.timing(blobAnimation1, {
+            toValue: 1,
+            duration: 10000,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
-          Animated.timing(anim, {
+          Animated.timing(blobAnimation1, {
             toValue: 0,
-            duration: 6000 + (index * 1000),
+            duration: 10000,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
         ])
-      ).start();
-    });
+      );
+      
+      const blobAnim2 = Animated.loop(
+        Animated.sequence([
+          Animated.timing(blobAnimation2, {
+            toValue: 1,
+            duration: 12000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+          Animated.timing(blobAnimation2, {
+            toValue: 0,
+            duration: 12000,
+            easing: Easing.inOut(Easing.sin),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      blobAnim1.start();
+      blobAnim2.start();
+      animationHandles.current.push(blobAnim1, blobAnim2);
+    }, initialDelay + 400);
+    
+    timeoutRefs.current.push(blobTimeout);
 
-    // Blob animations
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(blobAnimation1, {
+    // Emoji animation - start last
+    const emojiTimeout = setTimeout(() => {
+      if (!isMounted.current) return;
+      
+      const emojiAnim = Animated.loop(
+        Animated.timing(emojiAnimation, {
           toValue: 1,
-          duration: 10000,
-          easing: Easing.inOut(Easing.sin),
+          duration: 15000,
+          easing: Easing.linear,
           useNativeDriver: true,
-        }),
-        Animated.timing(blobAnimation1, {
-          toValue: 0,
-          duration: 10000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+        })
+      );
+      
+      emojiAnim.start();
+      animationHandles.current.push(emojiAnim);
+    }, initialDelay + 500);
+    
+    timeoutRefs.current.push(emojiTimeout);
 
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(blobAnimation2, {
-          toValue: 1,
-          duration: 12000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(blobAnimation2, {
-          toValue: 0,
-          duration: 12000,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Emoji rotation animation
-    Animated.loop(
-      Animated.timing(emojiAnimation, {
-        toValue: 1,
-        duration: 15000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    // Cleanup animations on unmount
+    // Cleanup animations and timeouts on unmount
     return () => {
+      // Set mounted flag to false to prevent starting new animations
+      isMounted.current = false;
+      
+      // Clear all pending timeouts
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+      
+      // Stop all running animations
+      animationHandles.current.forEach(anim => anim.stop());
+      
+      // Reset animation values
       [logoAnimation, ...circleAnimations, blobAnimation1, blobAnimation2, emojiAnimation].forEach(
-        anim => anim.stopAnimation()
+        anim => anim.setValue(0)
       );
     };
   }, [logoAnimation, circleAnimations, blobAnimation1, blobAnimation2, emojiAnimation]);
