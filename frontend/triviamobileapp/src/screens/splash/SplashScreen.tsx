@@ -37,7 +37,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Text style={styles.fallbackText}>Cal AI</Text>
+        <Text style={styles.fallbackText}>Open Trivia</Text>
       </View>
     </View>
   );
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#F5F5F5', // Light background to ensure visibility
+    backgroundColor: 'transparent', // Changed from '#F5F5F5' to 'transparent'
     borderRadius: 10,
   },
   appName: {

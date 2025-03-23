@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar, LogBox, Text, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import screens directly as a temporary measure for debugging
 import { SplashScreen } from './src/screens/splash';
@@ -48,7 +47,7 @@ function App(): React.JSX.Element {
         <StatusBar 
           barStyle="dark-content" 
           backgroundColor="transparent" 
-          translucent 
+          translucent a
         />
         
         {/* Render splash or onboarding directly for debugging */}

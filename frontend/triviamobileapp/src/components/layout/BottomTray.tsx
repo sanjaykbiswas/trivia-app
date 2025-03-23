@@ -17,6 +17,7 @@ interface BottomTrayProps {
   secondaryAction?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  hideBorder?: boolean; // New prop to control border visibility
 }
 
 /**
@@ -31,9 +32,17 @@ const BottomTray: React.FC<BottomTrayProps> = ({
   secondaryAction,
   style,
   testID,
+  hideBorder = false, // Default to showing the border
 }) => {
   return (
-    <View style={[styles.container, style]} testID={testID}>
+    <View 
+      style={[
+        styles.container, 
+        hideBorder && styles.noBorder, // Apply noBorder style when hideBorder is true
+        style
+      ]} 
+      testID={testID}
+    >
       {title && (
         <Typography
           variant="heading5"
@@ -79,6 +88,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
+  },
+  noBorder: {
+    borderTopWidth: 0, // Remove the border
   },
   title: {
     marginBottom: spacing.md,

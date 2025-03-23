@@ -33,12 +33,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
           </Typography>
         </View>
 
-        {/* Bottom tray with actions */}
+        {/* Bottom tray with actions - now with hideBorder set to true */}
         <BottomTray
           primaryButtonText="Get Started"
           primaryButtonAction={onGetStarted}
           secondaryText="Purchased on the web? Sign In"
           secondaryAction={onSignIn}
+          hideBorder={true} // Add this line to hide the border
         />
       </View>
     </Container>
