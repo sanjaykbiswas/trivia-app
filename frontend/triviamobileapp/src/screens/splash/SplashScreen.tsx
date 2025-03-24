@@ -1,39 +1,28 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import { Container, Typography } from '../../components';
-import { colors } from '../../theme';
+import { StackScreenProps } from '@react-navigation/stack';
+import { RootStackParamList } from '../../navigation/types';
 
-interface SplashScreenProps {
-  onSplashComplete: () => void;
-  splashDuration?: number;
-}
+type SplashScreenProps = StackScreenProps<RootStackParamList, 'Splash'>;
 
 /**
  * SplashScreen component
  * Displays the app branding during initial load
  */
-const SplashScreen: React.FC<SplashScreenProps> = ({
-  onSplashComplete,
-  splashDuration = 2000, // Default 2 seconds splash display
-}) => {
+const SplashScreen: React.FC<SplashScreenProps> = ({ navigation }) => {
   useEffect(() => {
     // Auto-navigate after splash duration
     const timer = setTimeout(() => {
       console.log('Splash screen timer completed');
-      onSplashComplete();
-    }, splashDuration);
-
-    // Log when component mounts for debugging
-    console.log('SplashScreen mounted');
+      navigation.replace('Onboarding');
+    }, 2000); // Default 2 seconds splash display
 
     // Clean up timer if component unmounts
     return () => {
-      console.log('SplashScreen unmounted, clearing timer');
       clearTimeout(timer);
     };
-  }, [onSplashComplete, splashDuration]);
+  }, [navigation]);
 
-  // Use basic Text component as a fallback to verify rendering
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
@@ -48,24 +37,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // Explicit background color
+    backgroundColor: '#FFFFFF',
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: 'transparent', // Changed from '#F5F5F5' to 'transparent'
+    backgroundColor: 'transparent',
     borderRadius: 10,
-  },
-  appName: {
-    fontWeight: '700',
-    color: '#000000', // Explicitly black
-    fontSize: 32,
   },
   fallbackText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000000', // Explicitly black
+    color: '#000000',
   },
 });
 

@@ -1,45 +1,36 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { createStackNavigator } from '@react-navigation/stack';
 import { SplashScreen, OnboardingScreen } from '../screens';
+import { RootStackParamList } from './types';
+
+const Stack = createStackNavigator<RootStackParamList>();
 
 /**
  * AppNavigator component
- * Handles navigation between screens in the app
- * This is a simple implementation without a navigation library
- * In a real app, you would use React Navigation
+ * Handles navigation between screens in the app using React Navigation
  */
 const AppNavigator: React.FC = () => {
-  // Current screen state
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'onboarding'>('splash');
-
-  // Navigation handlers
-  const handleSplashComplete = () => {
-    setCurrentScreen('onboarding');
-  };
-
-  const handleGetStarted = () => {
-    // Navigate to sign up or home based on your requirements
-    console.log('Get Started pressed');
-    // This would typically navigate to another screen
-    // setCurrentScreen('home');
-  };
-
-  const handleSignIn = () => {
-    // Navigate to sign in screen
-    console.log('Sign In pressed');
-    // This would typically navigate to another screen
-    // setCurrentScreen('signIn');
-  };
-
-  // Render the current screen
-  if (currentScreen === 'splash') {
-    return <SplashScreen onSplashComplete={handleSplashComplete} />;
-  }
-
   return (
-    <OnboardingScreen
-      onGetStarted={handleGetStarted}
-      onSignIn={handleSignIn}
-    />
+    <Stack.Navigator 
+      initialRouteName="Splash"
+      screenOptions={{ 
+        headerShown: false,
+        cardStyle: { backgroundColor: 'white' },
+      }}
+    >
+      <Stack.Screen name="Splash" component={SplashScreen} />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      
+      {/* Add more screens as you create them */}
+      {/* 
+      <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="GamePlay" component={GamePlayScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      */}
+    </Stack.Navigator>
   );
 };
 

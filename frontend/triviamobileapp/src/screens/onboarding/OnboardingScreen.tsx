@@ -1,22 +1,30 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Container, Typography } from '../../components';
+import { StackScreenProps } from '@react-navigation/stack';
+import { Container } from '../../components/common';
 import { BottomTray } from '../../components/layout';
 import { colors, spacing } from '../../theme';
+import { RootStackParamList } from '../../navigation/types';
 
-interface OnboardingScreenProps {
-  onGetStarted: () => void;
-  onSignIn: () => void;
-}
+type OnboardingScreenProps = StackScreenProps<RootStackParamList, 'Onboarding'>;
 
 /**
  * OnboardingScreen component
  * Displays the app introduction and initial call-to-actions
  */
-const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
-  onGetStarted,
-  onSignIn,
-}) => {
+const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
+  const handleGetStarted = () => {
+    // Navigate to SignUp when implemented
+    console.log('Get Started pressed');
+    // Example: navigation.navigate('SignUp');
+  };
+
+  const handleSignIn = () => {
+    // Navigate to SignIn when implemented
+    console.log('Sign In pressed');
+    // Example: navigation.navigate('SignIn');
+  };
+
   return (
     <Container
       useSafeArea={true}
@@ -30,11 +38,11 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* Bottom tray with customized title */}
         <BottomTray
-          title="Endless trivia.  No repeats." // Will be split into two lines in the BottomTray component
+          title="Trivia tailored for friends"
           primaryButtonText="Start Playing"
-          primaryButtonAction={onGetStarted}
+          primaryButtonAction={handleGetStarted}
           secondaryText="Already have an account? Sign In"
-          secondaryAction={onSignIn}
+          secondaryAction={handleSignIn}
           hideBorder={true}
           style={styles.bottomTray}
         />
@@ -55,7 +63,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.page,
   },
   bottomTray: {
-    paddingTop: spacing.xl, // Add extra padding at the top for the larger title
+    paddingTop: spacing.xl,
   },
 });
 
