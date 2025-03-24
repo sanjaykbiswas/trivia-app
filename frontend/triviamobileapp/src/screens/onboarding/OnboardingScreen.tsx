@@ -38,7 +38,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
         {/* Bottom tray with customized title */}
         <BottomTray
-          title="Trivia tailored for friends"
+          title="Trivia for game nights with friends"
           primaryButtonText="Start Playing"
           primaryButtonAction={handleGetStarted}
           secondaryText="Already have an account? Sign In"
