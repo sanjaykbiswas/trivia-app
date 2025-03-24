@@ -14,9 +14,8 @@ type OnboardingScreenProps = StackScreenProps<RootStackParamList, 'Onboarding'>;
  */
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const handleGetStarted = () => {
-    // Navigate to SignUp when implemented
-    console.log('Get Started pressed');
-    // Example: navigation.navigate('SignUp');
+    // Navigate to Home screen
+    navigation.navigate('Home');
   };
 
   const handleSignIn = () => {
@@ -38,7 +37,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
         {/* Bottom tray with customized title */}
         <BottomTray
-          title="Trivia for game nights with friends"
+          title="Trivia tailored for friends"
           primaryButtonText="Start Playing"
           primaryButtonAction={handleGetStarted}
           secondaryText="Already have an account? Sign In"
