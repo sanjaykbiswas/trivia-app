@@ -47,7 +47,7 @@ function App(): React.JSX.Element {
         <StatusBar 
           barStyle="dark-content" 
           backgroundColor="transparent" 
-          translucent a
+          translucent
         />
         
         {/* Render splash or onboarding directly for debugging */}
