@@ -46,7 +46,7 @@ const Button: React.FC<ButtonProps> = ({
   // Determine button container styles based on variant and size
   const getContainerStyle = (): ViewStyle => {
     const baseStyle: ViewStyle = {
-      borderRadius: 100, // Fully rounded
+      borderRadius: 16, // For fully rounded use 100
       justifyContent: 'center',
       alignItems: 'center',
       flexDirection: 'row',

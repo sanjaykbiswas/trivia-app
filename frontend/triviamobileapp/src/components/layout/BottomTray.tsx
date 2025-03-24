@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
   },
   titleContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   title: {
     marginTop: -4, // Reduced spacing between the two lines (negative value to bring lines closer)
