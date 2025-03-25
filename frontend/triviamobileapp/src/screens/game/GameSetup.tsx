@@ -20,8 +20,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     return result;
   });
 
-  // Custom category input state
-  const [customCategory, setCustomCategory] = useState('');
+
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -80,38 +79,13 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.customCategorySection}>
-            <Typography variant="bodyLarge" style={styles.categoryTitle}>
-              Custom Category
-            </Typography>
-            
-            <TouchableOpacity style={styles.customCategoryButton}>
-              <Svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9370DB" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M12 5v14M5 12h14" />
-              </Svg>
-              <Typography 
-                variant="bodyMedium" 
-                color="#9370DB"
-                style={styles.customCategoryButtonText}
-              >
-                Create Your Own Category!
-              </Typography>
-            </TouchableOpacity>
 
-            <TextInput
-              style={styles.customCategoryInput}
-              placeholder="Enter any topic (e.g., 'Marvel Movies', 'Classic Cars'...)"
-              placeholderTextColor={colors.gray[400]}
-              value={customCategory}
-              onChangeText={setCustomCategory}
-            />
-          </View>
         </View>
       </ScrollView>
 
       <View style={styles.bottomButtons}>
         <Button
-          title="Create Custom Packs With AI"
+          title="Create Packs With AI"
           onPress={handleStartGame}
           variant="contained"
           size="large"
@@ -168,34 +142,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: colors.background.default,
   },
-  categoryTitle: {
-    marginBottom: spacing.md,
-    color: colors.text.primary,
-  },
-  customCategorySection: {
-    marginBottom: spacing.md,
-  },
-  customCategoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 2,
-    borderColor: '#9370DB',
-    borderRadius: 12,
-    borderStyle: 'dashed',
-  },
-  customCategoryButtonText: {
-    marginLeft: spacing.sm,
-  },
-  customCategoryInput: {
-    backgroundColor: colors.gray[100],
-    borderRadius: 16,
-    padding: spacing.md,
-    fontSize: 16,
-    color: colors.text.primary,
-  },
+
   bottomButtons: {
     padding: spacing.page,
     paddingBottom: spacing.page,
