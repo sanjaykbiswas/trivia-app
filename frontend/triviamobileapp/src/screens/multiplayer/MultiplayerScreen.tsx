@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
-import { SelectionOption } from '../../components/layout';
+import { SelectionOption, BottomTray } from '../../components/layout';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -44,7 +44,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
       statusBarStyle="dark-content"
     >
       <View style={styles.container}>
-        {/* Temporary back button for testing */}
+        {/* Back button */}
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <View style={styles.backButtonCircle}>
             <Typography variant="bodyMedium">←</Typography>
@@ -52,20 +52,26 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
         </TouchableOpacity>
 
         <View style={styles.contentContainer}>
+          {/* Left-aligned title in-line with back button */}
           <Typography variant="heading1" style={styles.title}>
             Multiplayer
           </Typography>
 
-          {/* Host Game option */}
+          <View style={styles.spacer} />
+
+          {/* Host Game option positioned at the bottom of main content */}
           <SelectionOption
-            title="Host Game"
+            title="Host"
             subtitle="Create a new game room"
             emoji="👑"
             onPress={handleHostGame}
             testID="host-game-option"
+            style={styles.hostGameOption}
           />
+        </View>
 
-          {/* Divider */}
+        {/* Divider with text - positioned above the bottom tray */}
+        <View style={styles.dividerContainer}>
           <View style={styles.divider}>
             <View style={styles.dividerLine} />
             <Typography 
@@ -77,7 +83,10 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             </Typography>
             <View style={styles.dividerLine} />
           </View>
+        </View>
 
+        {/* Bottom Tray with Join Game functionality */}
+        <View style={styles.bottomTrayContainer}>
           {/* Room code input */}
           <TextInput
             style={styles.input}
@@ -89,8 +98,8 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             maxLength={6}
             testID="room-code-input"
           />
-
-          {/* Join Game button */}
+          
+          {/* Use full width button instead of BottomTray for consistent width */}
           <Button
             title="Join Game"
             onPress={handleJoinGame}
@@ -98,10 +107,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             size="large"
             fullWidth
             disabled={isJoinButtonDisabled}
-            style={[
-              styles.joinButton,
-              isJoinButtonDisabled && styles.disabledButton
-            ]}
+            style={styles.joinButton}
             testID="join-game-button"
           />
         </View>
@@ -132,17 +138,27 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing.page,
     paddingTop: spacing.xxl + spacing.md, // Extra padding for back button
-    alignItems: 'center',
   },
   title: {
     marginBottom: spacing.xl,
-    textAlign: 'center',
+    textAlign: 'left',
+    marginLeft: spacing.sm, // Align with back button
+  },
+  spacer: {
+    flex: 1,
+  },
+  hostGameOption: {
+    marginBottom: spacing.sm,
+  },
+  dividerContainer: {
+    paddingHorizontal: spacing.page,
+    backgroundColor: colors.background.default,
   },
   divider: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.lg,
+    marginBottom: spacing.md,
   },
   dividerLine: {
     flex: 1,
@@ -151,6 +167,12 @@ const styles = StyleSheet.create({
   },
   dividerText: {
     marginHorizontal: spacing.md,
+  },
+  bottomTrayContainer: {
+    backgroundColor: colors.background.default,
+    padding: spacing.page,
+    paddingTop: 0,
+    paddingBottom: spacing.xl,
   },
   input: {
     width: '100%',
@@ -161,14 +183,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     color: colors.text.primary,
     fontSize: 16,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     textAlign: 'center',
   },
   joinButton: {
     marginTop: spacing.sm,
-  },
-  disabledButton: {
-    backgroundColor: '#BCBCBC', // Light gray color similar to the image
+    // Match the styling from OnboardingScreen's button
   },
 });
 
