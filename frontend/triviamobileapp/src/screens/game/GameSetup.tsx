@@ -1,6 +1,6 @@
 // File: frontend/triviamobileapp/src/screens/game/GameSetup.tsx
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard, Text } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { PageTitle } from '../../components/layout';
@@ -119,29 +119,25 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
           style={styles.startButton}
         />
         
-        {/* Shareable Code Component */}
-        <View style={styles.shareableLinkContainer}>
+        {/* Shareable Code Component - Now the entire pill is clickable */}
+        <TouchableOpacity 
+          style={styles.shareableLinkContainer}
+          onPress={handleShareCode}
+          activeOpacity={0.7}
+        >
           <View style={styles.linkDisplay}>
             <Typography variant="bodyMedium" numberOfLines={1} style={styles.linkText}>
-              {roomCode}
+              Game Code: <Text style={styles.codeText}>{roomCode}</Text>
             </Typography>
           </View>
-          <TouchableOpacity 
-            style={styles.copyButton}
-            onPress={handleShareCode}
-          >
-            <View style={styles.shareButtonContent}>
-              <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.shareIcon}>
-                <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                <Path d="M16 6l-4-4-4 4" />
-                <Path d="M12 2v13" />
-              </Svg>
-              <Typography variant="buttonMedium" style={styles.copyButtonText}>
-                Share code
-              </Typography>
-            </View>
-          </TouchableOpacity>
-        </View>
+          <View style={styles.copyButtonContainer}>
+            <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <Path d="M16 6l-4-4-4 4" />
+              <Path d="M12 2v13" />
+            </Svg>
+          </View>
+        </TouchableOpacity>
       </View>
     </Container>
   );
@@ -178,7 +174,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     letterSpacing: 2,
-    color: '#9370DB', // Purple color for room code
+    color: colors.text.primary,
   },
   shareButton: {
     padding: spacing.sm,
@@ -192,49 +188,47 @@ const styles = StyleSheet.create({
   startButton: {
     backgroundColor: colors.primary.main, // Black button to match onboarding screen
   },
-  // New styles for the shareable link component
+  // Styles for the shareable link component
   shareableLinkContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    position: 'relative',
     marginTop: spacing.md,
     backgroundColor: colors.background.light,
     borderRadius: 12,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.gray[200],
     height: 48, // Match the default height of large buttons
+    width: '100%',
+    flexDirection: 'row', // Ensure proper layout for positioning
   },
   linkDisplay: {
     flex: 1,
-    paddingHorizontal: spacing.md,
     justifyContent: 'center',
     height: '100%',
+    alignItems: 'center', // Center horizontally
   },
   linkText: {
     color: colors.text.primary,
-    fontSize: 18,
-    fontWeight: '500',
+    fontSize: 16,
+    textAlign: 'center', // Center text
+  },
+  codeText: {
+    fontWeight: 'bold',
+    color: colors.text.primary,
     letterSpacing: 1,
   },
-  copyButton: {
+  copyButtonContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
     backgroundColor: colors.background.default,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-    marginRight: spacing.xs,
-    height: '80%',
+    padding: spacing.md,
+    height: '100%',
     justifyContent: 'center',
-  },
-  copyButtonText: {
-    color: colors.text.primary,
-    marginLeft: 4,
-  },
-  shareButtonContent: {
-    flexDirection: 'row',
     alignItems: 'center',
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    zIndex: 1, // Ensure icon is above other elements
   },
-  shareIcon: {
-    marginRight: 4,
-  }
 });
 
 export default GameSetupScreen;
