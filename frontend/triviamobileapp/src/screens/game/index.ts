@@ -1,0 +1,1 @@
+export { default as GameSetupScreen } from './GameSetup';

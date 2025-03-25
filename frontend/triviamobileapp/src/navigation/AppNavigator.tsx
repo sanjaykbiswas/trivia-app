@@ -1,6 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import { SplashScreen, OnboardingScreen, HomeScreen, MultiplayerScreen } from '../screens';
+import { SplashScreen, OnboardingScreen, HomeScreen, MultiplayerScreen, GameSetupScreen } from '../screens';
 import { RootStackParamList } from './types';
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -22,6 +22,7 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Multiplayer" component={MultiplayerScreen} />
+      <Stack.Screen name="GameSetup" component={GameSetupScreen} />
       
       {/* Add more screens as you create them */}
       {/* 

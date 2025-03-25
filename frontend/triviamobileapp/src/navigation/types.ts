@@ -5,7 +5,8 @@ export type RootStackParamList = {
   SignUp: undefined;
   Home: undefined;
   Multiplayer: undefined;
-  GamePlay: { categoryId?: string; difficulty?: string };
+  GameSetup: undefined;
+  GamePlay: { categoryId?: string; difficulty?: string; roomCode?: string; categories?: string[] };
   Profile: undefined;
   Settings: undefined;
 };

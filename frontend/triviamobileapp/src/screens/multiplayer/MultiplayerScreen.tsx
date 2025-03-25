@@ -52,8 +52,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   const handleHostGame = () => {
     // Handle host game logic
     console.log('Host Game pressed');
-    // Navigate to game setup or lobby creation screen
-    // navigation.navigate('GameSetup');
+    navigation.navigate('GameSetup');
   };
 
   const handleJoinGame = () => {
