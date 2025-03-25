@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Keyboard, KeyboardEvent, Platform } from 'react-native';
 
 /**
- * Hook to track keyboard visibility
- * @returns Object with isKeyboardVisible state
+ * Hook to track keyboard visibility and height
+ * @returns Object with isKeyboardVisible state and keyboardHeight
  */
 export function useKeyboard() {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);

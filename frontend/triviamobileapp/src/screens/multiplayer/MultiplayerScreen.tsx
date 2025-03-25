@@ -1,16 +1,16 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
   TouchableOpacity, 
   TextInput, 
   Keyboard, 
-  Platform, 
-  KeyboardAvoidingView,
+  Animated, 
+  Dimensions,
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
-import { SelectionOption, BottomTray } from '../../components/layout';
+import { SelectionOption, SlidingTray } from '../../components/layout';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useKeyboard } from '../../utils/keyboard';
@@ -24,10 +24,33 @@ type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'
 const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => {
   const [roomCode, setRoomCode] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [isJoinTrayVisible, setIsJoinTrayVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const { isKeyboardVisible } = useKeyboard();
+  const { isKeyboardVisible, keyboardHeight } = useKeyboard();
   
+  // Animation value for content opacity when tray is visible
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  
+  // Screen dimensions for responsive calculations
+  const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  // Animate content opacity when tray visibility changes
+  useEffect(() => {
+    Animated.timing(contentOpacity, {
+      toValue: isJoinTrayVisible ? 0.3 : 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [isJoinTrayVisible, contentOpacity]);
+
   const handleBackPress = () => {
+    // If tray is visible, dismiss it; otherwise go back
+    if (isJoinTrayVisible) {
+      setIsJoinTrayVisible(false);
+      Keyboard.dismiss();
+      return;
+    }
+    
     // Dismiss keyboard if visible before navigating back
     Keyboard.dismiss();
     navigation.goBack();
@@ -40,15 +63,31 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
     // navigation.navigate('GameSetup');
   };
 
+  const handleJoinPillPress = () => {
+    // Show the join tray and focus the input
+    setIsJoinTrayVisible(true);
+    
+    // Short delay to ensure the input is focused after the tray appears
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 300);
+  };
+
   const handleJoinGame = () => {
     // Handle join game with room code
     if (roomCode.trim()) {
       console.log(`Join Game with code: ${roomCode}`);
-      // Dismiss keyboard
+      // Dismiss keyboard and tray
       Keyboard.dismiss();
+      setIsJoinTrayVisible(false);
       // Navigate to game lobby
       // navigation.navigate('GameLobby', { roomCode });
     }
+  };
+
+  const handleDismissTray = () => {
+    setIsJoinTrayVisible(false);
+    Keyboard.dismiss();
   };
 
   const handleFocus = () => {
@@ -67,11 +106,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
       statusBarColor={colors.background.default}
       statusBarStyle="dark-content"
     >
-      <KeyboardAvoidingView 
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-      >
+      <View style={styles.container}>
         {/* Static back button - always visible */}
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <View style={styles.backButtonCircle}>
@@ -79,8 +114,13 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           </View>
         </TouchableOpacity>
 
-        {/* Main Content */}
-        <View style={styles.contentContainer}>
+        {/* Main Content - Animated to fade when tray is active */}
+        <Animated.View 
+          style={[
+            styles.contentContainer,
+            { opacity: contentOpacity }
+          ]}
+        >
           {/* Left-aligned title */}
           <Typography variant="heading1" style={styles.title}>
             Multiplayer
@@ -101,20 +141,23 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             title="Join"
             subtitle="Enter a game room code"
             emoji="🎮"
-            onPress={() => inputRef.current?.focus()}
+            onPress={handleJoinPillPress}
             testID="join-game-option"
             style={styles.gameOption}
           />
-        </View>
+        </Animated.View>
 
-        {/* Bottom Tray with Input and Join Button */}
-        <BottomTray
-          style={[
-            styles.bottomTray,
-            isKeyboardVisible && styles.keyboardVisibleTray
-          ]}
+        {/* Sliding Join Tray */}
+        <SlidingTray
+          isVisible={isJoinTrayVisible}
+          onDismiss={handleDismissTray}
+          height={isKeyboardVisible ? keyboardHeight + 180 : '40%'}
         >
-          <View style={styles.inputContainer}>
+          <View style={styles.trayContent}>
+            <Typography variant="heading3" style={styles.trayTitle}>
+              Join Game
+            </Typography>
+            
             {/* Room code input */}
             <TextInput
               ref={inputRef}
@@ -148,8 +191,8 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
               testID="join-game-button"
             />
           </View>
-        </BottomTray>
-      </KeyboardAvoidingView>
+        </SlidingTray>
+      </View>
     </Container>
   );
 };
@@ -185,15 +228,13 @@ const styles = StyleSheet.create({
   gameOption: {
     marginBottom: spacing.md,
   },
-  bottomTray: {
-    paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
-  },
-  keyboardVisibleTray: {
-    // When keyboard is visible, ensure tray sticks to the keyboard
-    paddingBottom: 0,
-  },
-  inputContainer: {
+  trayContent: {
+    flex: 1,
     width: '100%',
+  },
+  trayTitle: {
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   input: {
     width: '100%',
