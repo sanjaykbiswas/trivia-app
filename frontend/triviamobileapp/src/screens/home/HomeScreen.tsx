@@ -57,14 +57,14 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <View style={styles.pillsTray}>
           <SelectionOption
             title="Solo"
-            subtitle="Daily challenges and competitive play"
+            subtitle="Play competitively or in relaxed mode"
             emoji="🧠"
             onPress={handleSoloPress}
             testID="solo-option"
           />
           <SelectionOption
             title="Party"
-            subtitle="Host or join a game with friends"
+            subtitle="Play games with friends"
             emoji="🎉"
             onPress={handlePartyPress}
             testID="party-option"
