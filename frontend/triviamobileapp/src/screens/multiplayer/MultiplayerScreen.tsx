@@ -1,12 +1,24 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  View, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  Keyboard, 
+  Platform, 
+  KeyboardAvoidingView,
+  Dimensions
+} from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
-import { SelectionOption, BottomTray } from '../../components/layout';
+import { SelectionOption } from '../../components/layout';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
+import { useKeyboard } from '../../utils/keyboard';
 
 type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'>;
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * MultiplayerScreen component
@@ -14,8 +26,23 @@ type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'
  */
 const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => {
   const [roomCode, setRoomCode] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+  const { isKeyboardVisible, keyboardHeight } = useKeyboard();
+  
+  // Calculate appropriate bottom padding for the content container
+  const getContentPadding = () => {
+    if (isKeyboardVisible) {
+      // When keyboard is visible, ensure enough space for the input and button
+      // The additional padding ensures the elements are fully visible above the keyboard
+      return keyboardHeight + (Platform.OS === 'ios' ? 80 : 100);
+    }
+    return 0;
+  };
 
   const handleBackPress = () => {
+    // Dismiss keyboard if visible before navigating back
+    Keyboard.dismiss();
     navigation.goBack();
   };
 
@@ -30,9 +57,19 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
     // Handle join game with room code
     if (roomCode.trim()) {
       console.log(`Join Game with code: ${roomCode}`);
+      // Dismiss keyboard
+      Keyboard.dismiss();
       // Navigate to game lobby
       // navigation.navigate('GameLobby', { roomCode });
     }
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
   };
 
   const isJoinButtonDisabled = !roomCode.trim();
@@ -43,23 +80,33 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
       statusBarColor={colors.background.default}
       statusBarStyle="dark-content"
     >
-      <View style={styles.container}>
-        {/* Back button */}
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      >
+        {/* Static back button - always visible */}
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
           <View style={styles.backButtonCircle}>
             <Typography variant="bodyMedium">←</Typography>
           </View>
         </TouchableOpacity>
 
-        <View style={styles.contentContainer}>
-          {/* Left-aligned title in-line with back button */}
+        {/* Main Content - Scrollable if needed */}
+        <View 
+          style={[
+            styles.contentContainer,
+            { paddingBottom: getContentPadding() }
+          ]}
+        >
+          {/* Left-aligned title */}
           <Typography variant="heading1" style={styles.title}>
             Multiplayer
           </Typography>
 
           <View style={styles.spacer} />
 
-          {/* Host Game option positioned at the bottom of main content */}
+          {/* Host Game option */}
           <SelectionOption
             title="Host"
             subtitle="Create a new game room"
@@ -68,50 +115,59 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             testID="host-game-option"
             style={styles.hostGameOption}
           />
-        </View>
+          
+          {/* Divider with text */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Typography 
+                variant="bodySmall" 
+                color={colors.text.secondary}
+                style={styles.dividerText}
+              >
+                Or join with code
+              </Typography>
+              <View style={styles.dividerLine} />
+            </View>
+          </View>
 
-        {/* Divider with text - positioned above the bottom tray */}
-        <View style={styles.dividerContainer}>
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Typography 
-              variant="bodySmall" 
-              color={colors.text.secondary}
-              style={styles.dividerText}
-            >
-              Or join with code
-            </Typography>
-            <View style={styles.dividerLine} />
+          {/* Input and Button Container - Always visible at bottom */}
+          <View style={styles.inputContainer}>
+            {/* Room code input */}
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.input,
+                isFocused && styles.inputFocused
+              ]}
+              placeholder="Room Code"
+              placeholderTextColor={colors.text.hint}
+              value={roomCode}
+              onChangeText={setRoomCode}
+              autoCapitalize="characters"
+              maxLength={6}
+              keyboardType="number-pad"
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              returnKeyType="done"
+              onSubmitEditing={handleJoinGame}
+              testID="room-code-input"
+            />
+            
+            {/* Join Game Button */}
+            <Button
+              title="Join Game"
+              onPress={handleJoinGame}
+              variant="contained"
+              size="large"
+              fullWidth
+              disabled={isJoinButtonDisabled}
+              style={styles.joinButton}
+              testID="join-game-button"
+            />
           </View>
         </View>
-
-        {/* Bottom Tray with Join Game functionality */}
-        <View style={styles.bottomTrayContainer}>
-          {/* Room code input */}
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Room Code"
-            placeholderTextColor={colors.text.hint}
-            value={roomCode}
-            onChangeText={setRoomCode}
-            autoCapitalize="characters"
-            maxLength={6}
-            testID="room-code-input"
-          />
-          
-          {/* Use full width button instead of BottomTray for consistent width */}
-          <Button
-            title="Join Game"
-            onPress={handleJoinGame}
-            variant="contained"
-            size="large"
-            fullWidth
-            disabled={isJoinButtonDisabled}
-            style={styles.joinButton}
-            testID="join-game-button"
-          />
-        </View>
-      </View>
+      </KeyboardAvoidingView>
     </Container>
   );
 };
@@ -148,11 +204,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   hostGameOption: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   dividerContainer: {
-    paddingHorizontal: spacing.page,
-    backgroundColor: colors.background.default,
+    width: '100%',
+    paddingVertical: spacing.sm,
   },
   divider: {
     width: '100%',
@@ -168,11 +224,9 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: spacing.md,
   },
-  bottomTrayContainer: {
+  inputContainer: {
+    width: '100%',
     backgroundColor: colors.background.default,
-    padding: spacing.page,
-    paddingTop: 0,
-    paddingBottom: spacing.xl,
   },
   input: {
     width: '100%',
@@ -184,11 +238,21 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: 16,
     marginBottom: spacing.sm,
-    textAlign: 'center',
+    textAlign: 'left',
+    paddingLeft: spacing.md + 4, // Add extra left padding for text
+  },
+  inputFocused: {
+    borderColor: colors.primary.main,
+    backgroundColor: colors.background.default,
+    shadowColor: colors.primary.main,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   joinButton: {
     marginTop: spacing.sm,
-    // Match the styling from OnboardingScreen's button
+    marginBottom: spacing.lg,
   },
 });
 
