@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/screens/multiplayer/MultiplayerScreen.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
@@ -141,7 +142,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           />
         </View>
 
-        {/* Join Game Modal - Using React Native's built-in Modal with KeyboardAvoidingView */}
+        {/* Join Game Modal */}
         <RNModal
           visible={isJoinModalVisible}
           transparent={true}
@@ -149,41 +150,43 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           onRequestClose={handleCloseModal}
         >
           <TouchableWithoutFeedback onPress={handleModalBackgroundPress}>
-            <KeyboardAvoidingView 
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.modalOverlay}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
-            >
-              <TouchableWithoutFeedback>
-                <View style={[
-                  styles.modalContainer,
-                  isKeyboardVisible && Platform.OS === 'android' && { marginBottom: keyboardHeight / 2 }
-                ]}>
-                  <Typography variant="heading4" style={styles.modalTitle}>
-                    Enter 5-digit game code
-                  </Typography>
-                  
-                  {/* Room code input */}
-                  <TextInput
-                    ref={inputRef}
-                    style={[
-                      styles.input,
-                      isFocused && styles.inputFocused
-                    ]}
-                    value={roomCode}
-                    onChangeText={setRoomCode}
-                    autoCapitalize="none"
-                    maxLength={5}
-                    keyboardType="number-pad"
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                    returnKeyType="done"
-                    onSubmitEditing={handleJoinGame}
-                    autoFocus={true}
-                    testID="room-code-input"
-                  />
-                  
-                  {/* Join Game Button */}
+            <View style={styles.modalOverlay}>
+              <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.keyboardAvoidingView}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+              >
+                <TouchableWithoutFeedback>
+                  <View style={styles.modalContainer}>
+                    <Typography variant="heading4" style={styles.modalTitle}>
+                      Enter 5-digit game code
+                    </Typography>
+                    
+                    {/* Room code input */}
+                    <TextInput
+                      ref={inputRef}
+                      style={[
+                        styles.input,
+                        isFocused && styles.inputFocused
+                      ]}
+                      value={roomCode}
+                      onChangeText={setRoomCode}
+                      autoCapitalize="none"
+                      maxLength={5}
+                      keyboardType="number-pad"
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
+                      // Remove returnKeyType and onSubmitEditing to not show Done button
+                      autoFocus={true}
+                      testID="room-code-input"
+                    />
+                  </View>
+                </TouchableWithoutFeedback>
+              </KeyboardAvoidingView>
+
+              {/* Floating Join Game button that appears above keyboard */}
+              {isKeyboardVisible && (
+                <View style={styles.floatingButtonContainer}>
                   <Button
                     title="Join Game"
                     onPress={handleJoinGame}
@@ -191,12 +194,11 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
                     size="large"
                     fullWidth
                     disabled={isJoinButtonDisabled}
-                    style={styles.joinButton}
-                    testID="join-game-button"
+                    testID="floating-join-button"
                   />
                 </View>
-              </TouchableWithoutFeedback>
-            </KeyboardAvoidingView>
+              )}
+            </View>
           </TouchableWithoutFeedback>
         </RNModal>
       </View>
@@ -241,6 +243,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   modalContainer: {
     width: '85%',
     backgroundColor: colors.background.default,
@@ -265,7 +273,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     color: colors.text.primary,
     fontSize: 16,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     textAlign: 'left',
     paddingLeft: spacing.md + 4, // Add extra left padding for text
   },
@@ -278,8 +286,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  joinButton: {
-    marginTop: spacing.sm,
+  floatingButtonContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    padding: spacing.md,
+    backgroundColor: colors.background.default,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    zIndex: 1000, // Ensure it appears in the foreground
+    elevation: 30, // Higher elevation for Android
+    shadowColor: colors.gray[900],
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
 });
 
