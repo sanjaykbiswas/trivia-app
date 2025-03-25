@@ -1,4 +1,5 @@
-// frontend/triviamobileapp/src/screens/multiplayer/MultiplayerScreen.tsx
+// File: frontend/triviamobileapp/src/screens/multiplayer/MultiplayerScreen.tsx
+
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
@@ -10,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
-  Animated,
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
@@ -31,20 +31,8 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
   
-  // Use our enhanced keyboard manager
-  const { isKeyboardVisible, keyboardHeight, dismissKeyboard } = useKeyboardManager();
-  
-  // Animation value for the floating button
-  const buttonAnimatedValue = useRef(new Animated.Value(0)).current;
-
-  // Animate the button when keyboard visibility changes
-  useEffect(() => {
-    Animated.timing(buttonAnimatedValue, {
-      toValue: isKeyboardVisible ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [isKeyboardVisible, buttonAnimatedValue]);
+  // Use our keyboard manager just for the dismissKeyboard function
+  const { dismissKeyboard } = useKeyboardManager();
 
   // Focus input when modal becomes visible
   useEffect(() => {
@@ -122,18 +110,6 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   // Button is enabled only when exactly 5 digits are entered
   const isJoinButtonDisabled = roomCode.trim().length !== 5;
 
-  // Calculate the button's bottom position based on keyboard height
-  const buttonBottomPosition = buttonAnimatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-100, keyboardHeight > 0 ? keyboardHeight : 0]
-  });
-
-  // Calculate the button's opacity
-  const buttonOpacity = buttonAnimatedValue.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0, 0.7, 1]
-  });
-
   return (
     <Container
       useSafeArea={true}
@@ -192,7 +168,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
                 <TouchableWithoutFeedback>
                   <View style={styles.modalContainer}>
                     <Typography variant="heading4" style={styles.modalTitle}>
-                      Ask host for your code
+                      Ask your host for a game code
                     </Typography>
                     
                     {/* Room code input */}
@@ -215,36 +191,24 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
                       onBlur={handleBlur}
                       autoFocus={true}
                       testID="room-code-input"
-                      onSubmitEditing={isJoinButtonDisabled ? undefined : handleJoinGame}
-                      returnKeyType="done"
-                      placeholder="5 digit game code"
+                      placeholder="5 digit code"
                       placeholderTextColor={colors.gray[400]}
+                    />
+                    
+                    {/* Join Game Button inside modal */}
+                    <Button
+                      title="Join Game"
+                      onPress={handleJoinGame}
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      disabled={isJoinButtonDisabled}
+                      testID="join-button"
+                      style={styles.joinButton}
                     />
                   </View>
                 </TouchableWithoutFeedback>
               </KeyboardAvoidingView>
-
-              {/* Animated Floating Join Game button that appears above keyboard */}
-              <Animated.View 
-                style={[
-                  styles.floatingButtonContainer, 
-                  { 
-                    bottom: buttonBottomPosition,
-                    opacity: buttonOpacity,
-                  }
-                ]}
-                pointerEvents={isKeyboardVisible ? "auto" : "none"}
-              >
-                <Button
-                  title="Join Game"
-                  onPress={handleJoinGame}
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  disabled={isJoinButtonDisabled}
-                  testID="floating-join-button"
-                />
-              </Animated.View>
             </View>
           </TouchableWithoutFeedback>
         </RNModal>
@@ -333,20 +297,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  floatingButtonContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    padding: spacing.md,
-    backgroundColor: colors.background.default,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    zIndex: 1000, // Ensure it appears in the foreground
-    elevation: 30, // Higher elevation for Android
-    shadowColor: colors.gray[900],
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+  joinButton: {
+    marginTop: spacing.sm, 
   },
 });
 
