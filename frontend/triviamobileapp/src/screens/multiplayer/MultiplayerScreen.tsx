@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
+  Animated,
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
@@ -33,6 +34,18 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   // Use our enhanced keyboard manager
   const { isKeyboardVisible, keyboardHeight, dismissKeyboard } = useKeyboardManager();
   
+  // Animation value for the floating button
+  const buttonAnimatedValue = useRef(new Animated.Value(0)).current;
+
+  // Animate the button when keyboard visibility changes
+  useEffect(() => {
+    Animated.timing(buttonAnimatedValue, {
+      toValue: isKeyboardVisible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [isKeyboardVisible, buttonAnimatedValue]);
+
   // Focus input when modal becomes visible
   useEffect(() => {
     if (isJoinModalVisible && inputRef.current) {
@@ -99,7 +112,20 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
     handleCloseModal();
   };
 
-  const isJoinButtonDisabled = !roomCode.trim();
+  // Button is enabled only when exactly 5 digits are entered
+  const isJoinButtonDisabled = roomCode.trim().length !== 5;
+
+  // Calculate the button's bottom position based on keyboard height
+  const buttonBottomPosition = buttonAnimatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-100, keyboardHeight > 0 ? keyboardHeight : 0]
+  });
+
+  // Calculate the button's opacity
+  const buttonOpacity = buttonAnimatedValue.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0.7, 1]
+  });
 
   return (
     <Container
@@ -159,7 +185,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
                 <TouchableWithoutFeedback>
                   <View style={styles.modalContainer}>
                     <Typography variant="heading4" style={styles.modalTitle}>
-                      Enter 5-digit game code
+                      Ask host for your code
                     </Typography>
                     
                     {/* Room code input */}
@@ -170,34 +196,48 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
                         isFocused && styles.inputFocused
                       ]}
                       value={roomCode}
-                      onChangeText={setRoomCode}
+                      onChangeText={(text) => {
+                        // Only allow digits
+                        const digitsOnly = text.replace(/[^0-9]/g, '');
+                        setRoomCode(digitsOnly);
+                      }}
                       autoCapitalize="none"
                       maxLength={5}
                       keyboardType="number-pad"
                       onFocus={handleFocus}
                       onBlur={handleBlur}
-                      // Remove returnKeyType and onSubmitEditing to not show Done button
                       autoFocus={true}
                       testID="room-code-input"
+                      onSubmitEditing={isJoinButtonDisabled ? undefined : handleJoinGame}
+                      returnKeyType="done"
+                      placeholder="5 digit game code"
+                      placeholderTextColor={colors.gray[400]}
                     />
                   </View>
                 </TouchableWithoutFeedback>
               </KeyboardAvoidingView>
 
-              {/* Floating Join Game button that appears above keyboard */}
-              {isKeyboardVisible && (
-                <View style={styles.floatingButtonContainer}>
-                  <Button
-                    title="Join Game"
-                    onPress={handleJoinGame}
-                    variant="contained"
-                    size="large"
-                    fullWidth
-                    disabled={isJoinButtonDisabled}
-                    testID="floating-join-button"
-                  />
-                </View>
-              )}
+              {/* Animated Floating Join Game button that appears above keyboard */}
+              <Animated.View 
+                style={[
+                  styles.floatingButtonContainer, 
+                  { 
+                    bottom: buttonBottomPosition,
+                    opacity: buttonOpacity,
+                  }
+                ]}
+                pointerEvents={isKeyboardVisible ? "auto" : "none"}
+              >
+                <Button
+                  title="Join Game"
+                  onPress={handleJoinGame}
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  disabled={isJoinButtonDisabled}
+                  testID="floating-join-button"
+                />
+              </Animated.View>
             </View>
           </TouchableWithoutFeedback>
         </RNModal>
@@ -290,7 +330,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 0,
     padding: spacing.md,
     backgroundColor: colors.background.default,
     borderTopWidth: 1,
