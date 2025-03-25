@@ -51,7 +51,6 @@ const Button: React.FC<ButtonProps> = ({
       alignItems: 'center',
       flexDirection: 'row',
       width: fullWidth ? '100%' : 'auto',
-      opacity: disabled ? 0.7 : 1,
     };
 
     // Apply padding based on size
@@ -89,7 +88,7 @@ const Button: React.FC<ButtonProps> = ({
       default: // contained
         return {
           ...baseStyle,
-          backgroundColor: disabled ? colors.gray[300] : colors.primary.main,
+          backgroundColor: disabled ? '#BCBCBC' : colors.primary.main, // Use gray for disabled state
         };
     }
   };

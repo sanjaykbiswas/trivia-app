@@ -25,8 +25,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handlePartyPress = () => {
-    // Handle Party option press
-    console.log('Party pressed');
+    // Navigate to Multiplayer screen
+    navigation.navigate('Multiplayer');
   };
 
   const handleBackPress = () => {
