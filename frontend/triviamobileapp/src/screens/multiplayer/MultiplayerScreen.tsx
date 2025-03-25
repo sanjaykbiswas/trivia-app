@@ -1,3 +1,4 @@
+// File: frontend/triviamobileapp/src/screens/multiplayer/MultiplayerScreen.tsx
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, TextInput } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -7,8 +8,8 @@ import {
   Button,
   Modal 
 } from '../../components/common';
-import { SelectionOption } from '../../components/layout';
-import { BackButton } from '../../components/navigation';
+import { SelectionOption, PageTitle } from '../../components/layout';
+import { Header } from '../../components/navigation';
 import { FormInput } from '../../components/form';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
@@ -88,13 +89,14 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
       statusBarStyle="dark-content"
     >
       <View style={styles.container}>
-        <BackButton onPress={handleBackPress} />
+        <Header 
+          showBackButton={true} 
+          onBackPress={handleBackPress} 
+        />
 
         <View style={styles.contentContainer}>
-          {/* Left-aligned title */}
-          <Typography variant="heading1" style={styles.title}>
-            Multiplayer
-          </Typography>
+          {/* Page Title */}
+          <PageTitle title="Multiplayer" />
 
           {/* Host Game option */}
           <SelectionOption
@@ -163,12 +165,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     padding: spacing.page,
-    paddingTop: spacing.xxl + spacing.md, // Extra padding for back button
-  },
-  title: {
-    marginBottom: spacing.xl,
-    textAlign: 'left',
-    marginLeft: spacing.sm, // Align with back button
   },
   gameOption: {
     marginBottom: spacing.md,

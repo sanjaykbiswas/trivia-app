@@ -1,11 +1,13 @@
+// File: frontend/triviamobileapp/src/screens/game/GameSetup.tsx
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TextInput, TouchableOpacity, Share } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
-import { BackButton } from '../../components/navigation';
+import { PageTitle } from '../../components/layout';
+import { Header } from '../../components/navigation';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 type GameSetupScreenProps = StackScreenProps<RootStackParamList, 'GameSetup'>;
 
@@ -19,8 +21,6 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     }
     return result;
   });
-
-
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -50,36 +50,35 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     >
       <ScrollView style={styles.scrollView}>
         <View style={styles.container}>
-          <BackButton onPress={handleBackPress} />
+          <Header 
+            showBackButton={true} 
+            onBackPress={handleBackPress} 
+          />
 
-          <View style={styles.header}>
-            <Typography variant="heading1" style={styles.title}>
-              Choose your pack
-            </Typography>
-          </View>
+          <View style={styles.contentContainer}>
+            <PageTitle title="Choose your pack" />
 
-          <View style={styles.roomCodeSection}>
-            <Typography variant="bodyMedium" style={styles.sectionLabel}>
-              Room Code
-            </Typography>
-            <View style={styles.roomCodeContainer}>
-              <Typography variant="heading2" style={styles.roomCode}>
-                {roomCode}
+            <View style={styles.roomCodeSection}>
+              <Typography variant="bodyMedium" style={styles.sectionLabel}>
+                Room Code
               </Typography>
-              <TouchableOpacity 
-                style={styles.shareButton} 
-                onPress={handleShareRoomCode}
-              >
-                <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                  <Path d="M16 6l-4-4-4 4" />
-                  <Path d="M12 2v13" />
-                </Svg>
-              </TouchableOpacity>
+              <View style={styles.roomCodeContainer}>
+                <Typography variant="heading2" style={styles.roomCode}>
+                  {roomCode}
+                </Typography>
+                <TouchableOpacity 
+                  style={styles.shareButton} 
+                  onPress={handleShareRoomCode}
+                >
+                  <Svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                    <Path d="M16 6l-4-4-4 4" />
+                    <Path d="M12 2v13" />
+                  </Svg>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-
-
         </View>
       </ScrollView>
 
@@ -103,17 +102,10 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  contentContainer: {
+    flex: 1,
     padding: spacing.page,
-    paddingTop: spacing.xxl + spacing.md, // Extra padding for back button
-  },
-  header: {
-    marginBottom: spacing.lg,
-    alignItems: 'flex-start', // Left align the title
-  },
-  title: {
-    marginTop: spacing.md,
-    color: colors.text.primary,
-    textAlign: 'left', // Ensure left alignment
   },
   roomCodeSection: {
     marginBottom: spacing.xl,
@@ -142,7 +134,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: colors.background.default,
   },
-
   bottomButtons: {
     padding: spacing.page,
     paddingBottom: spacing.page,
