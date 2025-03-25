@@ -11,18 +11,20 @@ import { colors, spacing } from '../../theme';
 
 interface BottomTrayProps {
   title?: string;
-  primaryButtonText: string;
-  primaryButtonAction: () => void;
+  primaryButtonText?: string;
+  primaryButtonAction?: () => void;
   secondaryText?: string;
   secondaryAction?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
   hideBorder?: boolean;
+  children?: React.ReactNode; // New prop for custom content
 }
 
 /**
  * BottomTray component
  * A reusable tray that appears at the bottom of the screen with actions
+ * Now supports custom content through children prop
  */
 const BottomTray: React.FC<BottomTrayProps> = ({
   title,
@@ -33,6 +35,7 @@ const BottomTray: React.FC<BottomTrayProps> = ({
   style,
   testID,
   hideBorder = false,
+  children,
 }) => {
   return (
     <View 
@@ -61,14 +64,20 @@ const BottomTray: React.FC<BottomTrayProps> = ({
         </View>
       )}
 
-      <Button
-        title={primaryButtonText}
-        onPress={primaryButtonAction}
-        variant="contained"
-        size="large"
-        fullWidth
-        style={styles.primaryButton}
-      />
+      {/* Render custom content if provided */}
+      {children}
+
+      {/* Render primary button only if text and action are provided */}
+      {primaryButtonText && primaryButtonAction && (
+        <Button
+          title={primaryButtonText}
+          onPress={primaryButtonAction}
+          variant="contained"
+          size="large"
+          fullWidth
+          style={styles.primaryButton}
+        />
+      )}
 
       {secondaryText && (
         <TouchableOpacity
@@ -84,14 +93,16 @@ const BottomTray: React.FC<BottomTrayProps> = ({
             >
               {secondaryText.split("Sign In")[0]}
             </Typography>
-            <Typography
-              variant="bodyMedium"
-              color={colors.text.secondary}
-              align="center"
-              style={{ fontWeight: 'bold' }}
-            >
-              Sign In
-            </Typography>
+            {secondaryText.includes("Sign In") && (
+              <Typography
+                variant="bodyMedium"
+                color={colors.text.secondary}
+                align="center"
+                style={{ fontWeight: 'bold' }}
+              >
+                Sign In
+              </Typography>
+            )}
           </View>
         </TouchableOpacity>
       )}
@@ -114,7 +125,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   title: {
-    marginTop: -4, // Reduced spacing between the two lines (negative value to bring lines closer)
+    marginTop: -4, // Reduced spacing between the two lines
   },
   primaryButton: {
     marginBottom: spacing.xs,

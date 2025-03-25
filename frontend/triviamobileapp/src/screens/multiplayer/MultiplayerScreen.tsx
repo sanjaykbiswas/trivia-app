@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -7,18 +7,15 @@ import {
   Keyboard, 
   Platform, 
   KeyboardAvoidingView,
-  Dimensions
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
-import { SelectionOption } from '../../components/layout';
+import { SelectionOption, BottomTray } from '../../components/layout';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useKeyboard } from '../../utils/keyboard';
 
 type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'>;
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * MultiplayerScreen component
@@ -28,18 +25,8 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   const [roomCode, setRoomCode] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const { isKeyboardVisible, keyboardHeight } = useKeyboard();
+  const { isKeyboardVisible } = useKeyboard();
   
-  // Calculate appropriate bottom padding for the content container
-  const getContentPadding = () => {
-    if (isKeyboardVisible) {
-      // When keyboard is visible, ensure enough space for the input and button
-      // The additional padding ensures the elements are fully visible above the keyboard
-      return keyboardHeight + (Platform.OS === 'ios' ? 80 : 100);
-    }
-    return 0;
-  };
-
   const handleBackPress = () => {
     // Dismiss keyboard if visible before navigating back
     Keyboard.dismiss();
@@ -92,19 +79,12 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           </View>
         </TouchableOpacity>
 
-        {/* Main Content - Scrollable if needed */}
-        <View 
-          style={[
-            styles.contentContainer,
-            { paddingBottom: getContentPadding() }
-          ]}
-        >
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
           {/* Left-aligned title */}
           <Typography variant="heading1" style={styles.title}>
             Multiplayer
           </Typography>
-
-          <View style={styles.spacer} />
 
           {/* Host Game option */}
           <SelectionOption
@@ -130,8 +110,15 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
               <View style={styles.dividerLine} />
             </View>
           </View>
+        </View>
 
-          {/* Input and Button Container - Always visible at bottom */}
+        {/* Bottom Tray with Input and Join Button */}
+        <BottomTray
+          style={[
+            styles.bottomTray,
+            isKeyboardVisible && styles.keyboardVisibleTray
+          ]}
+        >
           <View style={styles.inputContainer}>
             {/* Room code input */}
             <TextInput
@@ -166,7 +153,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
               testID="join-game-button"
             />
           </View>
-        </View>
+        </BottomTray>
       </KeyboardAvoidingView>
     </Container>
   );
@@ -200,9 +187,6 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginLeft: spacing.sm, // Align with back button
   },
-  spacer: {
-    flex: 1,
-  },
   hostGameOption: {
     marginBottom: spacing.md,
   },
@@ -224,9 +208,15 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: spacing.md,
   },
+  bottomTray: {
+    paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
+  },
+  keyboardVisibleTray: {
+    // When keyboard is visible, ensure tray sticks to the keyboard
+    paddingBottom: 0,
+  },
   inputContainer: {
     width: '100%',
-    backgroundColor: colors.background.default,
   },
   input: {
     width: '100%',
@@ -252,7 +242,6 @@ const styles = StyleSheet.create({
   },
   joinButton: {
     marginTop: spacing.sm,
-    marginBottom: spacing.lg,
   },
 });
 
