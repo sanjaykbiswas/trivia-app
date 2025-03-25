@@ -30,6 +30,7 @@ const PageTitle: React.FC<PageTitleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    marginTop: -16,
     marginBottom: spacing.xl,
     paddingHorizontal: spacing.sm,
   },
