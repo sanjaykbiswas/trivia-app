@@ -4,16 +4,14 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   TextInput, 
-  Keyboard, 
-  Animated, 
-  Dimensions,
+  Keyboard,
+  Modal as RNModal,
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
-import { SelectionOption, SlidingTray } from '../../components/layout';
+import { SelectionOption } from '../../components/layout';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
-import { useKeyboard } from '../../utils/keyboard';
 
 type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'>;
 
@@ -24,29 +22,22 @@ type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'
 const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => {
   const [roomCode, setRoomCode] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [isJoinTrayVisible, setIsJoinTrayVisible] = useState(false);
+  const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
-  const { isKeyboardVisible, keyboardHeight } = useKeyboard();
   
-  // Animation value for content opacity when tray is visible
-  const contentOpacity = useRef(new Animated.Value(1)).current;
-  
-  // Screen dimensions for responsive calculations
-  const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-  // Animate content opacity when tray visibility changes
+  // Focus input when modal becomes visible
   useEffect(() => {
-    Animated.timing(contentOpacity, {
-      toValue: isJoinTrayVisible ? 0.3 : 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [isJoinTrayVisible, contentOpacity]);
+    if (isJoinModalVisible && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+    }
+  }, [isJoinModalVisible]);
 
   const handleBackPress = () => {
-    // If tray is visible, dismiss it; otherwise go back
-    if (isJoinTrayVisible) {
-      setIsJoinTrayVisible(false);
+    // If modal is visible, dismiss it; otherwise go back
+    if (isJoinModalVisible) {
+      setIsJoinModalVisible(false);
       Keyboard.dismiss();
       return;
     }
@@ -64,29 +55,24 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   };
 
   const handleJoinPillPress = () => {
-    // Show the join tray and focus the input
-    setIsJoinTrayVisible(true);
-    
-    // Short delay to ensure the input is focused after the tray appears
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 300);
+    // Show the join modal
+    setIsJoinModalVisible(true);
   };
 
   const handleJoinGame = () => {
     // Handle join game with room code
     if (roomCode.trim()) {
       console.log(`Join Game with code: ${roomCode}`);
-      // Dismiss keyboard and tray
+      // Dismiss keyboard and modal
       Keyboard.dismiss();
-      setIsJoinTrayVisible(false);
+      setIsJoinModalVisible(false);
       // Navigate to game lobby
       // navigation.navigate('GameLobby', { roomCode });
     }
   };
 
-  const handleDismissTray = () => {
-    setIsJoinTrayVisible(false);
+  const handleCloseModal = () => {
+    setIsJoinModalVisible(false);
     Keyboard.dismiss();
   };
 
@@ -114,13 +100,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           </View>
         </TouchableOpacity>
 
-        {/* Main Content - Animated to fade when tray is active */}
-        <Animated.View 
-          style={[
-            styles.contentContainer,
-            { opacity: contentOpacity }
-          ]}
-        >
+        <View style={styles.contentContainer}>
           {/* Left-aligned title */}
           <Typography variant="heading1" style={styles.title}>
             Multiplayer
@@ -145,53 +125,55 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             testID="join-game-option"
             style={styles.gameOption}
           />
-        </Animated.View>
+        </View>
 
-        {/* Sliding Join Tray */}
-        <SlidingTray
-          isVisible={isJoinTrayVisible}
-          onDismiss={handleDismissTray}
-          height={isKeyboardVisible ? keyboardHeight + 180 : '40%'}
+        {/* Join Game Modal - Using React Native's built-in Modal */}
+        <RNModal
+          visible={isJoinModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={handleCloseModal}
         >
-          <View style={styles.trayContent}>
-            <Typography variant="heading3" style={styles.trayTitle}>
-              Join Game
-            </Typography>
-            
-            {/* Room code input */}
-            <TextInput
-              ref={inputRef}
-              style={[
-                styles.input,
-                isFocused && styles.inputFocused
-              ]}
-              placeholder="5 Digit Room Code"
-              placeholderTextColor={colors.text.hint}
-              value={roomCode}
-              onChangeText={setRoomCode}
-              autoCapitalize="characters"
-              maxLength={6}
-              keyboardType="number-pad"
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              returnKeyType="done"
-              onSubmitEditing={handleJoinGame}
-              testID="room-code-input"
-            />
-            
-            {/* Join Game Button */}
-            <Button
-              title="Join Game"
-              onPress={handleJoinGame}
-              variant="contained"
-              size="large"
-              fullWidth
-              disabled={isJoinButtonDisabled}
-              style={styles.joinButton}
-              testID="join-game-button"
-            />
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Typography variant="heading4" style={styles.modalTitle}>
+                Enter 5-digit game code
+              </Typography>
+              
+              {/* Room code input */}
+              <TextInput
+                ref={inputRef}
+                style={[
+                  styles.input,
+                  isFocused && styles.inputFocused
+                ]}
+                value={roomCode}
+                onChangeText={setRoomCode}
+                autoCapitalize="none"
+                maxLength={5}
+                keyboardType="number-pad"
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                returnKeyType="done"
+                onSubmitEditing={handleJoinGame}
+                autoFocus={true}
+                testID="room-code-input"
+              />
+              
+              {/* Join Game Button */}
+              <Button
+                title="Join Game"
+                onPress={handleJoinGame}
+                variant="contained"
+                size="large"
+                fullWidth
+                disabled={isJoinButtonDisabled}
+                style={styles.joinButton}
+                testID="join-game-button"
+              />
+            </View>
           </View>
-        </SlidingTray>
+        </RNModal>
       </View>
     </Container>
   );
@@ -228,13 +210,26 @@ const styles = StyleSheet.create({
   gameOption: {
     marginBottom: spacing.md,
   },
-  trayContent: {
+  modalOverlay: {
     flex: 1,
-    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  trayTitle: {
+  modalContainer: {
+    width: '85%',
+    backgroundColor: colors.background.default,
+    borderRadius: 20,
+    padding: spacing.lg,
+    shadowColor: colors.gray[900],
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalTitle: {
     marginBottom: spacing.md,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   input: {
     width: '100%',
@@ -245,7 +240,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     color: colors.text.primary,
     fontSize: 16,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.lg,
     textAlign: 'left',
     paddingLeft: spacing.md + 4, // Add extra left padding for text
   },
