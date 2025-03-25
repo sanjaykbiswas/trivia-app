@@ -1,23 +1,20 @@
-// File: frontend/triviamobileapp/src/screens/multiplayer/MultiplayerScreen.tsx
-
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  View, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  Keyboard,
-  Modal as RNModal,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-} from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, StyleSheet, TextInput } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
-import { Container, Typography, Button } from '../../components/common';
+import { 
+  Container, 
+  Typography, 
+  Button,
+  Modal 
+} from '../../components/common';
 import { SelectionOption } from '../../components/layout';
+import { BackButton } from '../../components/navigation';
+import { FormInput } from '../../components/form';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useKeyboardManager } from '../../utils/keyboard';
+import { useModal } from '../../hooks/useModal';
+import { useRoomCode } from '../../hooks/useRoomCode';
 
 type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'>;
 
@@ -26,26 +23,23 @@ type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'
  * Allows users to host or join a multiplayer game session
  */
 const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => {
-  const [roomCode, setRoomCode] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
-  const inputRef = useRef<TextInput>(null);
-  
-  // Use our keyboard manager just for the dismissKeyboard function
+  const { roomCode, setRoomCode, isValidRoomCode, resetRoomCode } = useRoomCode();
+  const { isVisible, showModal, hideModal } = useModal();
   const { dismissKeyboard } = useKeyboardManager();
+  const inputRef = useRef<TextInput>(null);
 
   // Focus input when modal becomes visible
   useEffect(() => {
-    if (isJoinModalVisible && inputRef.current) {
+    if (isVisible && inputRef.current) {
       setTimeout(() => {
         inputRef.current?.focus();
       }, 300);
     }
-  }, [isJoinModalVisible]);
+  }, [isVisible]);
 
   const handleBackPress = () => {
     // If modal is visible, dismiss it; otherwise go back
-    if (isJoinModalVisible) {
+    if (isVisible) {
       handleCloseModal();
       return;
     }
@@ -62,14 +56,9 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
     // navigation.navigate('GameSetup');
   };
 
-  const handleJoinPillPress = () => {
-    // Show the join modal
-    setIsJoinModalVisible(true);
-  };
-
   const handleJoinGame = () => {
     // Handle join game with room code
-    if (roomCode.trim()) {
+    if (isValidRoomCode) {
       console.log(`Join Game with code: ${roomCode}`);
       // Dismiss modal
       handleCloseModal();
@@ -84,31 +73,14 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
     
     // Use a small timeout to ensure keyboard dismissal is processed before modal animation
     setTimeout(() => {
-      setIsJoinModalVisible(false);
+      hideModal();
       
       // Reset the input state after the modal is closed
       setTimeout(() => {
-        setRoomCode('');
-        setIsFocused(false);
+        resetRoomCode();
       }, 100);
     }, 50);
   };
-
-  const handleFocus = () => {
-    setIsFocused(true);
-  };
-
-  const handleBlur = () => {
-    setIsFocused(false);
-  };
-
-  // Close the modal when tapping outside of it
-  const handleModalBackgroundPress = () => {
-    handleCloseModal();
-  };
-
-  // Button is enabled only when exactly 5 digits are entered
-  const isJoinButtonDisabled = roomCode.trim().length !== 5;
 
   return (
     <Container
@@ -117,12 +89,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
       statusBarStyle="dark-content"
     >
       <View style={styles.container}>
-        {/* Static back button - always visible */}
-        <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <View style={styles.backButtonCircle}>
-            <Typography variant="bodyMedium">←</Typography>
-          </View>
-        </TouchableOpacity>
+        <BackButton onPress={handleBackPress} />
 
         <View style={styles.contentContainer}>
           {/* Left-aligned title */}
@@ -145,73 +112,46 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             title="Join"
             subtitle="Enter a game room code"
             emoji="🎮"
-            onPress={handleJoinPillPress}
+            onPress={showModal}
             testID="join-game-option"
             style={styles.gameOption}
           />
         </View>
 
         {/* Join Game Modal */}
-        <RNModal
-          visible={isJoinModalVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={handleCloseModal}
+        <Modal
+          visible={isVisible}
+          onClose={handleCloseModal}
         >
-          <TouchableWithoutFeedback onPress={handleModalBackgroundPress}>
-            <View style={styles.modalOverlay}>
-              <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={styles.keyboardAvoidingView}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
-              >
-                <TouchableWithoutFeedback>
-                  <View style={styles.modalContainer}>
-                    <Typography variant="heading4" style={styles.modalTitle}>
-                      Ask your host for a game code
-                    </Typography>
-                    
-                    {/* Room code input */}
-                    <TextInput
-                      ref={inputRef}
-                      style={[
-                        styles.input,
-                        isFocused && styles.inputFocused
-                      ]}
-                      value={roomCode}
-                      onChangeText={(text) => {
-                        // Only allow digits
-                        const digitsOnly = text.replace(/[^0-9]/g, '');
-                        setRoomCode(digitsOnly);
-                      }}
-                      autoCapitalize="none"
-                      maxLength={5}
-                      keyboardType="number-pad"
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                      autoFocus={true}
-                      testID="room-code-input"
-                      placeholder="5 digit code"
-                      placeholderTextColor={colors.gray[400]}
-                    />
-                    
-                    {/* Join Game Button inside modal */}
-                    <Button
-                      title="Join Game"
-                      onPress={handleJoinGame}
-                      variant="contained"
-                      size="large"
-                      fullWidth
-                      disabled={isJoinButtonDisabled}
-                      testID="join-button"
-                      style={styles.joinButton}
-                    />
-                  </View>
-                </TouchableWithoutFeedback>
-              </KeyboardAvoidingView>
-            </View>
-          </TouchableWithoutFeedback>
-        </RNModal>
+          <Typography variant="heading4" style={styles.modalTitle}>
+            Ask your host for a game code
+          </Typography>
+          
+          {/* Room code input */}
+          <FormInput
+            ref={inputRef}
+            value={roomCode}
+            onChangeText={setRoomCode}
+            autoCapitalize="none"
+            maxLength={5}
+            keyboardType="number-pad"
+            autoFocus={true}
+            testID="room-code-input"
+            placeholder="5 digit code"
+          />
+          
+          {/* Join Game Button inside modal */}
+          <Button
+            title="Join Game"
+            onPress={handleJoinGame}
+            variant="contained"
+            size="large"
+            fullWidth
+            disabled={!isValidRoomCode}
+            testID="join-button"
+            style={styles.joinButton}
+          />
+        </Modal>
       </View>
     </Container>
   );
@@ -220,20 +160,6 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  backButton: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    zIndex: 10,
-  },
-  backButtonCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.background.light,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   contentContainer: {
     flex: 1,
@@ -248,54 +174,9 @@ const styles = StyleSheet.create({
   gameOption: {
     marginBottom: spacing.md,
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '85%',
-    backgroundColor: colors.background.default,
-    borderRadius: 20,
-    padding: spacing.lg,
-    shadowColor: colors.gray[900],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 10,
-  },
   modalTitle: {
     marginBottom: spacing.md,
     textAlign: 'left',
-  },
-  input: {
-    width: '100%',
-    padding: spacing.md,
-    borderRadius: 16,
-    backgroundColor: colors.gray[100],
-    borderWidth: 1,
-    borderColor: colors.border,
-    color: colors.text.primary,
-    fontSize: 16,
-    marginBottom: spacing.md,
-    textAlign: 'left',
-    paddingLeft: spacing.md + 4, // Add extra left padding for text
-  },
-  inputFocused: {
-    borderColor: colors.primary.main,
-    backgroundColor: colors.background.default,
-    shadowColor: colors.primary.main,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   joinButton: {
     marginTop: spacing.sm, 
