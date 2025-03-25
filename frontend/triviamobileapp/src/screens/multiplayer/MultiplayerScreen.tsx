@@ -93,9 +93,16 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   const handleCloseModal = () => {
     // Dismiss keyboard first, then hide the modal to prevent visual jump
     dismissKeyboard();
+    
     // Use a small timeout to ensure keyboard dismissal is processed before modal animation
     setTimeout(() => {
       setIsJoinModalVisible(false);
+      
+      // Reset the input state after the modal is closed
+      setTimeout(() => {
+        setRoomCode('');
+        setIsFocused(false);
+      }, 100);
     }, 50);
   };
 
