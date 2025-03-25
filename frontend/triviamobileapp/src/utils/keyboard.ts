@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Keyboard, KeyboardEvent, Platform } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { Keyboard, KeyboardEvent, Platform, Dimensions } from 'react-native';
 
 /**
  * Hook to track keyboard visibility and height
@@ -34,6 +34,32 @@ export function useKeyboard() {
   }, []);
 
   return { isKeyboardVisible, keyboardHeight };
+}
+
+/**
+ * Enhanced hook for keyboard management with additional utilities
+ * @returns Object with keyboard state, height, and helper functions
+ */
+export function useKeyboardManager() {
+  const { isKeyboardVisible, keyboardHeight } = useKeyboard();
+  
+  // Calculate available screen height (minus keyboard)
+  const screenHeight = Dimensions.get('window').height;
+  const availableHeight = isKeyboardVisible 
+    ? screenHeight - keyboardHeight 
+    : screenHeight;
+
+  // Dismiss keyboard helper
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
+
+  return { 
+    isKeyboardVisible, 
+    keyboardHeight, 
+    availableHeight,
+    dismissKeyboard
+  };
 }
 
 /**

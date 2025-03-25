@@ -6,12 +6,16 @@ import {
   TextInput, 
   Keyboard,
   Modal as RNModal,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { SelectionOption } from '../../components/layout';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
+import { useKeyboardManager } from '../../utils/keyboard';
 
 type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'>;
 
@@ -25,6 +29,9 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   const [isJoinModalVisible, setIsJoinModalVisible] = useState(false);
   const inputRef = useRef<TextInput>(null);
   
+  // Use our enhanced keyboard manager
+  const { isKeyboardVisible, keyboardHeight, dismissKeyboard } = useKeyboardManager();
+  
   // Focus input when modal becomes visible
   useEffect(() => {
     if (isJoinModalVisible && inputRef.current) {
@@ -37,13 +44,12 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
   const handleBackPress = () => {
     // If modal is visible, dismiss it; otherwise go back
     if (isJoinModalVisible) {
-      setIsJoinModalVisible(false);
-      Keyboard.dismiss();
+      handleCloseModal();
       return;
     }
     
     // Dismiss keyboard if visible before navigating back
-    Keyboard.dismiss();
+    dismissKeyboard();
     navigation.goBack();
   };
 
@@ -63,17 +69,20 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
     // Handle join game with room code
     if (roomCode.trim()) {
       console.log(`Join Game with code: ${roomCode}`);
-      // Dismiss keyboard and modal
-      Keyboard.dismiss();
-      setIsJoinModalVisible(false);
+      // Dismiss modal
+      handleCloseModal();
       // Navigate to game lobby
       // navigation.navigate('GameLobby', { roomCode });
     }
   };
 
   const handleCloseModal = () => {
-    setIsJoinModalVisible(false);
-    Keyboard.dismiss();
+    // Dismiss keyboard first, then hide the modal to prevent visual jump
+    dismissKeyboard();
+    // Use a small timeout to ensure keyboard dismissal is processed before modal animation
+    setTimeout(() => {
+      setIsJoinModalVisible(false);
+    }, 50);
   };
 
   const handleFocus = () => {
@@ -82,6 +91,11 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
 
   const handleBlur = () => {
     setIsFocused(false);
+  };
+
+  // Close the modal when tapping outside of it
+  const handleModalBackgroundPress = () => {
+    handleCloseModal();
   };
 
   const isJoinButtonDisabled = !roomCode.trim();
@@ -127,52 +141,63 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           />
         </View>
 
-        {/* Join Game Modal - Using React Native's built-in Modal */}
+        {/* Join Game Modal - Using React Native's built-in Modal with KeyboardAvoidingView */}
         <RNModal
           visible={isJoinModalVisible}
           transparent={true}
           animationType="fade"
           onRequestClose={handleCloseModal}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Typography variant="heading4" style={styles.modalTitle}>
-                Enter 5-digit game code
-              </Typography>
-              
-              {/* Room code input */}
-              <TextInput
-                ref={inputRef}
-                style={[
-                  styles.input,
-                  isFocused && styles.inputFocused
-                ]}
-                value={roomCode}
-                onChangeText={setRoomCode}
-                autoCapitalize="none"
-                maxLength={5}
-                keyboardType="number-pad"
-                onFocus={handleFocus}
-                onBlur={handleBlur}
-                returnKeyType="done"
-                onSubmitEditing={handleJoinGame}
-                autoFocus={true}
-                testID="room-code-input"
-              />
-              
-              {/* Join Game Button */}
-              <Button
-                title="Join Game"
-                onPress={handleJoinGame}
-                variant="contained"
-                size="large"
-                fullWidth
-                disabled={isJoinButtonDisabled}
-                style={styles.joinButton}
-                testID="join-game-button"
-              />
-            </View>
-          </View>
+          <TouchableWithoutFeedback onPress={handleModalBackgroundPress}>
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.modalOverlay}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
+            >
+              <TouchableWithoutFeedback>
+                <View style={[
+                  styles.modalContainer,
+                  isKeyboardVisible && Platform.OS === 'android' && { marginBottom: keyboardHeight / 2 }
+                ]}>
+                  <Typography variant="heading4" style={styles.modalTitle}>
+                    Enter 5-digit game code
+                  </Typography>
+                  
+                  {/* Room code input */}
+                  <TextInput
+                    ref={inputRef}
+                    style={[
+                      styles.input,
+                      isFocused && styles.inputFocused
+                    ]}
+                    value={roomCode}
+                    onChangeText={setRoomCode}
+                    autoCapitalize="none"
+                    maxLength={5}
+                    keyboardType="number-pad"
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                    returnKeyType="done"
+                    onSubmitEditing={handleJoinGame}
+                    autoFocus={true}
+                    testID="room-code-input"
+                  />
+                  
+                  {/* Join Game Button */}
+                  <Button
+                    title="Join Game"
+                    onPress={handleJoinGame}
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    disabled={isJoinButtonDisabled}
+                    style={styles.joinButton}
+                    testID="join-game-button"
+                  />
+                </View>
+              </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
         </RNModal>
       </View>
     </Container>
