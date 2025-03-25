@@ -140,7 +140,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
                 styles.input,
                 isFocused && styles.inputFocused
               ]}
-              placeholder="Room Code"
+              placeholder="5 Digit Room Code"
               placeholderTextColor={colors.text.hint}
               value={roomCode}
               onChangeText={setRoomCode}
