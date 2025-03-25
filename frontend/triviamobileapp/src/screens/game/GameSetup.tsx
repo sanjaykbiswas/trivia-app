@@ -1,6 +1,6 @@
 // File: frontend/triviamobileapp/src/screens/game/GameSetup.tsx
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Share, Alert, Clipboard } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { PageTitle } from '../../components/layout';
@@ -22,6 +22,22 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     return result;
   });
 
+  // We'll now just use the room code directly
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Reset copy success message after 3 seconds
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (copySuccess) {
+      timer = setTimeout(() => {
+        setCopySuccess(false);
+      }, 3000);
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [copySuccess]);
+
   const handleBackPress = () => {
     navigation.goBack();
   };
@@ -39,6 +55,17 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
   const handleStartGame = () => {
     console.log('Creating packs with AI');
     // TODO: Navigate to appropriate screen
+  };
+
+  const handleShareCode = async () => {
+    try {
+      await Share.share({
+        message: `Join my trivia game with room code: ${roomCode}`
+      });
+      setCopySuccess(true);
+    } catch (error) {
+      console.error('Error sharing room code:', error);
+    }
   };
 
   return (
@@ -91,6 +118,30 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
           fullWidth
           style={styles.startButton}
         />
+        
+        {/* Shareable Code Component */}
+        <View style={styles.shareableLinkContainer}>
+          <View style={styles.linkDisplay}>
+            <Typography variant="bodyMedium" numberOfLines={1} style={styles.linkText}>
+              {roomCode}
+            </Typography>
+          </View>
+          <TouchableOpacity 
+            style={styles.copyButton}
+            onPress={handleShareCode}
+          >
+            <View style={styles.shareButtonContent}>
+              <Svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={styles.shareIcon}>
+                <Path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                <Path d="M16 6l-4-4-4 4" />
+                <Path d="M12 2v13" />
+              </Svg>
+              <Typography variant="buttonMedium" style={styles.copyButtonText}>
+                Share code
+              </Typography>
+            </View>
+          </TouchableOpacity>
+        </View>
       </View>
     </Container>
   );
@@ -141,6 +192,49 @@ const styles = StyleSheet.create({
   startButton: {
     backgroundColor: colors.primary.main, // Black button to match onboarding screen
   },
+  // New styles for the shareable link component
+  shareableLinkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    backgroundColor: colors.background.light,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.gray[200],
+    height: 48, // Match the default height of large buttons
+  },
+  linkDisplay: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    height: '100%',
+  },
+  linkText: {
+    color: colors.text.primary,
+    fontSize: 18,
+    fontWeight: '500',
+    letterSpacing: 1,
+  },
+  copyButton: {
+    backgroundColor: colors.background.default,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
+    marginRight: spacing.xs,
+    height: '80%',
+    justifyContent: 'center',
+  },
+  copyButtonText: {
+    color: colors.text.primary,
+    marginLeft: 4,
+  },
+  shareButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  shareIcon: {
+    marginRight: 4,
+  }
 });
 
 export default GameSetupScreen;
