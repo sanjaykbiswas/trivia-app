@@ -93,23 +93,18 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             emoji="👑"
             onPress={handleHostGame}
             testID="host-game-option"
-            style={styles.hostGameOption}
+            style={styles.gameOption}
           />
-          
-          {/* Divider with text */}
-          <View style={styles.dividerContainer}>
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Typography 
-                variant="bodySmall" 
-                color={colors.text.secondary}
-                style={styles.dividerText}
-              >
-                Or join with code
-              </Typography>
-              <View style={styles.dividerLine} />
-            </View>
-          </View>
+
+          {/* Join Game option */}
+          <SelectionOption
+            title="Join"
+            subtitle="Enter a game room code"
+            emoji="🎮"
+            onPress={() => inputRef.current?.focus()}
+            testID="join-game-option"
+            style={styles.gameOption}
+          />
         </View>
 
         {/* Bottom Tray with Input and Join Button */}
@@ -187,26 +182,8 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginLeft: spacing.sm, // Align with back button
   },
-  hostGameOption: {
+  gameOption: {
     marginBottom: spacing.md,
-  },
-  dividerContainer: {
-    width: '100%',
-    paddingVertical: spacing.sm,
-  },
-  divider: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.divider,
-  },
-  dividerText: {
-    marginHorizontal: spacing.md,
   },
   bottomTray: {
     paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
