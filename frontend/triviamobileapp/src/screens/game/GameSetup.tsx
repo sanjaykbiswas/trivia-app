@@ -1,20 +1,62 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Share } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, Share, FlatList, TouchableOpacity, ScrollView as RNScrollView } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { PageTitle, BottomActions } from '../../components/layout';
 import { Header } from '../../components/navigation';
-import { ShareableCode } from '../../components/game';
+import { ShareableCode, CategoryBubble, PackCard, SectionHeader } from '../../components/game';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
 type GameSetupScreenProps = StackScreenProps<RootStackParamList, 'GameSetup'>;
 
+// Define category types
+type CategoryType = 'All' | 'My Packs' | 'Popular' | 'Free' | 'Shop';
+
+// Mock data for packs
+const myPacks = [
+  { id: 'mp1', title: 'Geography Expert', variant: 'myPack' },
+  { id: 'mp2', title: 'Geography Buff', variant: 'myPack' },
+  { id: 'mp3', title: 'Odds and Ends', variant: 'myPack' },
+  { id: 'mp4', title: 'Science Quiz', variant: 'myPack' },
+];
+
+const freshPacks = [
+  { id: 'fp1', title: 'Shabirky Quiz', author: 'shabirky', variant: 'freshPack' },
+  { id: 'fp2', title: 'Do you even know Aiden?', author: 'Aiden_Galbraith_', variant: 'freshPack' },
+  { id: 'fp3', title: 'Meeee', author: 'Alyssa', variant: 'freshPack' },
+  { id: 'fp4', title: 'Fun Facts', author: 'Jasmine', variant: 'freshPack' },
+];
+
+const popularPacks = [
+  { id: 'pp1', title: 'Pop Culture', variant: 'popularPack' },
+  { id: 'pp2', title: 'Movie Trivia', variant: 'popularPack' },
+  { id: 'pp3', title: 'Sports', variant: 'popularPack' },
+  { id: 'pp4', title: 'Music Legends', variant: 'popularPack' },
+];
+
+const freePacks = [
+  { id: 'frp1', title: 'General Knowledge', variant: 'freePack' },
+  { id: 'frp2', title: 'Science', variant: 'freePack' },
+  { id: 'frp3', title: 'History', variant: 'freePack' },
+  { id: 'frp4', title: 'Food & Drink', variant: 'freePack' },
+];
+
+const shopPacks = [
+  { id: 'sp1', title: 'Premium Quiz', variant: 'shopPack' },
+  { id: 'sp2', title: 'Movie Masters', variant: 'shopPack' },
+  { id: 'sp3', title: 'Sports Elite', variant: 'shopPack' },
+  { id: 'sp4', title: 'Brain Teasers', variant: 'shopPack' },
+];
+
 /**
  * GameSetupScreen component
- * Allows users to configure game settings before starting a game
+ * Allows users to configure game settings and select packs before starting a game
  */
 const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
+  // Active category state
+  const [activeCategory, setActiveCategory] = useState<CategoryType>('All');
+  
   // Generate a random 6-digit room code
   const [roomCode] = useState(() => {
     // Generate a random 6-digit number as a string
@@ -24,6 +66,9 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
   });
 
   const [copySuccess, setCopySuccess] = useState(false);
+  
+  // References
+  const categoriesScrollViewRef = useRef<RNScrollView>(null);
 
   // Reset copy success message after 3 seconds
   useEffect(() => {
@@ -47,6 +92,16 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     // TODO: Navigate to appropriate screen
   };
 
+  const handlePackPress = (packId: string) => {
+    console.log(`Pack selected: ${packId}`);
+    // TODO: Handle pack selection
+  };
+
+  const handleCategoryPress = (category: CategoryType) => {
+    setActiveCategory(category);
+    // Optional: Scroll to relevant section
+  };
+
   // Format the room code for sharing (including the hyphen)
   const formattedRoomCode = () => {
     if (roomCode.length === 6) {
@@ -66,6 +121,38 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     }
   };
 
+  // Render a horizontal pack list
+  const renderPackRow = (
+    packs: { id: string; title: string; variant: string; author?: string }[],
+    variant: 'myPack' | 'freshPack' | 'popularPack' | 'freePack' | 'shopPack'
+  ) => {
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.packRow}
+      >
+        {packs.map((pack) => (
+          <PackCard
+            key={pack.id}
+            title={pack.title}
+            author={pack.author}
+            variant={variant as any}
+            onPress={() => handlePackPress(pack.id)}
+            style={styles.packCard}
+            testID={`pack-${pack.id}`}
+          />
+        ))}
+      </ScrollView>
+    );
+  };
+
+  // Filter content based on active category
+  const shouldShowSection = (sectionCategory: string) => {
+    if (activeCategory === 'All') return true;
+    return activeCategory === sectionCategory;
+  };
+
   return (
     <Container
       useSafeArea={true}
@@ -79,16 +166,89 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
           onBackPress={handleBackPress} 
         />
 
-        <ScrollView style={styles.scrollView}>
+        <PageTitle title="Choose your pack" />
+
+        {/* Category Filters */}
+        <ScrollView
+          ref={categoriesScrollViewRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryContainer}
+        >
+          <CategoryBubble
+            title="All"
+            isActive={activeCategory === 'All'}
+            onPress={() => handleCategoryPress('All')}
+            testID="category-all"
+          />
+          <CategoryBubble
+            title="My Packs"
+            isActive={activeCategory === 'My Packs'}
+            onPress={() => handleCategoryPress('My Packs')}
+            testID="category-my-packs"
+          />
+          <CategoryBubble
+            title="Popular"
+            isActive={activeCategory === 'Popular'}
+            onPress={() => handleCategoryPress('Popular')}
+            testID="category-popular"
+          />
+          <CategoryBubble
+            title="Free"
+            isActive={activeCategory === 'Free'}
+            onPress={() => handleCategoryPress('Free')}
+            testID="category-free"
+          />
+          <CategoryBubble
+            title="Shop"
+            isActive={activeCategory === 'Shop'}
+            onPress={() => handleCategoryPress('Shop')}
+            testID="category-shop"
+          />
+        </ScrollView>
+
+        {/* Main Content */}
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.contentContainer}>
-            <PageTitle title="Choose your pack" />
-            
-            {/* Pack selection content will go here */}
-            <View style={styles.placeholderContent}>
-              <Typography variant="bodyMedium" color={colors.text.secondary}>
-                Pack selection options will be displayed here
-              </Typography>
-            </View>
+            {/* My Packs Section */}
+            {shouldShowSection('My Packs') && (
+              <View style={styles.section}>
+                <SectionHeader title="My Packs" testID="section-my-packs" />
+                {renderPackRow(myPacks, 'myPack')}
+              </View>
+            )}
+
+            {/* Fresh Packs Section */}
+            {shouldShowSection('Popular') && (
+              <View style={styles.section}>
+                <SectionHeader title="Fresh Packs" testID="section-fresh-packs" />
+                {renderPackRow(freshPacks, 'freshPack')}
+              </View>
+            )}
+
+            {/* Popular Packs Section */}
+            {shouldShowSection('Popular') && (
+              <View style={styles.section}>
+                <SectionHeader title="Popular Packs" testID="section-popular-packs" />
+                {renderPackRow(popularPacks, 'popularPack')}
+              </View>
+            )}
+
+            {/* Free Packs Section */}
+            {shouldShowSection('Free') && (
+              <View style={styles.section}>
+                <SectionHeader title="Free Packs" testID="section-free-packs" />
+                {renderPackRow(freePacks, 'freePack')}
+              </View>
+            )}
+
+            {/* Shop Section */}
+            {shouldShowSection('Shop') && (
+              <View style={styles.section}>
+                <SectionHeader title="Shop" testID="section-shop" />
+                {renderPackRow(shopPacks, 'shopPack')}
+              </View>
+            )}
           </View>
         </ScrollView>
 
@@ -117,26 +277,29 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
+  },
+  categoryContainer: {
+    paddingHorizontal: spacing.page,
+    paddingBottom: spacing.md,
   },
   scrollView: {
     flex: 1,
   },
   contentContainer: {
     padding: spacing.page,
-    paddingBottom: spacing.xxl, // Add extra padding at the bottom for scrolling
+    paddingBottom: spacing.xxl * 2, // Add extra padding at the bottom for scrolling
   },
-  placeholderContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-    backgroundColor: colors.gray[100],
-    borderRadius: 12,
-    height: 200,
+  section: {
+    marginBottom: spacing.xl,
+  },
+  packRow: {
+    paddingBottom: spacing.xs,
+  },
+  packCard: {
+    marginRight: spacing.md,
   },
   startButton: {
-    backgroundColor: colors.primary.main, // Black button to match onboarding screen
+    backgroundColor: colors.primary.main,
     marginBottom: spacing.md,
   },
   shareableCode: {
