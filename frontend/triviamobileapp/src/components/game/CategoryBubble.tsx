@@ -42,17 +42,22 @@ const CategoryBubble: React.FC<CategoryBubbleProps> = ({
 
 const styles = StyleSheet.create({
   bubble: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
     backgroundColor: colors.background.light,
-    borderRadius: 20,
-    marginRight: 10,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 4,
+    height: 32, // Set fixed height for consistency
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   activeBubble: {
     backgroundColor: colors.primary.main,
   },
   text: {
     fontWeight: '500',
+    fontSize: 14,
   },
 });
 
