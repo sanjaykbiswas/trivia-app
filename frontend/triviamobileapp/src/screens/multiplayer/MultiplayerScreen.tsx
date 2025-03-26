@@ -1,4 +1,3 @@
-// File: frontend/triviamobileapp/src/screens/multiplayer/MultiplayerScreen.tsx
 import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, TextInput } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -24,7 +23,7 @@ type MultiplayerScreenProps = StackScreenProps<RootStackParamList, 'Multiplayer'
  * Allows users to host or join a multiplayer game session
  */
 const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => {
-  const { roomCode, setRoomCode, isValidRoomCode, resetRoomCode } = useRoomCode();
+  const { roomCode, displayValue, setRoomCode, isValidRoomCode, resetRoomCode } = useRoomCode();
   const { isVisible, showModal, hideModal } = useModal();
   const { dismissKeyboard } = useKeyboardManager();
   const inputRef = useRef<TextInput>(null);
@@ -131,14 +130,14 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           {/* Room code input */}
           <FormInput
             ref={inputRef}
-            value={roomCode}
+            value={displayValue}
             onChangeText={setRoomCode}
             autoCapitalize="none"
-            maxLength={5}
+            maxLength={8} // Increased to account for the hyphen (6 digits + 1 hyphen)
             keyboardType="number-pad"
             autoFocus={true}
             testID="room-code-input"
-            placeholder="5 digit code"
+            placeholder="Enter 6 digit code"
           />
           
           {/* Join Game Button inside modal */}

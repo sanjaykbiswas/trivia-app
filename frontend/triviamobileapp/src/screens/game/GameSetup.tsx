@@ -1,4 +1,3 @@
-// File: frontend/triviamobileapp/src/screens/game/GameSetup.tsx
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Share } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -16,14 +15,12 @@ type GameSetupScreenProps = StackScreenProps<RootStackParamList, 'GameSetup'>;
  * Allows users to configure game settings before starting a game
  */
 const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
-  // Generate a random room code (5 characters)
+  // Generate a random 6-digit room code
   const [roomCode] = useState(() => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 5; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
+    // Generate a random 6-digit number as a string
+    const min = 100000; // Smallest 6-digit number
+    const max = 999999; // Largest 6-digit number
+    return Math.floor(min + Math.random() * (max - min + 1)).toString();
   });
 
   const [copySuccess, setCopySuccess] = useState(false);
@@ -50,10 +47,18 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     // TODO: Navigate to appropriate screen
   };
 
+  // Format the room code for sharing (including the hyphen)
+  const formattedRoomCode = () => {
+    if (roomCode.length === 6) {
+      return `${roomCode.substring(0, 3)}-${roomCode.substring(3)}`;
+    }
+    return roomCode;
+  };
+
   const handleShareCode = async () => {
     try {
       await Share.share({
-        message: `Join my trivia game with room code: ${roomCode}`
+        message: `Join my trivia game with room code: ${formattedRoomCode()}`
       });
       setCopySuccess(true);
     } catch (error) {

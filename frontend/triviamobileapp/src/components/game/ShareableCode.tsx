@@ -1,4 +1,3 @@
-// File: frontend/triviamobileapp/src/components/game/ShareableCode.tsx
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Typography } from '../common';
@@ -16,6 +15,7 @@ interface ShareableCodeProps {
 /**
  * ShareableCode component
  * Displays a code with a share button that allows users to share the code
+ * Formats 6-digit codes with a hyphen between the 3rd and 4th digits (e.g., 123-456)
  */
 const ShareableCode: React.FC<ShareableCodeProps> = ({
   code,
@@ -24,6 +24,14 @@ const ShareableCode: React.FC<ShareableCodeProps> = ({
   style,
   testID,
 }) => {
+  // Format the code if it's 6 digits
+  const formattedCode = () => {
+    if (code.length === 6) {
+      return `${code.substring(0, 3)}-${code.substring(3)}`;
+    }
+    return code;
+  };
+
   return (
     <TouchableOpacity 
       style={[styles.container, style]}
@@ -33,7 +41,7 @@ const ShareableCode: React.FC<ShareableCodeProps> = ({
     >
       <View style={styles.linkDisplay}>
         <Typography variant="bodyMedium" numberOfLines={1} style={styles.linkText}>
-          {label} <Text style={styles.codeText}>{code}</Text>
+          {label} <Text style={styles.codeText}>{formattedCode()}</Text>
         </Typography>
       </View>
       <View style={styles.copyButtonContainer}>
