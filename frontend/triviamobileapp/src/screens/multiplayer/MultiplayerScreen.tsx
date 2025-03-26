@@ -133,7 +133,7 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
             value={displayValue}
             onChangeText={setRoomCode}
             autoCapitalize="none"
-            maxLength={8} // Increased to account for the hyphen (6 digits + 1 hyphen)
+            maxLength={7}
             keyboardType="number-pad"
             autoFocus={true}
             testID="room-code-input"

@@ -8,7 +8,12 @@ export function useRoomCode() {
   const [displayValue, setDisplayValue] = useState('');
   
   const handleRoomCodeChange = useCallback((text: string) => {
-    // Handle special case for pasting hyphenated code
+    // If we already have 6 digits and text is longer than displayValue,
+    // ignore the input (unless user is deleting)
+    if (roomCode.length >= 6 && text.length > displayValue.length) {
+      return;
+    }
+    
     // Remove all non-digit characters (including hyphens)
     const cleanInput = text.replace(/[^0-9]/g, '');
     
@@ -26,7 +31,7 @@ export function useRoomCode() {
       const secondPart = digitsOnly.substring(3);
       setDisplayValue(`${firstPart}-${secondPart}`);
     }
-  }, []);
+  }, [roomCode, displayValue]);
   
   const resetRoomCode = useCallback(() => {
     setRoomCode('');
