@@ -6,7 +6,21 @@ export type RootStackParamList = {
   Home: undefined;
   Multiplayer: undefined;
   GameSetup: undefined;
-  GamePlay: { categoryId?: string; difficulty?: string; roomCode?: string; categories?: string[] };
+  GameOptions: {
+    packTitle?: string;
+    packDescription?: string;
+    totalQuestions?: number;
+    totalPlays?: number;
+  };
+  GamePlay: {
+    categoryId?: string; 
+    difficulty?: string; 
+    roomCode?: string; 
+    categories?: string[];
+    packTitle?: string;
+    questionCount?: number;
+    timerSeconds?: number;
+  };
   Profile: undefined;
   Settings: undefined;
 };

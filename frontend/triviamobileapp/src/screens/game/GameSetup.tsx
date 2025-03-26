@@ -92,9 +92,19 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     // TODO: Navigate to appropriate screen
   };
 
-  const handlePackPress = (packId: string) => {
+  const handlePackPress = (packId: string, packTitle: string, variant: string) => {
     console.log(`Pack selected: ${packId}`);
-    // TODO: Handle pack selection
+    
+    // Sample data for demonstration
+    const packData = {
+      packTitle: packTitle,
+      packDescription: "Are you a true expert? Prove it!",
+      totalQuestions: 200,
+      totalPlays: 58107
+    };
+    
+    // Navigate to GameOptions with pack data
+    navigation.navigate('GameOptions', packData);
   };
 
   const handleCategoryPress = (category: CategoryType) => {
@@ -138,7 +148,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
             title={pack.title}
             author={pack.author}
             variant={variant as any}
-            onPress={() => handlePackPress(pack.id)}
+            onPress={() => handlePackPress(pack.id, pack.title, variant)}
             style={styles.packCard}
             testID={`pack-${pack.id}`}
           />
