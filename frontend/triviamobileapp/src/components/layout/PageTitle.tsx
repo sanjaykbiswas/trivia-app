@@ -1,4 +1,3 @@
-// File: frontend/triviamobileapp/src/components/layout/PageTitle.tsx
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { Typography } from '../common';
@@ -30,9 +29,8 @@ const PageTitle: React.FC<PageTitleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: -16,
-    marginBottom: spacing.xl,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.page,
+    marginBottom: spacing.md,
   },
   title: {
     textAlign: 'left',

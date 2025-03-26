@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Share, FlatList, TouchableOpacity, ScrollView as RNScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Share, TouchableOpacity, ScrollView as RNScrollView } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { PageTitle, BottomActions } from '../../components/layout';
@@ -169,87 +169,91 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
         <PageTitle title="Choose your pack" />
 
         {/* Category Filters */}
-        <ScrollView
-          ref={categoriesScrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryContainer}
-        >
-          <CategoryBubble
-            title="All"
-            isActive={activeCategory === 'All'}
-            onPress={() => handleCategoryPress('All')}
-            testID="category-all"
-          />
-          <CategoryBubble
-            title="My Packs"
-            isActive={activeCategory === 'My Packs'}
-            onPress={() => handleCategoryPress('My Packs')}
-            testID="category-my-packs"
-          />
-          <CategoryBubble
-            title="Popular"
-            isActive={activeCategory === 'Popular'}
-            onPress={() => handleCategoryPress('Popular')}
-            testID="category-popular"
-          />
-          <CategoryBubble
-            title="Free"
-            isActive={activeCategory === 'Free'}
-            onPress={() => handleCategoryPress('Free')}
-            testID="category-free"
-          />
-          <CategoryBubble
-            title="Shop"
-            isActive={activeCategory === 'Shop'}
-            onPress={() => handleCategoryPress('Shop')}
-            testID="category-shop"
-          />
-        </ScrollView>
+        <View style={styles.categoryWrapper}>
+          <ScrollView
+            ref={categoriesScrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryContainer}
+          >
+            <CategoryBubble
+              title="All"
+              isActive={activeCategory === 'All'}
+              onPress={() => handleCategoryPress('All')}
+              testID="category-all"
+            />
+            <CategoryBubble
+              title="My Packs"
+              isActive={activeCategory === 'My Packs'}
+              onPress={() => handleCategoryPress('My Packs')}
+              testID="category-my-packs"
+            />
+            <CategoryBubble
+              title="Popular"
+              isActive={activeCategory === 'Popular'}
+              onPress={() => handleCategoryPress('Popular')}
+              testID="category-popular"
+            />
+            <CategoryBubble
+              title="Free"
+              isActive={activeCategory === 'Free'}
+              onPress={() => handleCategoryPress('Free')}
+              testID="category-free"
+            />
+            <CategoryBubble
+              title="Shop"
+              isActive={activeCategory === 'Shop'}
+              onPress={() => handleCategoryPress('Shop')}
+              testID="category-shop"
+            />
+          </ScrollView>
+        </View>
 
         {/* Main Content */}
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          <View style={styles.contentContainer}>
-            {/* My Packs Section */}
-            {shouldShowSection('My Packs') && (
-              <View style={styles.section}>
-                <SectionHeader title="My Packs" testID="section-my-packs" />
-                {renderPackRow(myPacks, 'myPack')}
-              </View>
-            )}
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollViewContent}
+        >
+          {/* My Packs Section */}
+          {shouldShowSection('My Packs') && (
+            <View style={styles.section}>
+              <SectionHeader title="My Packs" testID="section-my-packs" />
+              {renderPackRow(myPacks, 'myPack')}
+            </View>
+          )}
 
-            {/* Fresh Packs Section */}
-            {shouldShowSection('Popular') && (
-              <View style={styles.section}>
-                <SectionHeader title="Fresh Packs" testID="section-fresh-packs" />
-                {renderPackRow(freshPacks, 'freshPack')}
-              </View>
-            )}
+          {/* Fresh Packs Section */}
+          {shouldShowSection('Popular') && (
+            <View style={styles.section}>
+              <SectionHeader title="Fresh Packs" testID="section-fresh-packs" />
+              {renderPackRow(freshPacks, 'freshPack')}
+            </View>
+          )}
 
-            {/* Popular Packs Section */}
-            {shouldShowSection('Popular') && (
-              <View style={styles.section}>
-                <SectionHeader title="Popular Packs" testID="section-popular-packs" />
-                {renderPackRow(popularPacks, 'popularPack')}
-              </View>
-            )}
+          {/* Popular Packs Section */}
+          {shouldShowSection('Popular') && (
+            <View style={styles.section}>
+              <SectionHeader title="Popular Packs" testID="section-popular-packs" />
+              {renderPackRow(popularPacks, 'popularPack')}
+            </View>
+          )}
 
-            {/* Free Packs Section */}
-            {shouldShowSection('Free') && (
-              <View style={styles.section}>
-                <SectionHeader title="Free Packs" testID="section-free-packs" />
-                {renderPackRow(freePacks, 'freePack')}
-              </View>
-            )}
+          {/* Free Packs Section */}
+          {shouldShowSection('Free') && (
+            <View style={styles.section}>
+              <SectionHeader title="Free Packs" testID="section-free-packs" />
+              {renderPackRow(freePacks, 'freePack')}
+            </View>
+          )}
 
-            {/* Shop Section */}
-            {shouldShowSection('Shop') && (
-              <View style={styles.section}>
-                <SectionHeader title="Shop" testID="section-shop" />
-                {renderPackRow(shopPacks, 'shopPack')}
-              </View>
-            )}
-          </View>
+          {/* Shop Section */}
+          {shouldShowSection('Shop') && (
+            <View style={styles.section}>
+              <SectionHeader title="Shop" testID="section-shop" />
+              {renderPackRow(shopPacks, 'shopPack')}
+            </View>
+          )}
         </ScrollView>
 
         <BottomActions>
@@ -278,19 +282,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  categoryWrapper: {
+    height: 40, // Fixed height for category section
+    marginBottom: spacing.xs, // Reduced spacing
+  },
   categoryContainer: {
     paddingHorizontal: spacing.page,
-    paddingBottom: spacing.md,
   },
   scrollView: {
     flex: 1,
   },
-  contentContainer: {
+  scrollViewContent: {
     padding: spacing.page,
-    paddingBottom: spacing.xxl * 2, // Add extra padding at the bottom for scrolling
+    paddingBottom: spacing.lg, // Reduced padding at bottom
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md, // Reduced from xl to md
   },
   packRow: {
     paddingBottom: spacing.xs,
@@ -303,7 +310,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   shareableCode: {
-    marginTop: spacing.xs,
+    marginTop: 0, // Reset margin
   },
 });
 

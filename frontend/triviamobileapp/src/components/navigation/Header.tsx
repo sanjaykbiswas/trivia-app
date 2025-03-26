@@ -1,4 +1,3 @@
-// File: frontend/triviamobileapp/src/components/navigation/Header.tsx
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp, TouchableOpacity } from 'react-native';
 import { colors, spacing } from '../../theme';
@@ -63,7 +62,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   backButton: {
-    padding: spacing.xs,
+    // Removed extra padding to ensure consistent alignment
   },
   backButtonCircle: {
     width: 36,

@@ -1,4 +1,3 @@
-// File: frontend/triviamobileapp/src/components/layout/BottomActions.tsx
 import React, { ReactNode } from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { colors, spacing } from '../../theme';
@@ -27,8 +26,8 @@ const BottomActions: React.FC<BottomActionsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: spacing.page,
-    paddingBottom: spacing.page,
+    paddingHorizontal: spacing.page,
+    paddingVertical: spacing.md, // Standardized padding
     backgroundColor: colors.background.default,
     borderTopWidth: 1,
     borderTopColor: colors.divider,

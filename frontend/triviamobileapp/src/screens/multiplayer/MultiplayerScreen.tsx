@@ -93,10 +93,9 @@ const MultiplayerScreen: React.FC<MultiplayerScreenProps> = ({ navigation }) => 
           onBackPress={handleBackPress} 
         />
 
-        <View style={styles.contentContainer}>
-          {/* Page Title */}
-          <PageTitle title="Multiplayer" />
+        <PageTitle title="Multiplayer" />
 
+        <View style={styles.contentContainer}>
           {/* Host Game option */}
           <SelectionOption
             title="Host"
@@ -163,7 +162,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    padding: spacing.page,
+    paddingHorizontal: spacing.page,
   },
   gameOption: {
     marginBottom: spacing.md,

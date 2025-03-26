@@ -47,13 +47,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.light,
     borderRadius: 16,
     marginRight: 8,
-    marginBottom: 4,
-    height: 32, // Set fixed height for consistency
+    height: 32, // Fixed height for consistency
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.background.light, // Adding border to prevent shifting when active
   },
   activeBubble: {
     backgroundColor: colors.primary.main,
+    borderColor: colors.primary.main,
   },
   text: {
     fontWeight: '500',
