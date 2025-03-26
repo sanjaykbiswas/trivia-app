@@ -16,7 +16,7 @@ interface PackCardProps {
 
 /**
  * PackCard component
- * Card displaying a trivia pack with title and optional author
+ * Card displaying a trivia pack with title
  */
 const PackCard: React.FC<PackCardProps> = ({
   title,
@@ -33,20 +33,16 @@ const PackCard: React.FC<PackCardProps> = ({
       activeOpacity={0.8}
       testID={testID}
     >
-      <View style={[styles.imageContainer, styles[`${variant}Background`]]} />
       <View style={styles.contentContainer}>
-        <Typography variant="bodySmall" style={styles.title} numberOfLines={2}>
+        <Typography 
+          variant="bodySmall" 
+          style={styles.title} 
+          numberOfLines={2}
+          color={colors.text.primary}
+        >
           {title}
         </Typography>
       </View>
-      
-      {author && (
-        <View style={styles.authorStrip}>
-          <Typography variant="caption" color="white">
-            By {author}
-          </Typography>
-        </View>
-      )}
     </TouchableOpacity>
   );
 };
@@ -54,7 +50,8 @@ const PackCard: React.FC<PackCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     width: 130,
-    backgroundColor: colors.background.default,
+    height: 130,
+    backgroundColor: colors.gray[200], // Using a grey background for all packs
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: colors.gray[900],
@@ -63,40 +60,15 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  imageContainer: {
-    height: 130,
-    width: '100%',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
   contentContainer: {
+    flex: 1,
     padding: 12,
-    minHeight: 50,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
     fontWeight: '600',
     textAlign: 'center',
-  },
-  authorStrip: {
-    backgroundColor: '#6b4afb',
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  myPackBackground: {
-    backgroundColor: '#ff7373',
-  },
-  freshPackBackground: {
-    backgroundColor: '#ffa64d',
-  },
-  popularPackBackground: {
-    backgroundColor: '#6b4afb',
-  },
-  freePackBackground: {
-    backgroundColor: '#33cc5a',
-  },
-  shopPackBackground: {
-    backgroundColor: '#ff9500',
   },
 });
 
