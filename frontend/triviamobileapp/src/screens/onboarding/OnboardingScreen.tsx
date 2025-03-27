@@ -9,6 +9,12 @@ import { RootStackParamList } from '../../navigation/types';
 
 type OnboardingScreenProps = StackScreenProps<RootStackParamList, 'Onboarding'>;
 
+// Define phrase type with text and color
+interface Phrase {
+  text: string;
+  color: string;
+}
+
 /**
  * OnboardingScreen component
  * Displays the app introduction with animated typing effect
@@ -21,6 +27,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   // Animation state
   const [typedText, setTypedText] = useState('');
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [currentColor, setCurrentColor] = useState(colors.primary.main);
   
   // Animation for the initial title fade-in
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -31,15 +38,15 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const PHRASE_DISPLAY_TIME = 1500;  // Time to display completed phrase
   const DELETION_SPEED = 50;         // Time between deleting each character
   
-  // Phrases to cycle through - easy to add or remove items
-  const PHRASES = [
-    "game nights",
-    "daily fixes",
-    "competitive spirits",
-    "rainy days",
-    "tickling your brain",
-    "bathroom breaks",
-    "dinners with friends"
+  // Phrases to cycle through with colors - easy to add or remove items
+  const PHRASES: Phrase[] = [
+    { text: "game nights", color: "#FF5733" }, // Orange-red
+    { text: "long car rides", color: "#33A8FF" }, // Bright blue
+    { text: "competitive spirits", color: "#9C33FF" }, // Purple
+    { text: "rainy days on the couch", color: "#33FFBD" }, // Turquoise
+    { text: "tickling your brain", color: "#FF33A8" }, // Pink
+    { text: "bathroom breaks", color: "#33FF57" }, // Green
+    { text: "dinners with friends", color: "#FFD133" }  // Golden yellow
   ];
 
   // Animation controller reference
@@ -55,10 +62,14 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
       return this.phrases[this.currentPhraseIndex];
     },
     
-    start(updateTextFn: (text: string) => void) {
+    start(updateTextFn: (text: string) => void, updateColorFn: (color: string) => void) {
       if (this.isRunning) return;
       this.isRunning = true;
-      this.step(updateTextFn);
+      
+      // Set initial color immediately
+      updateColorFn(this.getCurrentPhrase().color);
+      
+      this.step(updateTextFn, updateColorFn);
     },
     
     stop() {
@@ -69,23 +80,23 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
       }
     },
     
-    step(updateTextFn: (text: string) => void) {
+    step(updateTextFn: (text: string) => void, updateColorFn: (color: string) => void) {
       if (!this.isRunning) return;
       
       const currentPhrase = this.getCurrentPhrase();
       
       // Typing phase
       if (this.isTyping) {
-        if (this.currentText.length < currentPhrase.length) {
+        if (this.currentText.length < currentPhrase.text.length) {
           // Add next character
-          this.currentText = currentPhrase.substring(0, this.currentText.length + 1);
+          this.currentText = currentPhrase.text.substring(0, this.currentText.length + 1);
           updateTextFn(this.currentText);
-          this.timerId = setTimeout(() => this.step(updateTextFn), TYPING_SPEED);
+          this.timerId = setTimeout(() => this.step(updateTextFn, updateColorFn), TYPING_SPEED);
         } else {
           // Full phrase typed - pause before deleting
           this.timerId = setTimeout(() => {
             this.isTyping = false;
-            this.step(updateTextFn);
+            this.step(updateTextFn, updateColorFn);
           }, PHRASE_DISPLAY_TIME);
         }
       } 
@@ -93,14 +104,16 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
       else {
         if (this.currentText.length > 0) {
           // Remove last character
-          this.currentText = currentPhrase.substring(0, this.currentText.length - 1);
+          this.currentText = currentPhrase.text.substring(0, this.currentText.length - 1);
           updateTextFn(this.currentText);
-          this.timerId = setTimeout(() => this.step(updateTextFn), DELETION_SPEED);
+          this.timerId = setTimeout(() => this.step(updateTextFn, updateColorFn), DELETION_SPEED);
         } else {
           // Fully deleted - move to next phrase
           this.currentPhraseIndex = (this.currentPhraseIndex + 1) % this.phrases.length;
+          // Update color for the new phrase
+          updateColorFn(this.getCurrentPhrase().color);
           this.isTyping = true;
-          this.step(updateTextFn);
+          this.step(updateTextFn, updateColorFn);
         }
       }
     }
@@ -133,7 +146,7 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     
     // Start typing animation after a delay
     const startTimer = setTimeout(() => {
-      animationRef.current.start(setTypedText);
+      animationRef.current.start(setTypedText, setCurrentColor);
     }, 1000);
     
     // Cleanup function
@@ -185,9 +198,16 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
               Trivia for
             </Typography>
             <View style={styles.typingContainer}>
-              <Typography variant="heading1" style={[styles.titleText, styles.typingText]}>
+              <Typography 
+                variant="heading1" 
+                style={[
+                  styles.titleText, 
+                  styles.typingText,
+                  { color: currentColor } // Apply dynamic color
+                ]}
+              >
                 {typedText}
-                <Text style={[styles.cursor, {opacity: cursorVisible ? 1 : 0}]}>|</Text>
+                <Text style={[styles.cursor, {opacity: cursorVisible ? 1 : 0, color: currentColor}]}>|</Text>
               </Typography>
             </View>
           </Animated.View>
@@ -251,11 +271,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   typingText: {
-    color: colors.primary.main, // Makes the typing text stand out
+    // Color is now applied dynamically
   },
   cursor: {
-    color: colors.primary.main,
     fontWeight: 'bold',
+    // Color is now applied dynamically
   },
   bottomTray: {
     paddingTop: spacing.xl,
