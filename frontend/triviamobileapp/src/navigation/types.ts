@@ -18,6 +18,12 @@ export type RootStackParamList = {
     questionCount?: number;
     timerSeconds?: number;
   };
+  QuestionScreen: {
+    packTitle?: string;
+    questionCount?: number;
+    timerSeconds?: number;
+    roomCode?: string;
+  };
   Profile: undefined;
   Settings: undefined;
 };

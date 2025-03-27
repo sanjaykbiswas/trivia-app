@@ -40,8 +40,8 @@ const GameOptionsScreen: React.FC<GameOptionsScreenProps> = ({ navigation, route
     
     console.log(`Questions: ${selectedQuestionCount}, Timer: ${selectedTimer}s`);
     
-    // Navigate to game play screen with options
-    navigation.navigate('GamePlay', {
+    // Navigate to question screen with options
+    navigation.navigate('QuestionScreen', {
       packTitle,
       questionCount: selectedQuestionCount,
       timerSeconds: selectedTimer,

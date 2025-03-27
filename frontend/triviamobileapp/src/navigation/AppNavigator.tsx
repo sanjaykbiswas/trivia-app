@@ -6,7 +6,8 @@ import {
   HomeScreen, 
   MultiplayerScreen, 
   GameSetupScreen,
-  GameOptionsScreen 
+  GameOptionsScreen,
+  QuestionScreen 
 } from '../screens';
 import { RootStackParamList } from './types';
 
@@ -31,6 +32,7 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen name="Multiplayer" component={MultiplayerScreen} />
       <Stack.Screen name="GameSetup" component={GameSetupScreen} />
       <Stack.Screen name="GameOptions" component={GameOptionsScreen} />
+      <Stack.Screen name="QuestionScreen" component={QuestionScreen} />
       
       {/* Add more screens as you create them */}
       {/* 
