@@ -1,4 +1,5 @@
-import React from 'react';
+// frontend/triviamobileapp/src/components/auth/SignInModal.tsx
+import React, { useRef, useEffect } from 'react';
 import { 
   View, 
   Modal,
@@ -8,7 +9,8 @@ import {
   TouchableWithoutFeedback,
   Pressable,
   Platform,
-  Alert
+  Alert,
+  Animated
 } from 'react-native';
 import { Typography } from '../common';
 import { colors, spacing } from '../../theme';
@@ -30,15 +32,44 @@ interface SignInModalProps {
   visible: boolean;
   onClose: () => void;
   onContinueWithEmail: () => void;
+  iconTextSpacing?: number; // Variable spacing between icon and text
 }
 
 const SignInModal: React.FC<SignInModalProps> = ({ 
   visible, 
   onClose, 
-  onContinueWithEmail 
+  onContinueWithEmail,
+  iconTextSpacing = 12 // Default spacing
 }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { signInWithApple, signInWithGoogle } = useAuth();
+  
+  // Animation for modal sliding up
+  const slideAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Start the slide-up animation when modal becomes visible
+      Animated.timing(slideAnimation, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Slide down when closing
+      Animated.timing(slideAnimation, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible, slideAnimation]);
+  
+  // Calculate translateY based on animation value
+  const translateY = slideAnimation.interpolate({
+    inputRange: [0, 1],
+    outputRange: [300, 0], // Start 300 pixels down, end at normal position
+  });
 
   const handleAppleSignIn = async () => {
     try {
@@ -130,7 +161,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade" // Background changes instantly
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
@@ -138,7 +169,12 @@ const SignInModal: React.FC<SignInModalProps> = ({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
-            <View style={styles.modalContent}>
+            <Animated.View 
+              style={[
+                styles.modalContent,
+                { transform: [{ translateY }] }
+              ]}
+            >
               <View style={styles.header}>
                 <Typography variant="heading2" style={styles.title}>
                   Sign In
@@ -147,6 +183,9 @@ const SignInModal: React.FC<SignInModalProps> = ({
                   <Text style={styles.closeButtonText}>✕</Text>
                 </Pressable>
               </View>
+              
+              {/* Divider line */}
+              <View style={styles.divider} />
 
               {/* Apple Sign In Button */}
               {Platform.OS === 'ios' && (
@@ -154,15 +193,15 @@ const SignInModal: React.FC<SignInModalProps> = ({
                   style={[styles.button, styles.appleButton]}
                   onPress={handleAppleSignIn}
                 >
-                  <View style={styles.buttonIconContainer}>
+                  <View style={[styles.buttonContent, {columnGap: iconTextSpacing}]}>
                     <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                       <Path 
                         d="M17.543 12.084c-.03-2.751 2.251-4.088 2.354-4.155-1.287-1.884-3.287-2.141-3.987-2.163-1.677-.175-3.304 1.001-4.161 1.001-.878 0-2.201-.983-3.635-.955-1.843.027-3.57 1.093-4.521 2.745-1.954 3.39-.495 8.376 1.378 11.12.937 1.345 2.033 2.846 3.47 2.791 1.405-.059 1.93-.9 3.627-.9 1.678 0 2.168.9 3.633.864 1.507-.024 2.456-1.359 3.363-2.713 1.08-1.55 1.517-3.074 1.535-3.155-.035-.012-2.926-1.12-2.956-4.48zM14.955 3.65c.755-.944 1.27-2.232 1.127-3.54-1.092.049-2.456.757-3.242 1.683-.697.815-1.321 2.149-1.16 3.407 1.226.093 2.482-.627 3.275-1.55z" 
                         fill="white"
                       />
                     </Svg>
+                    <Text style={styles.appleButtonText}>Sign in with Apple</Text>
                   </View>
-                  <Text style={styles.appleButtonText}>Sign in with Apple</Text>
                 </TouchableOpacity>
               )}
 
@@ -171,7 +210,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
                 style={[styles.button, styles.googleButton]}
                 onPress={handleGoogleSignIn}
               >
-                <View style={styles.googleIconContainer}>
+                <View style={[styles.buttonContent, {columnGap: iconTextSpacing}]}>
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                     <Path
                       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -190,8 +229,8 @@ const SignInModal: React.FC<SignInModalProps> = ({
                       fill="#EA4335"
                     />
                   </Svg>
+                  <Text style={styles.googleButtonText}>Sign in with Google</Text>
                 </View>
-                <Text style={styles.googleButtonText}>Sign in with Google</Text>
               </TouchableOpacity>
 
               {/* Email Continue Button */}
@@ -199,21 +238,36 @@ const SignInModal: React.FC<SignInModalProps> = ({
                 style={[styles.button, styles.emailButton]}
                 onPress={handleEmailContinue}
               >
-                <View style={styles.emailIconContainer}>
-                  <Text style={styles.emailIcon}>✉️</Text>
+                <View style={[styles.buttonContent, {columnGap: iconTextSpacing}]}>
+                  <View style={styles.emailIconContainer}>
+                    <Text style={styles.emailIcon}>✉️</Text>
+                  </View>
+                  <Text style={styles.emailButtonText}>Continue with email</Text>
                 </View>
-                <Text style={styles.emailButtonText}>Continue with email</Text>
               </TouchableOpacity>
 
               {/* Terms and Conditions */}
               <View style={styles.termsContainer}>
                 <Text style={styles.termsText}>
-                  By continuing you agree to Cal AI's{' '}
-                  <Text style={styles.termsLink}>Terms and Conditions</Text> and{' '}
-                  <Text style={styles.termsLink}>Privacy Policy</Text>
+                  By continuing you agree to Cal AI's
                 </Text>
+                <View style={styles.termsLinksContainer}>
+                  <Text 
+                    style={styles.termsLink}
+                    onPress={() => console.log('Terms and Conditions pressed')}
+                  >
+                    Terms and Conditions
+                  </Text>
+                  <Text style={styles.termsText}> and </Text>
+                  <Text 
+                    style={styles.termsLink}
+                    onPress={() => console.log('Privacy Policy pressed')}
+                  >
+                    Privacy Policy
+                  </Text>
+                </View>
               </View>
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
@@ -224,7 +278,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Lighter background opacity
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -239,7 +293,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md, // Reduced margin to make room for divider
   },
   title: {
     textAlign: 'center',
@@ -254,23 +308,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.text.secondary,
   },
+  divider: {
+    height: 1,
+    backgroundColor: colors.gray[200], // Light grey divider
+    marginBottom: spacing.xl,
+  },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center', // Center the content
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: 100,
     marginBottom: spacing.md,
-    position: 'relative',
-    height: 50, // Increased height to avoid text cutoff
+    height: 56, // Taller buttons as per screenshot
   },
-  buttonIconContainer: {
-    marginRight: spacing.md,
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
+  buttonContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   appleButton: {
     backgroundColor: 'black',
@@ -279,24 +335,16 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
     fontSize: 16,
-    lineHeight: 21, // Added line height for consistency
   },
   googleButton: {
     backgroundColor: 'white',
     borderWidth: 1,
     borderColor: colors.gray[300],
   },
-  googleIconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   googleButtonText: {
     color: 'black',
     fontWeight: '600',
     fontSize: 16,
-    lineHeight: 21, // Added line height to prevent text cutoff for lowercase letters
   },
   emailButton: {
     backgroundColor: 'white',
@@ -304,8 +352,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gray[300],
   },
   emailIconContainer: {
-    width: 24,
-    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -316,10 +362,16 @@ const styles = StyleSheet.create({
     color: 'black',
     fontWeight: '600',
     fontSize: 16,
-    lineHeight: 21, // Added line height to ensure consistent text rendering
   },
   termsContainer: {
     marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  termsLinksContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
   },
   termsText: {
     color: colors.text.secondary,
@@ -328,7 +380,9 @@ const styles = StyleSheet.create({
   },
   termsLink: {
     color: colors.text.primary,
+    fontSize: 14,
     textDecorationLine: 'underline',
+    fontWeight: 'bold',
   },
 });
 
