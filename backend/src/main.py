@@ -6,6 +6,7 @@ from utils.logging_config import setup_logging
 from config.environment import Environment
 from config.llm_config import LLMConfigFactory
 from repositories.question_repository import QuestionRepository
+from repositories.category_repository import CategoryRepository
 from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
@@ -13,9 +14,11 @@ from utils.supabase_actions import SupabaseActions
 from services.question_service import QuestionService
 from services.upload_service import UploadService
 from services.user_service import UserService
+from services.category_service import CategoryService
 from controllers.auth_controller import AuthController
 from controllers.question_controller import QuestionController, MultiDifficultyRequest, MultiDifficultyResponse
 from controllers.upload_controller import UploadController
+from controllers.category_controller import CategoryController, CategoryResponse
 from typing import List
 
 # Set up logging
@@ -31,6 +34,7 @@ Features:
 - Generate questions with multiple difficulties concurrently
 - Upload custom questions and answers
 - Retrieve questions for trivia games
+- Manage categories
     """,
     version="1.0.0"
 )
@@ -75,6 +79,10 @@ def create_question_repository():
     """Create question repository"""
     return QuestionRepository(create_supabase_client())
 
+def create_category_repository():
+    """Create category repository"""
+    return CategoryRepository(create_supabase_client())
+
 def create_question_generator():
     """Create question generator using the default provider from environment"""
     config = LLMConfigFactory.create_default()
@@ -92,6 +100,7 @@ def create_deduplicator():
 # Create actual service instances
 supabase_client = create_supabase_client()
 question_repository = create_question_repository()
+category_repository = create_category_repository()
 question_generator = create_question_generator()
 answer_generator = create_answer_generator()
 deduplicator = create_deduplicator()
@@ -105,16 +114,19 @@ question_service = QuestionService(
     answer_generator=answer_generator,
     deduplicator=deduplicator
 )
+category_service = CategoryService(category_repository)
 
 # Create controller instances
 upload_controller = UploadController(upload_service)
 question_controller = QuestionController(question_service)
 auth_controller = AuthController(user_service)
+category_controller = CategoryController(category_service)
 
 # Include routers
 app.include_router(auth_controller.router)
 app.include_router(upload_controller.router)
 app.include_router(question_controller.router)
+app.include_router(category_controller.router)
 
 # Add more detailed documentation for the multi-difficulty endpoint
 @app.post(
@@ -149,10 +161,18 @@ async def generate_multi_difficulty_questions_proxy(request: MultiDifficultyRequ
     """Proxy to controller method"""
     return await question_controller.generate_multi_difficulty_questions(request)
 
+
+
 # Root endpoint
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Trivia App API"}
+
+# Startup event
+@app.on_event("startup")
+async def startup_event():
+    """Run on application startup"""
+    logger.info("Application startup")
 
 # Run the application
 if __name__ == "__main__":
