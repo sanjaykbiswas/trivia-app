@@ -84,13 +84,18 @@ class AuthService {
     
     // If signed in with Google, sign out from there too
     try {
-      // Check if the user is signed in with Google
-      const isGoogleSignedIn = await GoogleSignin.isSignedIn();
-      if (isGoogleSignedIn) {
+      // Try to sign out from Google without checking if signed in first
+      // This is safer as the check method might change between versions
+      try {
         await GoogleSignin.signOut();
+      } catch (error: any) {
+        // Only log the error if it's not "No user signed in"
+        if (error?.code !== statusCodes.SIGN_IN_REQUIRED) {
+          console.error('Google Sign Out error:', error);
+        }
       }
     } catch (error) {
-      console.error('Google Sign Out error:', error);
+      console.error('Google Sign Out handling error:', error);
     }
     
     // Sign out from Supabase
