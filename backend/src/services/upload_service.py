@@ -9,8 +9,7 @@ class UploadService:
     """
     Service for handling uploads to the Supabase database
     
-    This service orchestrates the upload of trivia questions and answers,
-    ensuring proper user creation when necessary.
+    This service orchestrates the upload of trivia questions and answers
     """
     def __init__(self, supabase_client):
         """
@@ -27,8 +26,7 @@ class UploadService:
         category: str,
         correct_answer: str,
         incorrect_answers: List[str],
-        difficulty: Optional[str] = None,
-        user_id: Optional[str] = None
+        difficulty: Optional[str] = None
     ) -> CompleteQuestion:
         """
         Create and upload a complete question with answer
@@ -39,7 +37,6 @@ class UploadService:
             correct_answer (str): The correct answer
             incorrect_answers (List[str]): List of incorrect answers
             difficulty (Optional[str]): Difficulty level
-            user_id (Optional[str]): User ID (system ID used if not provided)
             
         Returns:
             CompleteQuestion: The saved complete question
@@ -48,8 +45,7 @@ class UploadService:
         question = Question(
             content=question_content,
             category=category,
-            difficulty=difficulty,
-            user_id=user_id or "00000000-0000-0000-0000-000000000000"
+            difficulty=difficulty
         )
         
         # Create answer object (without question_id for now)
@@ -78,7 +74,7 @@ class UploadService:
         Args:
             complete_questions (List[Dict]): List of question data dictionaries
                 Each should have: content, category, correct_answer, incorrect_answers
-                Optional: difficulty, user_id
+                Optional: difficulty
                 
         Returns:
             List[CompleteQuestion]: List of saved complete questions
@@ -88,14 +84,11 @@ class UploadService:
         
         # Prepare question and answer objects
         for q_data in complete_questions:
-            user_id = q_data.get("user_id", "00000000-0000-0000-0000-000000000000")
-            
             # Create question object
             question = Question(
                 content=q_data["content"],
                 category=q_data["category"],
-                difficulty=q_data.get("difficulty"),
-                user_id=user_id
+                difficulty=q_data.get("difficulty")
             )
             questions.append(question)
             

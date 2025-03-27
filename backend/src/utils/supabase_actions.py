@@ -12,8 +12,7 @@ class SupabaseActions:
     """
     Utility class for database upload actions to Supabase
     
-    Provides methods to save questions and answers, managing user creation
-    when necessary
+    Provides methods to save questions and answers
     """
     def __init__(self, supabase_client):
         """
@@ -29,7 +28,7 @@ class SupabaseActions:
     
     async def save_question(self, question: Question) -> Question:
         """
-        Save a question to Supabase, ensuring the user exists
+        Save a question to Supabase
         
         Args:
             question (Question): Question object to save
@@ -38,9 +37,6 @@ class SupabaseActions:
             Question: Saved question with ID
         """
         logger.info(f"Saving question: {question.content[:30]}...")
-        
-        # Ensure user exists
-        await self.ensure_user_exists(question.user_id)
         
         # Save question
         response = (

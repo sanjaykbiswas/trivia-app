@@ -10,7 +10,6 @@ class Question:
     content: str
     category: str
     difficulty: Optional[str] = None  # Possible values: "Easy", "Medium", "Hard", "Expert", "Master"
-    user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
     id: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     
@@ -20,7 +19,6 @@ class Question:
             "content": self.content,
             "category": self.category,
             "difficulty": self.difficulty,
-            "user_id": self.user_id,
             "created_at": self.created_at.isoformat(),
             **({"id": self.id} if self.id else {})
         }

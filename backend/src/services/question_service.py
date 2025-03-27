@@ -62,8 +62,7 @@ class QuestionService:
         category: str, 
         count: int = 10,
         deduplicate: bool = True,
-        difficulty: Optional[str] = None,
-        user_id: Optional[str] = None
+        difficulty: Optional[str] = None
     ) -> List[Question]:
         """
         Generate questions for a category and save them
@@ -73,7 +72,6 @@ class QuestionService:
             count (int): Number of questions to generate
             deduplicate (bool): Whether to deduplicate questions
             difficulty (str, optional): Specific difficulty level
-            user_id (str, optional): user_id who created the questions
             
         Returns:
             List[Question]: Generated and saved questions
@@ -97,11 +95,6 @@ class QuestionService:
         except Exception as e:
             print(f"Error in question generation: {e}")
             raise
-        
-        # Set user_id for all questions
-        if user_id:
-            for question in questions:
-                question.user_id = user_id
         
         # Deduplicate if requested
         if deduplicate:
@@ -175,8 +168,7 @@ class QuestionService:
         count: int = 10,
         deduplicate: bool = True,
         batch_size: int = 50,
-        difficulty: Optional[str] = None,
-        user_id: Optional[str] = None
+        difficulty: Optional[str] = None
     ) -> List[CompleteQuestion]:
         """
         Complete end-to-end pipeline: generate questions and answers
@@ -187,7 +179,6 @@ class QuestionService:
             deduplicate (bool): Whether to deduplicate
             batch_size (int): Processing batch size
             difficulty (Optional[str]): Single difficulty level
-            user_id (Optional[str]): user_id who created the questions
             
         Returns:
             List[CompleteQuestion]: Complete questions with answers
@@ -209,8 +200,7 @@ class QuestionService:
                 category=category,
                 count=count,
                 deduplicate=deduplicate,
-                difficulty=difficulty,
-                user_id=user_id
+                difficulty=difficulty
             )
         except Exception as exc:
             print(f"Generation for {difficulty} generated an exception: {exc}")
@@ -242,8 +232,7 @@ class QuestionService:
         category: str,
         difficulty_counts: Dict[str, int],
         deduplicate: bool = True,
-        batch_size: int = 50,
-        user_id: Optional[str] = None
+        batch_size: int = 50
     ) -> Dict[str, List[CompleteQuestion]]:
         """
         Generate complete question sets with different difficulties concurrently
@@ -254,7 +243,6 @@ class QuestionService:
                 Example: {"Easy": 5, "Hard": 10, "Master": 3}
             deduplicate (bool): Whether to deduplicate questions within each difficulty
             batch_size (int): Processing batch size for answer generation
-            user_id (Optional[str]): user_id who created the questions
             
         Returns:
             Dict[str, List[CompleteQuestion]]: Dictionary mapping difficulty levels to complete questions
@@ -310,8 +298,7 @@ class QuestionService:
                     category=category,
                     count=count,
                     deduplicate=deduplicate,
-                    difficulty=difficulty,
-                    user_id=user_id
+                    difficulty=difficulty
                 )
             )
             question_tasks[difficulty] = task

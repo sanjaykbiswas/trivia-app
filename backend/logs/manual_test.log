@@ -2489,3 +2489,60 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-22 16:51:24,933 - utils.question_generator.answer_generator - INFO - Successfully parsed 47 answers in batch 1
 2025-03-22 16:51:24,933 - utils.question_generator.answer_generator - INFO - Generated 57 answers for 60 questions
 2025-03-22 16:51:25,192 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22question_id%22%2C%22incorrect_answers%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-26 21:01:36,372 - manual_test - INFO - Logging configured for manual_test
+2025-03-26 21:02:02,712 - utils.question_generator.category_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for category guidelines
+2025-03-26 21:02:14,598 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:14,612 - utils.question_generator.category_helper - INFO - Received response from anthropic
+2025-03-26 21:02:14,613 - utils.question_generator.difficulty_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for difficulty guidelines
+2025-03-26 21:02:22,892 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:22,894 - utils.question_generator.difficulty_helper - INFO - Received response from anthropic
+2025-03-26 21:02:22,895 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-26 21:02:22,895 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Easy'
+2025-03-26 21:02:22,895 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-26 21:02:22,895 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Medium'
+2025-03-26 21:02:22,895 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 21:02:22,896 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 21:02:22,896 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-26 21:02:22,900 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Hard'
+2025-03-26 21:02:22,901 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-26 21:02:22,901 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Expert'
+2025-03-26 21:02:22,901 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 21:02:22,903 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-26 21:02:22,903 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 21:02:22,903 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Master'
+2025-03-26 21:02:22,905 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 21:02:23,149 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-26 21:02:23,151 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-26 21:02:23,606 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-26 21:02:23,607 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-26 21:02:24,323 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:24,325 - utils.question_generator.generator - INFO - Raw LLM Response: ["What electromagnetic phenomenon, discovered by Michael Faraday in 1831, occurs when a changing mag...
+2025-03-26 21:02:24,326 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 21:02:24,377 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:24,378 - utils.question_generator.generator - INFO - Raw LLM Response: ["Which particle in the nucleus of an atom carries a positive charge and has approximately 1,836 tim...
+2025-03-26 21:02:24,590 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:24,593 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which neuroimaging technique measures brain activity by detecting changes in blood oxygenation ...
+2025-03-26 21:02:24,981 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22created_at%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-26 21:02:24,988 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 21:02:25,119 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22created_at%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-26 21:02:25,121 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 21:02:25,274 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22created_at%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-26 21:02:48,900 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:48,901 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:48,903 - utils.question_generator.generator - INFO - Raw LLM Response: ["What chemical intermediates, often represented as singlet and triplet states, play a crucial role ...
+2025-03-26 21:02:48,904 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which vitamin is produced in the human skin when exposed to sunlight?"
+]...
+2025-03-26 21:02:48,904 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 21:02:49,092 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22created_at%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-26 21:02:49,093 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 21:02:49,314 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22created_at%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-26 21:02:49,316 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (5 questions)
+2025-03-26 21:02:49,316 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (5 questions)
+2025-03-26 21:02:49,316 - utils.question_generator.answer_generator - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for answer generation
+2025-03-26 21:02:54,736 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 21:02:54,738 - utils.question_generator.answer_generator - INFO - Received response from anthropic
+2025-03-26 21:02:54,739 - utils.question_generator.answer_generator - INFO - Successfully parsed 5 answers in batch 1
+2025-03-26 21:02:54,739 - utils.question_generator.answer_generator - INFO - Generated 5 answers for 5 questions
+2025-03-26 21:02:54,943 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22question_id%22%2C%22created_at%22 "HTTP/2 201 Created"

@@ -10,7 +10,6 @@ class QuestionGenerationRequest(BaseModel):
     count: int = Field(default=10, ge=1, le=100)
     deduplicate: bool = True
     difficulty: Optional[str] = None  # Changed from List[str] to single str
-    user_id: Optional[str] = None
 
 class MultiDifficultyRequest(BaseModel):
     category: str
@@ -20,14 +19,12 @@ class MultiDifficultyRequest(BaseModel):
         example={"Easy": 5, "Medium": 8, "Hard": 3}
     )
     deduplicate: bool = True
-    user_id: Optional[str] = None
 
 class QuestionResponse(BaseModel):
     id: str
     content: str
     category: str
     difficulty: Optional[str] = None
-    user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
 class AnswerResponse(BaseModel):
     correct_answer: str
@@ -40,7 +37,6 @@ class CompleteQuestionResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None
-    user_id: str = "00000000-0000-0000-0000-000000000000"  # System user UUID
 
 class MultiDifficultyResponse(BaseModel):
     difficulty: str
@@ -78,8 +74,7 @@ class QuestionController:
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
-            difficulty=request.difficulty,
-            user_id=request.user_id
+            difficulty=request.difficulty
         )
         
         return [
@@ -87,8 +82,7 @@ class QuestionController:
                 id=q.id,
                 content=q.content,
                 category=q.category,
-                difficulty=q.difficulty,
-                user_id=q.user_id
+                difficulty=q.difficulty
             ) for q in questions
         ]
     
@@ -106,8 +100,7 @@ class QuestionController:
             category=request.category,
             count=request.count,
             deduplicate=request.deduplicate,
-            difficulty=request.difficulty,
-            user_id=request.user_id
+            difficulty=request.difficulty
         )
         
         return [self._format_complete_question(q) for q in complete_questions]
@@ -126,8 +119,7 @@ class QuestionController:
             result = await self.question_service.create_multi_difficulty_question_set(
                 category=request.category,
                 difficulty_counts=request.difficulty_counts,
-                deduplicate=request.deduplicate,
-                user_id=request.user_id
+                deduplicate=request.deduplicate
             )
             
             # Format the response
@@ -143,8 +135,7 @@ class QuestionController:
                                 category=q.category,
                                 correct_answer=q.correct_answer,
                                 incorrect_answers=q.incorrect_answers,
-                                difficulty=q.difficulty,
-                                user_id=q.user_id
+                                difficulty=q.difficulty
                             ) for q in questions
                         ]
                     )
@@ -224,6 +215,5 @@ class QuestionController:
             category=question.category,
             correct_answer=question.correct_answer,
             incorrect_answers=question.incorrect_answers,
-            difficulty=question.difficulty,
-            user_id=question.user_id
+            difficulty=question.difficulty
         )
