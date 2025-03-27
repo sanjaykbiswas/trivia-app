@@ -8,9 +8,6 @@ export type RootStackParamList = {
   GameSetup: undefined;
   GameOptions: {
     packTitle?: string;
-    packDescription?: string;
-    totalQuestions?: number;
-    totalPlays?: number;
   };
   GamePlay: {
     categoryId?: string; 

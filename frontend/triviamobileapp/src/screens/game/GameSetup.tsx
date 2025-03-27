@@ -95,12 +95,9 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
   const handlePackPress = (packId: string, packTitle: string, variant: string) => {
     console.log(`Pack selected: ${packId}`);
     
-    // Sample data for demonstration
+    // Simplified pack data for navigation
     const packData = {
-      packTitle: packTitle,
-      packDescription: "Are you a true expert? Prove it!",
-      totalQuestions: 200,
-      totalPlays: 58107
+      packTitle: packTitle
     };
     
     // Navigate to GameOptions with pack data

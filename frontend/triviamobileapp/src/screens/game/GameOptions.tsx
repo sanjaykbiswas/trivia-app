@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet, Share } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
@@ -13,9 +13,6 @@ type GameOptionsScreenProps = StackScreenProps<RootStackParamList, 'GameOptions'
 const GameOptionsScreen: React.FC<GameOptionsScreenProps> = ({ navigation, route }) => {
   // Pack details from route params or defaults
   const packTitle = route.params?.packTitle || 'Geography Expert';
-  const packDescription = route.params?.packDescription || 'Are you a true geography expert? Prove it!';
-  const totalQuestions = route.params?.totalQuestions || 200;
-  const totalPlays = route.params?.totalPlays || 58107;
   
   // Game options state
   const [questionsPerGame, setQuestionsPerGame] = useState(1); // 0-based index (5, 10, 15, 20)
@@ -78,17 +75,6 @@ const GameOptionsScreen: React.FC<GameOptionsScreenProps> = ({ navigation, route
         {/* Page Title */}
         <PageTitle title={packTitle} style={styles.pageTitle} />
         
-        {/* Pack Info */}
-        <View style={styles.packInfoContainer}>
-          <Typography variant="bodySmall" color={colors.text.secondary} style={styles.packStats}>
-            {totalPlays.toLocaleString()} Plays | {totalQuestions} Questions
-          </Typography>
-          
-          <Typography variant="bodyMedium" style={styles.packDescription}>
-            {packDescription}
-          </Typography>
-        </View>
-        
         {/* Content */}
         <View style={styles.contentContainer}>
           {/* Options section */}
@@ -140,16 +126,6 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     paddingTop: spacing.xs,
-  },
-  packInfoContainer: {
-    paddingHorizontal: spacing.page,
-    marginBottom: spacing.md,
-  },
-  packStats: {
-    marginBottom: spacing.sm,
-  },
-  packDescription: {
-    marginTop: spacing.xs,
   },
   contentContainer: {
     flex: 1,
