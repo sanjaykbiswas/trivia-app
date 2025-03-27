@@ -20,6 +20,7 @@ class Environment:
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
+        self.supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET")  # Add this line
         self.llm_provider = os.getenv("LLM_PROVIDER", "anthropic")  # Default to anthropic
     
     def get(self, key, default=None):

@@ -2604,3 +2604,9 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-26 22:57:31,684 - utils.question_generator.answer_generator - INFO - Successfully parsed 5 answers in batch 1
 2025-03-26 22:57:31,685 - utils.question_generator.answer_generator - INFO - Generated 5 answers for 5 questions
 2025-03-26 22:57:31,864 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22correct_answer%22%2C%22created_at%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-26 23:10:34,448 - manual_test - INFO - Logging configured for manual_test
+2025-03-26 23:10:44,200 - utils.supabase_actions - INFO - Ensuring user exists: 00000000-0000-0000-0000-000000000000
+2025-03-26 23:10:44,517 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/users?select=%2A&id=eq.00000000-0000-0000-0000-000000000000 "HTTP/2 200 OK"
+2025-03-26 23:10:44,522 - utils.supabase_actions - INFO - Creating new user: 00000000-0000-0000-0000-000000000000
+2025-03-26 23:10:44,617 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-26 23:10:44,619 - utils.supabase_actions - INFO - User 00000000-0000-0000-0000-000000000000 created successfully

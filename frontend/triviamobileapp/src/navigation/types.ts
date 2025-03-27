@@ -2,7 +2,10 @@ export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   SignIn: undefined;
-  SignUp: undefined;
+SignUp: undefined;
+ForgotPassword: {
+  email?: string;
+};
   Home: undefined;
   Multiplayer: undefined;
   GameSetup: undefined;

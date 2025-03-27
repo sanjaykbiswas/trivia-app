@@ -10,6 +10,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation';
 import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorBoundary } from './src/components/common';
+import { AuthProvider } from './src/contexts/AuthContext'; // Import AuthProvider
 
 /**
  * Main App component
@@ -18,16 +19,18 @@ function App(): React.JSX.Element {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary>
-        <SafeAreaProvider>
-          <StatusBar 
-            barStyle="dark-content" 
-            backgroundColor="transparent" 
-            translucent
-          />
-          <NavigationContainer ref={navigationRef}>
-            <AppNavigator />
-          </NavigationContainer>
-        </SafeAreaProvider>
+        <AuthProvider> {/* Wrap with AuthProvider */}
+          <SafeAreaProvider>
+            <StatusBar 
+              barStyle="dark-content" 
+              backgroundColor="transparent" 
+              translucent
+            />
+            <NavigationContainer ref={navigationRef}>
+              <AppNavigator />
+            </NavigationContainer>
+          </SafeAreaProvider>
+        </AuthProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>
   );

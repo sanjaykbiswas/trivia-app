@@ -7,9 +7,13 @@ import {
   MultiplayerScreen, 
   GameSetupScreen,
   GameOptionsScreen,
-  QuestionScreen 
+  QuestionScreen,
+  SignInScreen,
+  SignUpScreen,
+  ForgotPasswordScreen 
 } from '../screens';
 import { RootStackParamList } from './types';
+import { useAuth } from '../contexts/AuthContext';
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -18,30 +22,43 @@ const Stack = createStackNavigator<RootStackParamList>();
  * Handles navigation between screens in the app using React Navigation
  */
 const AppNavigator: React.FC = () => {
+  const { user, loading } = useAuth();
+  
+  // Show splash screen while loading authentication state
+  if (loading) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
+      </Stack.Navigator>
+    );
+  }
+
   return (
     <Stack.Navigator 
-      initialRouteName="Splash"
+      initialRouteName={user ? "Home" : "SignIn"}
       screenOptions={{ 
         headerShown: false,
         cardStyle: { backgroundColor: 'white' },
       }}
     >
-      <Stack.Screen name="Splash" component={SplashScreen} />
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="Home" component={HomeScreen} />
-      <Stack.Screen name="Multiplayer" component={MultiplayerScreen} />
-      <Stack.Screen name="GameSetup" component={GameSetupScreen} />
-      <Stack.Screen name="GameOptions" component={GameOptionsScreen} />
-      <Stack.Screen name="QuestionScreen" component={QuestionScreen} />
-      
-      {/* Add more screens as you create them */}
-      {/* 
-      <Stack.Screen name="SignIn" component={SignInScreen} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
-      <Stack.Screen name="GamePlay" component={GamePlayScreen} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
-      */}
+      {user ? (
+        // Authenticated routes
+        <>
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Multiplayer" component={MultiplayerScreen} />
+          <Stack.Screen name="GameSetup" component={GameSetupScreen} />
+          <Stack.Screen name="GameOptions" component={GameOptionsScreen} />
+          <Stack.Screen name="QuestionScreen" component={QuestionScreen} />
+        </>
+      ) : (
+        // Unauthenticated routes
+        <>
+          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+          <Stack.Screen name="SignIn" component={SignInScreen} />
+          <Stack.Screen name="SignUp" component={SignUpScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        </>
+      )}
     </Stack.Navigator>
   );
 };
