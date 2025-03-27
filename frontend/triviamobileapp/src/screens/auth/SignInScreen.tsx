@@ -1,5 +1,5 @@
 // frontend/triviamobileapp/src/screens/auth/SignInScreen.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
@@ -12,11 +12,14 @@ import { SignInModal } from '../../components/auth';
 
 type SignInScreenProps = StackScreenProps<RootStackParamList, 'SignIn'>;
 
-const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
+const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [signUpModalVisible, setSignUpModalVisible] = useState(false);
+  
+  // Check if this is a sign-up flow from route params
+  const isSignUp = route.params?.isSignUp === true;
   
   const { signIn, signUp } = useAuth();
   
@@ -32,15 +35,16 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
     
     try {
       setLoading(true);
-      const { error } = await signIn(email);
+      // Use signUp if we're in sign up flow, otherwise use signIn
+      const { error } = isSignUp ? await signUp(email) : await signIn(email);
       
       if (error) {
-        Alert.alert('Sign In Error', error.message);
+        Alert.alert(isSignUp ? 'Sign Up Error' : 'Sign In Error', error.message);
       } else {
         setMagicLinkSent(true);
         Alert.alert(
           'Magic Link Sent',
-          'We\'ve sent a sign-in link to your email. Please check your inbox and follow the instructions to sign in.',
+          `We've sent a ${isSignUp ? 'sign-up' : 'sign-in'} link to your email. Please check your inbox and follow the instructions.`,
           [{ text: 'OK' }]
         );
       }
@@ -59,35 +63,8 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   
   const handleContinueWithEmailSignUp = () => {
     setSignUpModalVisible(false);
-    // Now perform sign up instead of sign in
-    handleSignUpWithEmail();
-  };
-  
-  const handleSignUpWithEmail = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      const { error } = await signUp(email);
-      
-      if (error) {
-        Alert.alert('Sign Up Error', error.message);
-      } else {
-        Alert.alert(
-          'Confirmation Link Sent',
-          'We\'ve sent a confirmation link to your email. Please check your inbox and follow the instructions to complete your registration.',
-          [{ text: 'OK' }]
-        );
-      }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+    // Navigate to SignIn screen with isSignUp parameter
+    navigation.navigate('SignIn', { isSignUp: true });
   };
   
   const dismissKeyboard = () => {
@@ -114,12 +91,14 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             
             {magicLinkSent ? (
               <Typography variant="bodyMedium" style={styles.message}>
-                We've sent a sign-in link to {email}. Please check your email and follow the instructions to sign in.
+                We've sent a {isSignUp ? 'sign-up' : 'sign-in'} link to {email}. Please check your email and follow the instructions.
               </Typography>
             ) : (
               <>
                 <Typography variant="bodyMedium" style={styles.message}>
-                  Enter your email and we'll send you a magic link to sign in. No password required!
+                  {isSignUp 
+                    ? 'We\'ll send you a link to create your account!'
+                    : 'We\'ll send you a magic link to sign in!'}
                 </Typography>
                 
                 <View style={styles.formContainer}>
@@ -133,7 +112,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
                   />
                   
                   <Button
-                    title="Send Magic Link"
+                    title={isSignUp ? "Create Account" : "Send Magic Link"}
                     onPress={handleSignIn}
                     variant="contained"
                     size="large"
@@ -148,17 +127,31 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
           </View>
           
           <View style={styles.footer}>
-            <TouchableOpacity onPress={handleSignUp}>
-              <Typography variant="bodyMedium" style={styles.signUpText}>
-                Don't have an account? <Typography
-                  variant="bodyMedium"
-                  color={colors.primary.main}
-                  style={styles.signUpLink}
-                >
-                  Sign Up
+            {!isSignUp ? (
+              <TouchableOpacity onPress={handleSignUp}>
+                <Typography variant="bodyMedium" style={styles.signUpText}>
+                  Don't have an account? <Typography
+                    variant="bodyMedium"
+                    color={colors.primary.main}
+                    style={styles.signUpLink}
+                  >
+                    Sign Up
+                  </Typography>
                 </Typography>
-              </Typography>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={() => navigation.navigate('SignIn', { isSignUp: false })}>
+                <Typography variant="bodyMedium" style={styles.signUpText}>
+                  Already have an account? <Typography
+                    variant="bodyMedium"
+                    color={colors.primary.main}
+                    style={styles.signUpLink}
+                  >
+                    Sign In
+                  </Typography>
+                </Typography>
+              </TouchableOpacity>
+            )}
           </View>
           
           {/* Sign Up Modal */}
@@ -167,6 +160,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
             onClose={() => setSignUpModalVisible(false)}
             onContinueWithEmail={handleContinueWithEmailSignUp}
             title="Create an account"
+            isSignUp={true}
           />
         </View>
       </TouchableWithoutFeedback>

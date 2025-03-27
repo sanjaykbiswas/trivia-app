@@ -34,6 +34,7 @@ interface SignInModalProps {
   onContinueWithEmail: () => void;
   iconTextSpacing?: number; // Variable spacing between icon and text
   title?: string; // Add title prop
+  isSignUp?: boolean; // Flag to indicate if this is for sign up
 }
 
 const SignInModal: React.FC<SignInModalProps> = ({ 
@@ -41,7 +42,8 @@ const SignInModal: React.FC<SignInModalProps> = ({
   onClose, 
   onContinueWithEmail,
   iconTextSpacing = 12, // Default spacing
-  title = "Sign In" // Default title
+  title = "Sign In", // Default title
+  isSignUp = false // Default to sign in flow
 }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { signInWithApple, signInWithGoogle } = useAuth();
@@ -158,7 +160,14 @@ const SignInModal: React.FC<SignInModalProps> = ({
   };
 
   const handleEmailContinue = () => {
-    onContinueWithEmail();
+    // Close the modal first
+    onClose();
+    
+    // Use setTimeout to ensure modal is fully closed before navigation
+    setTimeout(() => {
+      // Then call the continuation handler that will navigate to SignInScreen
+      onContinueWithEmail();
+    }, 100);
   };
 
   return (
@@ -202,7 +211,9 @@ const SignInModal: React.FC<SignInModalProps> = ({
                         fill="white"
                       />
                     </Svg>
-                    <Text style={styles.appleButtonText}>Sign in with Apple</Text>
+                    <Text style={styles.appleButtonText}>
+                      {isSignUp ? 'Sign up with Apple' : 'Sign in with Apple'}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -231,7 +242,9 @@ const SignInModal: React.FC<SignInModalProps> = ({
                       fill="#EA4335"
                     />
                   </Svg>
-                  <Text style={styles.googleButtonText}>Sign in with Google</Text>
+                  <Text style={styles.googleButtonText}>
+                    {isSignUp ? 'Sign up with Google' : 'Sign in with Google'}
+                  </Text>
                 </View>
               </TouchableOpacity>
 

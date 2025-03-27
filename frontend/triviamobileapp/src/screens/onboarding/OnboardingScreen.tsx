@@ -15,10 +15,11 @@ type OnboardingScreenProps = StackScreenProps<RootStackParamList, 'Onboarding'>;
  */
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   const [signInModalVisible, setSignInModalVisible] = useState(false);
+  const [signUpModalVisible, setSignUpModalVisible] = useState(false);
 
   const handleGetStarted = () => {
-    // Navigate to Home screen (which will be accessible without login now)
-    navigation.navigate('Home');
+    // Show sign up modal when user wants to get started (create account)
+    setSignUpModalVisible(true);
   };
 
   const handleSignIn = () => {
@@ -26,16 +27,19 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
     setSignInModalVisible(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseSignInModal = () => {
     setSignInModalVisible(false);
   };
 
-  const handleContinueWithEmail = () => {
-    // Close modal first
-    setSignInModalVisible(false);
-    
-    // Navigate to SignIn screen for email login
-    navigation.navigate('SignIn');
+  const handleCloseSignUpModal = () => {
+    setSignUpModalVisible(false);
+  };
+
+  const handleContinueWithEmail = (isSignUp = false) => {
+    // The modal is already closed in the SignInModal component's handleEmailContinue function
+    // Just navigate to SignIn screen
+    // We can pass a parameter to indicate if this is for sign up
+    navigation.navigate('SignIn', { isSignUp });
   };
 
   return (
@@ -63,8 +67,19 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
         {/* Sign In Modal */}
         <SignInModal
           visible={signInModalVisible}
-          onClose={handleCloseModal}
-          onContinueWithEmail={handleContinueWithEmail}
+          onClose={handleCloseSignInModal}
+          onContinueWithEmail={() => handleContinueWithEmail(false)}
+          title="Sign In"
+          isSignUp={false}
+        />
+
+        {/* Sign Up Modal */}
+        <SignInModal
+          visible={signUpModalVisible}
+          onClose={handleCloseSignUpModal}
+          onContinueWithEmail={() => handleContinueWithEmail(true)}
+          title="Create an account"
+          isSignUp={true}
         />
       </View>
     </Container>
