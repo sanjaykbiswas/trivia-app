@@ -10,6 +10,8 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<any>;
+  signInWithApple: () => Promise<any>;
+  signInWithGoogle: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,6 +70,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return AuthService.resetPassword(email);
   };
   
+  // New placeholder methods for social login
+  const signInWithApple = async () => {
+    // This would be implemented with @invertase/react-native-apple-authentication
+    console.log('Apple Sign In (placeholder method)');
+    return { error: { message: 'Apple Sign In not yet implemented' } };
+  };
+  
+  const signInWithGoogle = async () => {
+    // This would be implemented with @react-native-google-signin/google-signin
+    console.log('Google Sign In (placeholder method)');
+    return { error: { message: 'Google Sign In not yet implemented' } };
+  };
+  
   return (
     <AuthContext.Provider
       value={{
@@ -78,6 +93,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signOut,
         resetPassword,
+        signInWithApple,
+        signInWithGoogle
       }}
     >
       {children}

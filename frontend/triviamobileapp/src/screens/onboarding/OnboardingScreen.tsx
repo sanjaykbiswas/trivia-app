@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container } from '../../components/common';
 import { BottomTray } from '../../components/layout';
+import { SignInModal } from '../../components/auth';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
@@ -13,15 +14,28 @@ type OnboardingScreenProps = StackScreenProps<RootStackParamList, 'Onboarding'>;
  * Displays the app introduction and initial call-to-actions
  */
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
+  const [signInModalVisible, setSignInModalVisible] = useState(false);
+
   const handleGetStarted = () => {
-    // Navigate to Home screen
+    // Navigate to Home screen (which will be accessible without login now)
     navigation.navigate('Home');
   };
 
   const handleSignIn = () => {
-    // Navigate to SignIn when implemented
-    console.log('Sign In pressed');
-    // Example: navigation.navigate('SignIn');
+    // Show sign-in modal
+    setSignInModalVisible(true);
+  };
+
+  const handleCloseModal = () => {
+    setSignInModalVisible(false);
+  };
+
+  const handleContinueWithEmail = () => {
+    // Close modal first
+    setSignInModalVisible(false);
+    
+    // Navigate to SignIn screen for email login
+    navigation.navigate('SignIn');
   };
 
   return (
@@ -44,6 +58,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
           secondaryAction={handleSignIn}
           hideBorder={true}
           style={styles.bottomTray}
+        />
+
+        {/* Sign In Modal */}
+        <SignInModal
+          visible={signInModalVisible}
+          onClose={handleCloseModal}
+          onContinueWithEmail={handleContinueWithEmail}
         />
       </View>
     </Container>

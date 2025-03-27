@@ -34,7 +34,6 @@ class AuthService {
     }
   }
   
-  // Rest of your methods...
   async signUp(email: string, password: string) {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
     return this.supabase.auth.signUp({
@@ -69,6 +68,19 @@ class AuthService {
   async getSession() {
     if (!this.supabase.auth) return { data: { session: null }, error: { message: 'Supabase client not initialized properly' } };
     return this.supabase.auth.getSession();
+  }
+  
+  // New placeholder methods for social login
+  async signInWithApple() {
+    // This would be implemented with @invertase/react-native-apple-authentication
+    console.log('Apple Sign In (placeholder method in service)');
+    return { error: { message: 'Apple Sign In not yet implemented' } };
+  }
+  
+  async signInWithGoogle() {
+    // This would be implemented with @react-native-google-signin/google-signin
+    console.log('Google Sign In (placeholder method in service)');
+    return { error: { message: 'Google Sign In not yet implemented' } };
   }
   
   getSupabaseClient() {

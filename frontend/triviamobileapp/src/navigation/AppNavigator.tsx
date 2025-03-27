@@ -35,30 +35,24 @@ const AppNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator 
-      initialRouteName={user ? "Home" : "SignIn"}
+      initialRouteName="Onboarding"
       screenOptions={{ 
         headerShown: false,
         cardStyle: { backgroundColor: 'white' },
       }}
     >
-      {user ? (
-        // Authenticated routes
-        <>
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Multiplayer" component={MultiplayerScreen} />
-          <Stack.Screen name="GameSetup" component={GameSetupScreen} />
-          <Stack.Screen name="GameOptions" component={GameOptionsScreen} />
-          <Stack.Screen name="QuestionScreen" component={QuestionScreen} />
-        </>
-      ) : (
-        // Unauthenticated routes
-        <>
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="SignIn" component={SignInScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        </>
-      )}
+      {/* Common screens available to all users */}
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="Multiplayer" component={MultiplayerScreen} />
+      <Stack.Screen name="GameSetup" component={GameSetupScreen} />
+      <Stack.Screen name="GameOptions" component={GameOptionsScreen} />
+      <Stack.Screen name="QuestionScreen" component={QuestionScreen} />
+      
+      {/* Authentication screens */}
+      <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 };
