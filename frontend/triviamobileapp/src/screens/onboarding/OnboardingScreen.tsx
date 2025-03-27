@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/screens/onboarding/OnboardingScreen.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Text } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -22,7 +23,6 @@ interface Phrase {
 const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   // Modals state
   const [signInModalVisible, setSignInModalVisible] = useState(false);
-  const [signUpModalVisible, setSignUpModalVisible] = useState(false);
   
   // Animation state
   const [typedText, setTypedText] = useState('');
@@ -157,7 +157,8 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   }, []);
 
   const handleGetStarted = () => {
-    setSignUpModalVisible(true);
+    // Navigate directly to Home screen instead of showing sign-up modal
+    navigation.navigate('Home');
   };
 
   const handleSignIn = () => {
@@ -166,10 +167,6 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
 
   const handleCloseSignInModal = () => {
     setSignInModalVisible(false);
-  };
-
-  const handleCloseSignUpModal = () => {
-    setSignUpModalVisible(false);
   };
 
   const handleContinueWithEmail = (isSignUp = false) => {
@@ -230,15 +227,6 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
           onContinueWithEmail={() => handleContinueWithEmail(false)}
           title="Sign In"
           isSignUp={false}
-        />
-
-        {/* Sign Up Modal */}
-        <SignInModal
-          visible={signUpModalVisible}
-          onClose={handleCloseSignUpModal}
-          onContinueWithEmail={() => handleContinueWithEmail(true)}
-          title="Create an account"
-          isSignUp={true}
         />
       </View>
     </Container>
