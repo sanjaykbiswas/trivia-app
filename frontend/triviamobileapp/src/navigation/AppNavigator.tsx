@@ -9,8 +9,8 @@ import {
   GameSetupScreen,
   GameOptionsScreen,
   QuestionScreen,
-  SignInScreen,
-  SignUpScreen 
+  SignInScreen
+  // SignUpScreen removed
 } from '../screens';
 import { RootStackParamList } from './types';
 import { useAuth } from '../contexts/AuthContext';
@@ -51,7 +51,7 @@ const AppNavigator: React.FC = () => {
       
       {/* Authentication screens */}
       <Stack.Screen name="SignIn" component={SignInScreen} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
+      {/* SignUp screen removed */}
     </Stack.Navigator>
   );
 };

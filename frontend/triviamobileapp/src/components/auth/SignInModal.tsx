@@ -33,13 +33,15 @@ interface SignInModalProps {
   onClose: () => void;
   onContinueWithEmail: () => void;
   iconTextSpacing?: number; // Variable spacing between icon and text
+  title?: string; // Add title prop
 }
 
 const SignInModal: React.FC<SignInModalProps> = ({ 
   visible, 
   onClose, 
   onContinueWithEmail,
-  iconTextSpacing = 12 // Default spacing
+  iconTextSpacing = 12, // Default spacing
+  title = "Sign In" // Default title
 }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { signInWithApple, signInWithGoogle } = useAuth();
@@ -177,7 +179,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
             >
               <View style={styles.header}>
                 <Typography variant="heading2" style={styles.title}>
-                  Sign In
+                  {title}
                 </Typography>
                 <Pressable onPress={onClose} style={styles.closeButton}>
                   <Text style={styles.closeButtonText}>✕</Text>

@@ -3,7 +3,7 @@ export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   SignIn: undefined;
-  SignUp: undefined;
+  // SignUp removed
   Home: undefined;
   Multiplayer: undefined;
   GameSetup: undefined;

@@ -8,6 +8,7 @@ import { Header } from '../../components/navigation';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
+import { SignInModal } from '../../components/auth';
 
 type SignInScreenProps = StackScreenProps<RootStackParamList, 'SignIn'>;
 
@@ -15,8 +16,9 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [signUpModalVisible, setSignUpModalVisible] = useState(false);
   
-  const { signIn } = useAuth();
+  const { signIn, signUp } = useAuth();
   
   const handleBackPress = () => {
     navigation.goBack();
@@ -51,7 +53,41 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   };
   
   const handleSignUp = () => {
-    navigation.navigate('SignUp');
+    // Instead of navigation, show the modal
+    setSignUpModalVisible(true);
+  };
+  
+  const handleContinueWithEmailSignUp = () => {
+    setSignUpModalVisible(false);
+    // Now perform sign up instead of sign in
+    handleSignUpWithEmail();
+  };
+  
+  const handleSignUpWithEmail = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const { error } = await signUp(email);
+      
+      if (error) {
+        Alert.alert('Sign Up Error', error.message);
+      } else {
+        Alert.alert(
+          'Confirmation Link Sent',
+          'We\'ve sent a confirmation link to your email. Please check your inbox and follow the instructions to complete your registration.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
   
   const dismissKeyboard = () => {
@@ -124,6 +160,14 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
               </Typography>
             </TouchableOpacity>
           </View>
+          
+          {/* Sign Up Modal */}
+          <SignInModal
+            visible={signUpModalVisible}
+            onClose={() => setSignUpModalVisible(false)}
+            onContinueWithEmail={handleContinueWithEmailSignUp}
+            title="Create an account"
+          />
         </View>
       </TouchableWithoutFeedback>
     </Container>
