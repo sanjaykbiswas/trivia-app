@@ -70,6 +70,31 @@ class UserService {
       return data.user.user_metadata.username;
     }
     
+    // User might be in the custom users table (created by the trigger)
+    // Get session for authentication token
+    const sessionData = await AuthService.getSession();
+    const token = sessionData.data.session?.access_token;
+    
+    if (token && data.user?.id) {
+      try {
+        // Fetch user from custom table using authenticated API call
+        const response = await fetch(`${SUPABASE_URL}/api/users/${data.user.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const userData = await response.json();
+          if (userData.username) {
+            return userData.username;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    }
+    
     // Fall back to temporary user
     const tempUser = await this.getTemporaryUser();
     return tempUser?.username || null;

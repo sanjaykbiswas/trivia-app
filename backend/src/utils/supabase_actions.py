@@ -136,6 +136,9 @@ class SupabaseActions:
         """
         Ensure a user exists in the users table, creating if necessary
         
+        Note: For authenticated users, this is now handled by database triggers.
+        This method is primarily useful for temporary users.
+        
         Args:
             user_id (str): User ID
             username (str, optional): Username for new user
@@ -159,11 +162,13 @@ class SupabaseActions:
             logger.info(f"User {user_id} already exists")
             return response.data[0]
         
-        # User doesn't exist, create new user
+        # User doesn't exist, create new user (primarily for temporary users)
         logger.info(f"Creating new user: {user_id}")
         user_data = {
             "id": user_id,
             "username": username,
+            "is_temporary": True,  # Mark as temporary by default
+            "auth_provider": "none",  # For temporary users
             "created_at": datetime.now().isoformat()
         }
         

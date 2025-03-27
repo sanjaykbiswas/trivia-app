@@ -167,8 +167,7 @@ class AuthService {
       try {
         const tempUser = await this.getTempUser();
         if (tempUser) {
-          // We'll attempt to link identities later after authentication completes
-          // Just store the intent for now
+          // Store the intent to link identities after authentication completes
           await AsyncStorage.setItem('pending_link', JSON.stringify({
             tempUserId: tempUser.id,
             authProvider: 'email',
@@ -199,8 +198,7 @@ class AuthService {
       try {
         const tempUser = await this.getTempUser();
         if (tempUser) {
-          // We'll attempt to link identities later after authentication completes
-          // Just store the intent for now
+          // Store the intent to link identities after authentication completes
           await AsyncStorage.setItem('pending_link', JSON.stringify({
             tempUserId: tempUser.id,
             authProvider: 'email',
@@ -273,17 +271,12 @@ class AuthService {
         const tempUser = await this.getTempUser();
         if (tempUser && !response.error) {
           // If we have both a temporary user and successful sign-in
-          // Try to link the identities
-          const userInfo = response.data.user;
-          const linked = await this.linkIdentity(
-            tempUser.id, 
-            'apple',
-            userInfo?.email
-          );
-          
-          if (!linked) {
-            console.warn('Failed to link Apple identity with temporary user');
-          }
+          // Store the intent to link identities
+          await AsyncStorage.setItem('pending_link', JSON.stringify({
+            tempUserId: tempUser.id,
+            authProvider: 'apple',
+            email: response.data.user?.email,
+          }));
         }
         
         return response;
@@ -326,17 +319,12 @@ class AuthService {
       const tempUser = await this.getTempUser();
       if (tempUser && !response.error) {
         // If we have both a temporary user and successful sign-in
-        // Try to link the identities
-        const userInfo = response.data.user;
-        const linked = await this.linkIdentity(
-          tempUser.id, 
-          'google',
-          userInfo?.email
-        );
-        
-        if (!linked) {
-          console.warn('Failed to link Google identity with temporary user');
-        }
+        // Store the intent to link identities
+        await AsyncStorage.setItem('pending_link', JSON.stringify({
+          tempUserId: tempUser.id,
+          authProvider: 'google',
+          email: response.data.user?.email,
+        }));
       }
       
       return response;
