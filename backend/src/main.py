@@ -12,6 +12,7 @@ from utils.question_generator.deduplicator import Deduplicator
 from utils.supabase_actions import SupabaseActions
 from services.question_service import QuestionService
 from services.upload_service import UploadService
+from services.user_service import UserService
 from controllers.auth_controller import AuthController
 from controllers.question_controller import QuestionController, MultiDifficultyRequest, MultiDifficultyResponse
 from controllers.upload_controller import UploadController
@@ -97,6 +98,7 @@ deduplicator = create_deduplicator()
 
 # Create the service instances
 upload_service = UploadService(supabase_client)
+user_service = UserService(supabase_client)
 question_service = QuestionService(
     question_repository=question_repository,
     question_generator=question_generator,
@@ -105,9 +107,9 @@ question_service = QuestionService(
 )
 
 # Create controller instances
-auth_controller = AuthController()
 upload_controller = UploadController(upload_service)
 question_controller = QuestionController(question_service)
+auth_controller = AuthController(user_service)
 
 # Include routers
 app.include_router(auth_controller.router)

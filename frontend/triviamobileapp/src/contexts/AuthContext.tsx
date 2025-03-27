@@ -3,6 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Platform } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import AuthService from '../services/AuthService';
+import UserService from '../services/UserService';
 
 interface AuthContextType {
   session: Session | null;
@@ -13,6 +14,9 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   signInWithApple: () => Promise<any>;
   signInWithGoogle: () => Promise<any>;
+  createTemporaryUser: (username: string) => Promise<any>;
+  isTemporaryUser: () => Promise<boolean>;
+  getCurrentUsername: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,6 +59,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
   
+  // When auth state changes and we have a user, handle identity linking
+  useEffect(() => {
+    if (user) {
+      // Attempt to link identities if needed
+      UserService.handlePostAuthLinking().then(linked => {
+        if (linked) {
+          console.log('Successfully linked identities after authentication');
+        }
+      });
+    }
+  }, [user]);
+  
   const signIn = async (email: string) => {
     return AuthService.signIn(email);
   };
@@ -95,6 +111,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
+  // Create temporary user with just a display name
+  const createTemporaryUser = async (username: string) => {
+    return UserService.createTemporaryUser(username);
+  };
+  
+  // Check if current user is temporary
+  const isTemporaryUser = async () => {
+    return UserService.isTemporaryUser();
+  };
+  
+  // Get current username
+  const getCurrentUsername = async () => {
+    return UserService.getCurrentUsername();
+  };
+  
   return (
     <AuthContext.Provider
       value={{
@@ -105,7 +136,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signUp,
         signOut,
         signInWithApple,
-        signInWithGoogle
+        signInWithGoogle,
+        createTemporaryUser,
+        isTemporaryUser,
+        getCurrentUsername
       }}
     >
       {children}

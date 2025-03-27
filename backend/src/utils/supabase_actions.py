@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any, List
 import logging
 from models.question import Question
 from models.answer import Answer
+from models.user import User, AuthProvider
 from config.environment import Environment
 from datetime import datetime
 
@@ -179,3 +180,128 @@ class SupabaseActions:
         else:
             logger.error(f"Failed to create user with ID: {user_id}")
             raise ValueError(f"Failed to create user with ID: {user_id}")
+    
+    async def create_temporary_user(self, username: str) -> Dict[str, Any]:
+        """
+        Create a temporary user with just a username
+        
+        Args:
+            username (str): User's display name
+            
+        Returns:
+            Dict[str, Any]: User data with generated ID
+        """
+        logger.info(f"Creating temporary user with username: {username}")
+        
+        # Create user data
+        user_data = {
+            "username": username,
+            "is_temporary": True,
+            "auth_provider": "none",
+            "created_at": datetime.now().isoformat()
+        }
+        
+        # Insert into users table
+        create_response = (
+            self.client
+            .table(self.users_table)
+            .insert(user_data)
+            .execute()
+        )
+        
+        if create_response.data and len(create_response.data) > 0:
+            logger.info(f"Temporary user created with ID: {create_response.data[0]['id']}")
+            return create_response.data[0]
+        else:
+            logger.error(f"Failed to create temporary user")
+            raise ValueError(f"Failed to create temporary user")
+
+    async def link_user_identity(self, temp_user_id: str, auth_id: str, auth_provider: str, email: Optional[str] = None, avatar_url: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Link a temporary user to an authenticated identity
+        
+        Args:
+            temp_user_id (str): Temporary user ID
+            auth_id (str): Authentication provider's user ID
+            auth_provider (str): Authentication provider name (email, google, apple)
+            email (str, optional): User's email
+            avatar_url (str, optional): User's avatar URL
+            
+        Returns:
+            Dict[str, Any]: Updated user data
+        """
+        logger.info(f"Linking user {temp_user_id} to auth identity {auth_id} from {auth_provider}")
+        
+        # First, check if the user exists
+        user_response = (
+            self.client
+            .table(self.users_table)
+            .select("*")
+            .eq("id", temp_user_id)
+            .execute()
+        )
+        
+        if not user_response.data or len(user_response.data) == 0:
+            logger.error(f"User {temp_user_id} not found")
+            raise ValueError(f"User {temp_user_id} not found")
+        
+        # Check if this is a temporary user
+        user_data = user_response.data[0]
+        if not user_data.get("is_temporary", False):
+            logger.warning(f"User {temp_user_id} is already linked to an auth provider")
+            return user_data  # Return existing data
+        
+        # Update user with auth information
+        update_data = {
+            "is_temporary": False,
+            "auth_provider": auth_provider,
+            "auth_id": auth_id
+        }
+        
+        # Add optional fields if provided
+        if email:
+            update_data["email"] = email
+        
+        if avatar_url:
+            update_data["avatar_url"] = avatar_url
+        
+        # Update the user record
+        update_response = (
+            self.client
+            .table(self.users_table)
+            .update(update_data)
+            .eq("id", temp_user_id)
+            .execute()
+        )
+        
+        if update_response.data and len(update_response.data) > 0:
+            logger.info(f"User {temp_user_id} successfully linked to auth identity")
+            return update_response.data[0]
+        else:
+            logger.error(f"Failed to update user {temp_user_id}")
+            raise ValueError(f"Failed to update user {temp_user_id}")
+
+    async def find_user_by_auth(self, auth_id: str, auth_provider: str) -> Optional[Dict[str, Any]]:
+        """
+        Find a user by authentication credentials
+        
+        Args:
+            auth_id (str): Authentication provider's user ID
+            auth_provider (str): Authentication provider name
+            
+        Returns:
+            Optional[Dict[str, Any]]: User data if found
+        """
+        response = (
+            self.client
+            .table(self.users_table)
+            .select("*")
+            .eq("auth_id", auth_id)
+            .eq("auth_provider", auth_provider)
+            .execute()
+        )
+        
+        if response.data and len(response.data) > 0:
+            return response.data[0]
+        
+        return None

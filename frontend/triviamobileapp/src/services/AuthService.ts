@@ -11,6 +11,7 @@ import 'react-native-url-polyfill/auto';
 
 class AuthService {
   private supabase: SupabaseClient;
+  private readonly TEMP_USER_KEY = 'trivia_app_temp_user';
   
   constructor() {
     // Check if environment variables are available
@@ -55,28 +56,163 @@ class AuthService {
     }
   }
   
+  // Save temporary user to storage
+  async saveTempUser(userData: { id: string, username: string }): Promise<void> {
+    try {
+      await AsyncStorage.setItem(this.TEMP_USER_KEY, JSON.stringify(userData));
+    } catch (error) {
+      console.error('Failed to save temporary user data:', error);
+    }
+  }
+
+  // Get temporary user from storage
+  async getTempUser(): Promise<{ id: string, username: string } | null> {
+    try {
+      const userData = await AsyncStorage.getItem(this.TEMP_USER_KEY);
+      return userData ? JSON.parse(userData) : null;
+    } catch (error) {
+      console.error('Failed to get temporary user data:', error);
+      return null;
+    }
+  }
+
+  // Clear temporary user from storage
+  async clearTempUser(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(this.TEMP_USER_KEY);
+    } catch (error) {
+      console.error('Failed to clear temporary user data:', error);
+    }
+  }
+
+  // Create temporary user with just a username
+  async createTempUser(username: string): Promise<{ id: string, username: string } | null> {
+    try {
+      // Make API call to backend
+      const response = await fetch(`${SUPABASE_URL}/auth/temp-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create temporary user: ${response.statusText}`);
+      }
+      
+      const userData = await response.json();
+      
+      // Save to local storage
+      await this.saveTempUser(userData);
+      
+      return userData;
+    } catch (error) {
+      console.error('Failed to create temporary user:', error);
+      return null;
+    }
+  }
+
+  // Link temporary user to authenticated identity
+  async linkIdentity(tempUserId: string, authProvider: string, email?: string): Promise<boolean> {
+    try {
+      // Get current session
+      const { data: { session } } = await this.getSession();
+      
+      if (!session) {
+        console.error('No active session for identity linking');
+        return false;
+      }
+      
+      // Make API call to backend with authentication
+      const response = await fetch(`${SUPABASE_URL}/auth/link-identity`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          temp_user_id: tempUserId,
+          auth_provider: authProvider,
+          email,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to link identity: ${response.statusText}`);
+      }
+      
+      // Clear temporary user data since it's now linked
+      await this.clearTempUser();
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to link identity:', error);
+      return false;
+    }
+  }
+  
   async signUp(email: string) {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
     
-    // For magic links, signUp is just sending a magic link
-    return this.supabase.auth.signInWithOtp({
+    const result = await this.supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: 'triviamobileapp://auth/callback', // Your app's deep link URL with path
+        emailRedirectTo: 'triviamobileapp://auth/callback',
       }
     });
+    
+    // If successful and we have a temporary user, attempt to link identities
+    if (!result.error) {
+      try {
+        const tempUser = await this.getTempUser();
+        if (tempUser) {
+          // We'll attempt to link identities later after authentication completes
+          // Just store the intent for now
+          await AsyncStorage.setItem('pending_link', JSON.stringify({
+            tempUserId: tempUser.id,
+            authProvider: 'email',
+            email,
+          }));
+        }
+      } catch (error) {
+        console.error('Error preparing identity linking:', error);
+      }
+    }
+    
+    return result;
   }
   
   async signIn(email: string) {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
     
     // For magic links, we use signInWithOtp method
-    return this.supabase.auth.signInWithOtp({
+    const result = await this.supabase.auth.signInWithOtp({
       email,
       options: {
         emailRedirectTo: 'triviamobileapp://auth/callback', // Your app's deep link URL with path
       }
     });
+    
+    // If successful and we have a temporary user, attempt to link identities
+    if (!result.error) {
+      try {
+        const tempUser = await this.getTempUser();
+        if (tempUser) {
+          // We'll attempt to link identities later after authentication completes
+          // Just store the intent for now
+          await AsyncStorage.setItem('pending_link', JSON.stringify({
+            tempUserId: tempUser.id,
+            authProvider: 'email',
+            email,
+          }));
+        }
+      } catch (error) {
+        console.error('Error preparing identity linking:', error);
+      }
+    }
+    
+    return result;
   }
   
   async signOut() {
@@ -100,16 +236,6 @@ class AuthService {
     
     // Sign out from Supabase
     return this.supabase.auth.signOut();
-  }
-  
-  async getCurrentUser() {
-    if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
-    return this.supabase.auth.getUser();
-  }
-  
-  async getSession() {
-    if (!this.supabase.auth) return { data: { session: null }, error: { message: 'Supabase client not initialized properly' } };
-    return this.supabase.auth.getSession();
   }
   
   async signInWithApple() {
@@ -138,10 +264,29 @@ class AuthService {
         }
         
         // Sign in with Supabase using the Apple token
-        return this.supabase.auth.signInWithIdToken({
+        const response = await this.supabase.auth.signInWithIdToken({
           provider: 'apple' as Provider,
           token: identityToken,
         });
+        
+        // After successful sign-in, check if we have a temporary user to link
+        const tempUser = await this.getTempUser();
+        if (tempUser && !response.error) {
+          // If we have both a temporary user and successful sign-in
+          // Try to link the identities
+          const userInfo = response.data.user;
+          const linked = await this.linkIdentity(
+            tempUser.id, 
+            'apple',
+            userInfo?.email
+          );
+          
+          if (!linked) {
+            console.warn('Failed to link Apple identity with temporary user');
+          }
+        }
+        
+        return response;
       }
       
       return { error: { message: 'Apple Sign In failed - not authorized' } };
@@ -172,10 +317,29 @@ class AuthService {
       }
       
       // Sign in with Supabase using the Google token
-      return this.supabase.auth.signInWithIdToken({
+      const response = await this.supabase.auth.signInWithIdToken({
         provider: 'google' as Provider,
         token: tokens.idToken,
       });
+      
+      // After successful sign-in, check if we have a temporary user to link
+      const tempUser = await this.getTempUser();
+      if (tempUser && !response.error) {
+        // If we have both a temporary user and successful sign-in
+        // Try to link the identities
+        const userInfo = response.data.user;
+        const linked = await this.linkIdentity(
+          tempUser.id, 
+          'google',
+          userInfo?.email
+        );
+        
+        if (!linked) {
+          console.warn('Failed to link Google identity with temporary user');
+        }
+      }
+      
+      return response;
     } catch (error: any) {
       console.error('Google Sign In error:', error);
       
@@ -185,6 +349,16 @@ class AuthService {
       
       return { error: { message: error.message || 'Google Sign In failed' } };
     }
+  }
+  
+  async getCurrentUser() {
+    if (!this.supabase.auth) return { data: { user: null }, error: { message: 'Supabase client not initialized properly' } };
+    return this.supabase.auth.getUser();
+  }
+  
+  async getSession() {
+    if (!this.supabase.auth) return { data: { session: null }, error: { message: 'Supabase client not initialized properly' } };
+    return this.supabase.auth.getSession();
   }
   
   getSupabaseClient() {
