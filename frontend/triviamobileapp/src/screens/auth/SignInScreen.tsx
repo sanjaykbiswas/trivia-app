@@ -45,7 +45,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   };
   
   const handleForgotPassword = () => {
-    navigation.navigate('ForgotPassword');
+    navigation.navigate('ForgotPassword', {});
   };
   
   return (
