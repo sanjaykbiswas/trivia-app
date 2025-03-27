@@ -1,5 +1,6 @@
 // frontend/triviamobileapp/src/contexts/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { Text } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import AuthService from '../services/AuthService';
 
@@ -30,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(data.session);
         setUser(data.session?.user ?? null);
       } catch (error) {
+        // Make sure we're not rendering error directly to the UI
         console.error('Error loading auth session:', error);
       } finally {
         setLoading(false);
@@ -66,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
   
-  // Social login methods remain unchanged
+  // Ensure we're not directly rendering text in JSX
   const signInWithApple = async () => {
     console.log('Apple Sign In (placeholder method)');
     return { error: { message: 'Apple Sign In not yet implemented' } };

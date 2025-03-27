@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import {
   View,
   StyleSheet,
   ViewStyle,
   StyleProp,
   TouchableOpacity,
+  Text,
 } from 'react-native';
 import { Typography, Button } from '../common';
 import { colors, spacing } from '../../theme';
@@ -37,6 +38,38 @@ const BottomTray: React.FC<BottomTrayProps> = ({
   hideBorder = false,
   children,
 }) => {
+  // Function to render secondary text with "Sign In" part in bold
+  const renderSecondaryText = () => {
+    if (!secondaryText) return null;
+    
+    if (secondaryText.includes("Sign In")) {
+      const parts = secondaryText.split("Sign In");
+      return (
+        <View style={styles.secondaryTextContainer}>
+          <Typography
+            variant="bodyMedium"
+            color={colors.text.secondary}
+            align="center"
+          >
+            <Text>{parts[0]}</Text>
+            <Text style={{ fontWeight: 'bold' }}>Sign In</Text>
+            {parts.length > 1 && <Text>{parts[1]}</Text>}
+          </Typography>
+        </View>
+      );
+    } else {
+      return (
+        <Typography
+          variant="bodyMedium"
+          color={colors.text.secondary}
+          align="center"
+        >
+          <Text>{secondaryText}</Text>
+        </Typography>
+      );
+    }
+  };
+
   return (
     <View 
       style={[
@@ -52,14 +85,14 @@ const BottomTray: React.FC<BottomTrayProps> = ({
             variant="heading2"
             align="center"
           >
-            {title.split(' ').slice(0, 2).join(' ')}
+            <Text>{title.split(' ').slice(0, 2).join(' ')}</Text>
           </Typography>
           <Typography
             variant="heading2"
             align="center"
             style={styles.title}
           >
-            {title.split(' ').slice(2).join(' ')}
+            <Text>{title.split(' ').slice(2).join(' ')}</Text>
           </Typography>
         </View>
       )}
@@ -85,25 +118,7 @@ const BottomTray: React.FC<BottomTrayProps> = ({
           style={styles.secondaryButton}
           disabled={!secondaryAction}
         >
-          <View style={styles.secondaryTextContainer}>
-            <Typography
-              variant="bodyMedium"
-              color={colors.text.secondary}
-              align="center"
-            >
-              {secondaryText.split("Sign In")[0]}
-            </Typography>
-            {secondaryText.includes("Sign In") && (
-              <Typography
-                variant="bodyMedium"
-                color={colors.text.secondary}
-                align="center"
-                style={{ fontWeight: 'bold' }}
-              >
-                Sign In
-              </Typography>
-            )}
-          </View>
+          {renderSecondaryText()}
         </TouchableOpacity>
       )}
     </View>

@@ -40,13 +40,13 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
   
   // Phrases to cycle through with colors - easy to add or remove items
   const PHRASES: Phrase[] = [
-    { text: "game nights", color: "#FF5733" }, // Orange-red
-    { text: "long car rides", color: "#33A8FF" }, // Bright blue
+    { text: "dinners with friends", color: "#FF5733" }, // Orange-red
+    { text: "in cities where none of us live", color: "#33A8FF" }, // Bright blue
     { text: "competitive spirits", color: "#9C33FF" }, // Purple
     { text: "rainy days on the couch", color: "#33FFBD" }, // Turquoise
-    { text: "tickling your brain", color: "#FF33A8" }, // Pink
-    { text: "bathroom breaks", color: "#33FF57" }, // Green
-    { text: "dinners with friends", color: "#FFD133" }  // Golden yellow
+    { text: "bathroom breaks", color: "#FF33A8" }, // Pink
+    { text: "long car rides", color: "#33FF57" }, // Green
+    { text: "game nights", color: "#FFD133" }  // Golden yellow
   ];
 
   // Animation controller reference

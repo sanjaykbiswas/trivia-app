@@ -1,5 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { colors, spacing } from '../../theme';
 import Typography from './Typography';
 
@@ -57,17 +57,17 @@ class ErrorBoundary extends Component<Props, State> {
       return (
         <View style={styles.container}>
           <Typography variant="heading3" style={styles.title}>
-            Something went wrong
+            <Text>Something went wrong</Text>
           </Typography>
           
           <Typography variant="bodyMedium" style={styles.message}>
-            The application encountered an unexpected error.
+            <Text>The application encountered an unexpected error.</Text>
           </Typography>
           
           {__DEV__ && this.state.error && (
             <View style={styles.errorContainer}>
               <Typography variant="bodySmall" style={styles.errorText}>
-                {this.state.error.toString()}
+                <Text>{this.state.error.toString()}</Text>
               </Typography>
             </View>
           )}
@@ -77,7 +77,7 @@ class ErrorBoundary extends Component<Props, State> {
             onPress={this.resetError}
           >
             <Typography variant="buttonMedium" style={styles.buttonText}>
-              Try Again
+              <Text>Try Again</Text>
             </Typography>
           </TouchableOpacity>
         </View>

@@ -66,9 +66,35 @@ const Typography: React.FC<TypographyProps> = ({
     textStyle.textTransform = variantStyle.textTransform as TextStyle['textTransform'];
   }
 
+  // Safely render children
+  const renderChildren = () => {
+    // Direct string is fine
+    if (typeof children === 'string' || typeof children === 'number') {
+      return children;
+    }
+    
+    // React elements are fine
+    if (React.isValidElement(children)) {
+      return children;
+    }
+    
+    // If it's an array, we need to handle each item
+    if (Array.isArray(children)) {
+      return children;
+    }
+    
+    // For other types (like undefined, null, boolean), convert to string or return empty
+    if (children === null || children === undefined || typeof children === 'boolean') {
+      return '';
+    }
+    
+    // Fallback for other types
+    return String(children);
+  };
+
   return (
     <Text style={[textStyle, style]} testID={testID} {...rest}>
-      {children}
+      {renderChildren()}
     </Text>
   );
 };
