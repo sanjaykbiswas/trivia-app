@@ -58,11 +58,11 @@ class AuthService {
   async signUp(email: string) {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
     
-    // With magic links, signUp is just sending a magic link
+    // For magic links, signUp is just sending a magic link
     return this.supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: 'triviamobileapp://', // Your app's deep link URL
+        emailRedirectTo: 'triviamobileapp://auth/callback', // Your app's deep link URL with path
       }
     });
   }
@@ -74,7 +74,7 @@ class AuthService {
     return this.supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: 'triviamobileapp://', // Your app's deep link URL
+        emailRedirectTo: 'triviamobileapp://auth/callback', // Your app's deep link URL with path
       }
     });
   }
