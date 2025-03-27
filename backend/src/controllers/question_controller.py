@@ -25,6 +25,7 @@ class QuestionResponse(BaseModel):
     content: str
     category: str
     difficulty: Optional[str] = None
+    modified_difficulty: Optional[str] = None
 
 class AnswerResponse(BaseModel):
     correct_answer: str
@@ -37,6 +38,7 @@ class CompleteQuestionResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None
+    modified_difficulty: Optional[str] = None
 
 class MultiDifficultyResponse(BaseModel):
     difficulty: str
@@ -82,7 +84,8 @@ class QuestionController:
                 id=q.id,
                 content=q.content,
                 category=q.category,
-                difficulty=q.difficulty
+                difficulty=q.difficulty,
+                modified_difficulty=q.modified_difficulty
             ) for q in questions
         ]
     
@@ -135,7 +138,8 @@ class QuestionController:
                                 category=q.category,
                                 correct_answer=q.correct_answer,
                                 incorrect_answers=q.incorrect_answers,
-                                difficulty=q.difficulty
+                                difficulty=q.difficulty,
+                                modified_difficulty=q.modified_difficulty
                             ) for q in questions
                         ]
                     )
@@ -163,7 +167,8 @@ class QuestionController:
                 id=q.id,
                 content=q.content,
                 category=q.category,
-                difficulty=q.difficulty
+                difficulty=q.difficulty,
+                modified_difficulty=q.modified_difficulty
             ) for q in questions
         ]
     
@@ -215,5 +220,6 @@ class QuestionController:
             category=question.category,
             correct_answer=question.correct_answer,
             incorrect_answers=question.incorrect_answers,
-            difficulty=question.difficulty
+            difficulty=question.difficulty,
+            modified_difficulty=question.modified_difficulty
         )

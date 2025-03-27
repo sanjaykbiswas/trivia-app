@@ -100,6 +100,10 @@ class QuestionService:
         if deduplicate:
             questions = self.deduplicator.remove_duplicates(questions)
         
+        # Initialize modified_difficulty with the same value as difficulty
+        for question in questions:
+            question.modified_difficulty = question.difficulty
+        
         # Save to database
         saved_questions = await self.repository.bulk_create(questions)
         

@@ -26,7 +26,8 @@ class UploadService:
         category: str,
         correct_answer: str,
         incorrect_answers: List[str],
-        difficulty: Optional[str] = None
+        difficulty: Optional[str] = None,
+        modified_difficulty: Optional[str] = None
     ) -> CompleteQuestion:
         """
         Create and upload a complete question with answer
@@ -37,6 +38,7 @@ class UploadService:
             correct_answer (str): The correct answer
             incorrect_answers (List[str]): List of incorrect answers
             difficulty (Optional[str]): Difficulty level
+            modified_difficulty (Optional[str]): Modified difficulty level
             
         Returns:
             CompleteQuestion: The saved complete question
@@ -45,7 +47,8 @@ class UploadService:
         question = Question(
             content=question_content,
             category=category,
-            difficulty=difficulty
+            difficulty=difficulty,
+            modified_difficulty=modified_difficulty or difficulty  # Use difficulty if modified_difficulty not provided
         )
         
         # Create answer object (without question_id for now)
@@ -74,7 +77,7 @@ class UploadService:
         Args:
             complete_questions (List[Dict]): List of question data dictionaries
                 Each should have: content, category, correct_answer, incorrect_answers
-                Optional: difficulty
+                Optional: difficulty, modified_difficulty
                 
         Returns:
             List[CompleteQuestion]: List of saved complete questions
@@ -88,7 +91,8 @@ class UploadService:
             question = Question(
                 content=q_data["content"],
                 category=q_data["category"],
-                difficulty=q_data.get("difficulty")
+                difficulty=q_data.get("difficulty"),
+                modified_difficulty=q_data.get("modified_difficulty") or q_data.get("difficulty")
             )
             questions.append(question)
             

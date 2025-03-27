@@ -2546,3 +2546,61 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-26 21:02:54,739 - utils.question_generator.answer_generator - INFO - Successfully parsed 5 answers in batch 1
 2025-03-26 21:02:54,739 - utils.question_generator.answer_generator - INFO - Generated 5 answers for 5 questions
 2025-03-26 21:02:54,943 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22question_id%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-26 22:56:24,118 - manual_test - INFO - Logging configured for manual_test
+2025-03-26 22:56:34,649 - utils.question_generator.category_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for category guidelines
+2025-03-26 22:56:50,620 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:56:50,634 - utils.question_generator.category_helper - INFO - Received response from anthropic
+2025-03-26 22:56:50,635 - utils.question_generator.difficulty_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for difficulty guidelines
+2025-03-26 22:56:58,811 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:56:58,813 - utils.question_generator.difficulty_helper - INFO - Received response from anthropic
+2025-03-26 22:56:58,815 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Movies'
+2025-03-26 22:56:58,815 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Movies' - 'Easy'
+2025-03-26 22:56:58,815 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Movies'
+2025-03-26 22:56:58,815 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 22:56:58,815 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Movies' - 'Medium'
+2025-03-26 22:56:58,818 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Movies'
+2025-03-26 22:56:58,818 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 22:56:58,819 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Movies' - 'Hard'
+2025-03-26 22:56:58,821 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Movies'
+2025-03-26 22:56:58,821 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 22:56:58,821 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Movies' - 'Expert'
+2025-03-26 22:56:58,823 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 22:56:58,823 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Movies'
+2025-03-26 22:56:58,825 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Movies' - 'Master'
+2025-03-26 22:56:58,826 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-26 22:56:59,026 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-26 22:56:59,028 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-26 22:56:59,032 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-26 22:56:59,033 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-26 22:57:00,500 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:57:00,502 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which director known for his long tracking shots and meticulous framing made films like 'The Gr...
+2025-03-26 22:57:00,503 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 22:57:00,512 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:57:00,513 - utils.question_generator.generator - INFO - Raw LLM Response: ["In the 1993 film 'Jurassic Park,' what innovative visual effects technique was used to create the ...
+2025-03-26 22:57:00,835 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22category%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-26 22:57:00,845 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 22:57:00,873 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:57:00,874 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which 1972 Francis Ford Coppola film features the famous line 'I'm gonna make him an offer he c...
+2025-03-26 22:57:00,956 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22category%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-26 22:57:00,957 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 22:57:01,017 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22category%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-26 22:57:25,230 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:57:25,237 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which cinematographer pioneered the 'deep focus' technique in Orson Welles' 'Citizen Kane' (194...
+2025-03-26 22:57:25,238 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 22:57:25,459 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:57:25,461 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which obscure 1962 film by director Jack Garfein, featuring Carroll Baker and Ralph Meeker, emp...
+2025-03-26 22:57:25,512 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22category%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-26 22:57:25,513 - utils.question_generator.generator - INFO - Successfully parsed 1 questions out of 1 requested
+2025-03-26 22:57:25,713 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22created_at%22%2C%22category%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-26 22:57:25,715 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (5 questions)
+2025-03-26 22:57:25,716 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (5 questions)
+2025-03-26 22:57:25,716 - utils.question_generator.answer_generator - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for answer generation
+2025-03-26 22:57:31,681 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-26 22:57:31,683 - utils.question_generator.answer_generator - INFO - Received response from anthropic
+2025-03-26 22:57:31,684 - utils.question_generator.answer_generator - INFO - Successfully parsed 5 answers in batch 1
+2025-03-26 22:57:31,685 - utils.question_generator.answer_generator - INFO - Generated 5 answers for 5 questions
+2025-03-26 22:57:31,864 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22correct_answer%22%2C%22created_at%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"

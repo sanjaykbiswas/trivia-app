@@ -10,6 +10,7 @@ class Question:
     content: str
     category: str
     difficulty: Optional[str] = None  # Possible values: "Easy", "Medium", "Hard", "Expert", "Master"
+    modified_difficulty: Optional[str] = None  # Initially same as difficulty, can be modified later
     id: Optional[str] = None
     created_at: datetime = field(default_factory=datetime.now)
     
@@ -19,6 +20,7 @@ class Question:
             "content": self.content,
             "category": self.category,
             "difficulty": self.difficulty,
+            "modified_difficulty": self.modified_difficulty,
             "created_at": self.created_at.isoformat(),
             **({"id": self.id} if self.id else {})
         }

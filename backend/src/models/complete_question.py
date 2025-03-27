@@ -29,6 +29,10 @@ class CompleteQuestion:
         return self.question.difficulty
     
     @property
+    def modified_difficulty(self):
+        return self.question.modified_difficulty
+    
+    @property
     def category(self):
         return self.question.category
     
@@ -41,5 +45,6 @@ class CompleteQuestion:
             "correct_answer": self.answer.correct_answer,
             "incorrect_answers": self.answer.incorrect_answers,
             "difficulty": self.question.difficulty,
+            "modified_difficulty": self.question.modified_difficulty,
             "created_at": self.question.created_at.isoformat()
         }

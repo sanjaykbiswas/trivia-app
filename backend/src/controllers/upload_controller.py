@@ -10,6 +10,7 @@ class QuestionUploadRequest(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None
+    modified_difficulty: Optional[str] = None
 
 class BulkUploadRequest(BaseModel):
     questions: List[QuestionUploadRequest]
@@ -25,6 +26,7 @@ class CompleteQuestionResponse(BaseModel):
     correct_answer: str
     incorrect_answers: List[str]
     difficulty: Optional[str] = None
+    modified_difficulty: Optional[str] = None
 
 class UploadController:
     """
@@ -64,7 +66,8 @@ class UploadController:
                 category=request.category,
                 correct_answer=request.correct_answer,
                 incorrect_answers=request.incorrect_answers,
-                difficulty=request.difficulty
+                difficulty=request.difficulty,
+                modified_difficulty=request.modified_difficulty
             )
             
             return CompleteQuestionResponse(
@@ -73,7 +76,8 @@ class UploadController:
                 category=result.category,
                 correct_answer=result.correct_answer,
                 incorrect_answers=result.incorrect_answers,
-                difficulty=result.difficulty
+                difficulty=result.difficulty,
+                modified_difficulty=result.modified_difficulty
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
@@ -102,6 +106,7 @@ class UploadController:
                     correct_answer=result.correct_answer,
                     incorrect_answers=result.incorrect_answers,
                     difficulty=result.difficulty,
+                    modified_difficulty=result.modified_difficulty
                 ) for result in results
             ]
         except Exception as e:
