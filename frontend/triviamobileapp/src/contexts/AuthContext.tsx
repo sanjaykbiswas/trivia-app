@@ -1,6 +1,6 @@
 // frontend/triviamobileapp/src/contexts/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Text } from 'react-native';
+import { Platform } from 'react-native';
 import { Session, User } from '@supabase/supabase-js';
 import AuthService from '../services/AuthService';
 
@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state change listener
     const { data: { subscription } } = AuthService.getSupabaseClient().auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user ?? null);
       }
@@ -68,15 +69,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
   
-  // Ensure we're not directly rendering text in JSX
+  // Implement sign in with Apple
   const signInWithApple = async () => {
-    console.log('Apple Sign In (placeholder method)');
-    return { error: { message: 'Apple Sign In not yet implemented' } };
+    if (Platform.OS !== 'ios') {
+      return { error: { message: 'Apple Sign In is only available on iOS devices' } };
+    }
+    
+    try {
+      const response = await AuthService.signInWithApple();
+      return response;
+    } catch (error: any) {
+      console.error('Apple Sign In error in context:', error);
+      return { error: { message: error.message || 'Apple Sign In failed' } };
+    }
   };
   
+  // Implement sign in with Google
   const signInWithGoogle = async () => {
-    console.log('Google Sign In (placeholder method)');
-    return { error: { message: 'Google Sign In not yet implemented' } };
+    try {
+      const response = await AuthService.signInWithGoogle();
+      return response;
+    } catch (error: any) {
+      console.error('Google Sign In error in context:', error);
+      return { error: { message: error.message || 'Google Sign In failed' } };
+    }
   };
   
   return (

@@ -18,14 +18,6 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  GoogleSignin, 
-  statusCodes 
-} from '@react-native-google-signin/google-signin';
-import { 
-  appleAuth, 
-  AppleButton 
-} from '@invertase/react-native-apple-authentication';
 import Svg, { Path } from 'react-native-svg';
 
 interface SignInModalProps {
@@ -76,86 +68,43 @@ const SignInModal: React.FC<SignInModalProps> = ({
   });
 
   const handleAppleSignIn = async () => {
+    if (Platform.OS !== 'ios') {
+      Alert.alert('Error', 'Apple authentication is only available on iOS devices');
+      return;
+    }
+
     try {
-      // Check if Apple authentication is available on this device
-      if (!appleAuth.isSupported) {
-        Alert.alert('Error', 'Apple authentication is not supported on this device');
-        return;
-      }
-
-      // Perform the apple sign in request
-      const appleAuthRequestResponse = await appleAuth.performRequest({
-        requestedOperation: appleAuth.Operation.LOGIN,
-        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
-      });
-
-      // Get the credential state for the user
-      const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
-
-      if (credentialState === appleAuth.State.AUTHORIZED) {
-        // User is authenticated
-        const { error } = await signInWithApple();
-        
-        if (error) {
+      const { error } = await signInWithApple();
+      
+      if (error) {
+        if (error.message !== 'Sign in was canceled') {
           Alert.alert('Sign In Error', error.message);
-        } else {
-          // Sign in successful, close modal
-          onClose();
         }
+      } else {
+        // Sign in successful, close modal
+        onClose();
       }
     } catch (error: any) {
-      if (error.code === appleAuth.Error.CANCELED) {
-        // User canceled the sign-in flow
-        console.log('Apple sign in was canceled');
-      } else {
-        // Handle other errors
-        Alert.alert('Sign In Error', 'Failed to sign in with Apple');
-        console.error(error);
-      }
+      Alert.alert('Sign In Error', error.message || 'Failed to sign in with Apple');
+      console.error(error);
     }
   };
 
   const handleGoogleSignIn = async () => {
     try {
-      // Configure Google Sign-In
-      GoogleSignin.configure({
-        // You would need to add your Google Web Client ID here from the Google Cloud Console
-        webClientId: '', // Get this from Google Cloud Console
-        offlineAccess: true,
-      });
+      const { error } = await signInWithGoogle();
       
-      // Check if user is already signed in
-      await GoogleSignin.hasPlayServices();
-      
-      // Sign in
-      const userInfo = await GoogleSignin.signIn();
-      
-      if (userInfo) {
-        // Use the idToken to sign in to your backend/Supabase
-        const { error } = await signInWithGoogle();
-        
-        if (error) {
+      if (error) {
+        if (error.message !== 'Sign in was canceled') {
           Alert.alert('Sign In Error', error.message);
-        } else {
-          // Sign in successful, close modal
-          onClose();
         }
+      } else {
+        // Sign in successful, close modal
+        onClose();
       }
     } catch (error: any) {
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // User canceled the sign-in flow
-        console.log('Google sign in was canceled');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
-        // Sign in operation already in progress
-        console.log('Google sign in already in progress');
-      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        // Play services not available
-        Alert.alert('Error', 'Google Play Services is not available');
-      } else {
-        // Handle other errors
-        Alert.alert('Sign In Error', 'Failed to sign in with Google');
-        console.error(error);
-      }
+      Alert.alert('Sign In Error', error.message || 'Failed to sign in with Google');
+      console.error(error);
     }
   };
 
