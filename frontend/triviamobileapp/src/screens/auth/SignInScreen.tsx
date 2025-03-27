@@ -109,7 +109,7 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
         
           <View style={styles.contentContainer}>
             <Typography variant="heading1" style={styles.title}>
-              {magicLinkSent ? 'Check Your Email' : 'Sign In'}
+              {magicLinkSent ? 'Check Your Email' : 'Enter your email'}
             </Typography>
             
             {magicLinkSent ? (
