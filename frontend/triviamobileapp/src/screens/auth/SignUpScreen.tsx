@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/screens/auth/SignUpScreen.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -11,33 +12,26 @@ type SignUpScreenProps = StackScreenProps<RootStackParamList, 'SignUp'>;
 
 const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
   const { signUp } = useAuth();
   
   const handleSignUp = async () => {
-    if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
       return;
     }
     
     try {
       setLoading(true);
-      const { error } = await signUp(email, password);
+      const { error } = await signUp(email);
       
       if (error) {
         Alert.alert('Sign Up Error', error.message);
       } else {
         Alert.alert(
-          'Account Created',
-          'Please check your email for a confirmation link, then sign in.',
+          'Confirmation Link Sent',
+          'We\'ve sent a confirmation link to your email. Please check your inbox and follow the instructions to complete your registration.',
           [
             {
               text: 'OK',
@@ -70,6 +64,10 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
             Sign Up
           </Typography>
           
+          <Typography variant="bodyMedium" style={styles.message}>
+            Enter your email and we'll send you a confirmation link to complete your registration. No password required!
+          </Typography>
+          
           <View style={styles.formContainer}>
             <FormInput
               value={email}
@@ -78,22 +76,6 @@ const SignUpScreen: React.FC<SignUpScreenProps> = ({ navigation }) => {
               keyboardType="email-address"
               autoCapitalize="none"
               testID="email-input"
-            />
-            
-            <FormInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              secureTextEntry
-              testID="password-input"
-            />
-            
-            <FormInput
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm Password"
-              secureTextEntry
-              testID="confirm-password-input"
             />
             
             <Button
@@ -138,6 +120,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.page,
   },
   title: {
+    marginBottom: spacing.md,
+  },
+  message: {
     marginBottom: spacing.xl,
   },
   formContainer: {

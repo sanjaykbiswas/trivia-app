@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/contexts/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import AuthService from '../services/AuthService';
@@ -6,10 +7,9 @@ interface AuthContextType {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string) => Promise<any>;
+  signIn: (email: string) => Promise<any>;
+  signUp: (email: string) => Promise<any>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<any>;
   signInWithApple: () => Promise<any>;
   signInWithGoogle: () => Promise<any>;
 }
@@ -52,12 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
   
-  const signIn = async (email: string, password: string) => {
-    return AuthService.signIn(email, password);
+  const signIn = async (email: string) => {
+    return AuthService.signIn(email);
   };
   
-  const signUp = async (email: string, password: string) => {
-    return AuthService.signUp(email, password);
+  const signUp = async (email: string) => {
+    return AuthService.signUp(email);
   };
   
   const signOut = async () => {
@@ -66,19 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
   
-  const resetPassword = async (email: string) => {
-    return AuthService.resetPassword(email);
-  };
-  
-  // New placeholder methods for social login
+  // Social login methods remain unchanged
   const signInWithApple = async () => {
-    // This would be implemented with @invertase/react-native-apple-authentication
     console.log('Apple Sign In (placeholder method)');
     return { error: { message: 'Apple Sign In not yet implemented' } };
   };
   
   const signInWithGoogle = async () => {
-    // This would be implemented with @react-native-google-signin/google-signin
     console.log('Google Sign In (placeholder method)');
     return { error: { message: 'Google Sign In not yet implemented' } };
   };
@@ -92,7 +86,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signIn,
         signUp,
         signOut,
-        resetPassword,
         signInWithApple,
         signInWithGoogle
       }}

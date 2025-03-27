@@ -1,11 +1,9 @@
+// frontend/triviamobileapp/src/navigation/types.ts
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   SignIn: undefined;
-SignUp: undefined;
-ForgotPassword: {
-  email?: string;
-};
+  SignUp: undefined;
   Home: undefined;
   Multiplayer: undefined;
   GameSetup: undefined;

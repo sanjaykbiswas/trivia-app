@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/navigation/AppNavigator.tsx
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { 
@@ -9,8 +10,7 @@ import {
   GameOptionsScreen,
   QuestionScreen,
   SignInScreen,
-  SignUpScreen,
-  ForgotPasswordScreen 
+  SignUpScreen 
 } from '../screens';
 import { RootStackParamList } from './types';
 import { useAuth } from '../contexts/AuthContext';
@@ -52,7 +52,6 @@ const AppNavigator: React.FC = () => {
       {/* Authentication screens */}
       <Stack.Screen name="SignIn" component={SignInScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
 };

@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/services/AuthService.ts
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
@@ -34,30 +35,33 @@ class AuthService {
     }
   }
   
-  async signUp(email: string, password: string) {
+  async signUp(email: string) {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
-    return this.supabase.auth.signUp({
+    
+    // With magic links, signUp is just sending a magic link
+    return this.supabase.auth.signInWithOtp({
       email,
-      password,
+      options: {
+        emailRedirectTo: 'triviamobileapp://', // Your app's deep link URL
+      }
     });
   }
   
-  async signIn(email: string, password: string) {
+  async signIn(email: string) {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
-    return this.supabase.auth.signInWithPassword({
+    
+    // For magic links, we use signInWithOtp method
+    return this.supabase.auth.signInWithOtp({
       email,
-      password,
+      options: {
+        emailRedirectTo: 'triviamobileapp://', // Your app's deep link URL
+      }
     });
   }
   
   async signOut() {
     if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
     return this.supabase.auth.signOut();
-  }
-  
-  async resetPassword(email: string) {
-    if (!this.supabase.auth) return { error: { message: 'Supabase client not initialized properly' } };
-    return this.supabase.auth.resetPasswordForEmail(email);
   }
   
   async getCurrentUser() {
@@ -70,15 +74,13 @@ class AuthService {
     return this.supabase.auth.getSession();
   }
   
-  // New placeholder methods for social login
+  // Social login methods remain unchanged
   async signInWithApple() {
-    // This would be implemented with @invertase/react-native-apple-authentication
     console.log('Apple Sign In (placeholder method in service)');
     return { error: { message: 'Apple Sign In not yet implemented' } };
   }
   
   async signInWithGoogle() {
-    // This would be implemented with @react-native-google-signin/google-signin
     console.log('Google Sign In (placeholder method in service)');
     return { error: { message: 'Google Sign In not yet implemented' } };
   }

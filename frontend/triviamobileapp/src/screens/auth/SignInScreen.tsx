@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/screens/auth/SignInScreen.tsx
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -11,26 +12,30 @@ type SignInScreenProps = StackScreenProps<RootStackParamList, 'SignIn'>;
 
 const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
   
   const { signIn } = useAuth();
   
   const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address');
       return;
     }
     
     try {
       setLoading(true);
-      const { error } = await signIn(email, password);
+      const { error } = await signIn(email);
       
       if (error) {
         Alert.alert('Sign In Error', error.message);
       } else {
-        // Successful login will trigger the auth state change
-        // and navigate automatically via the auth state provider
+        setMagicLinkSent(true);
+        Alert.alert(
+          'Magic Link Sent',
+          'We\'ve sent a sign-in link to your email. Please check your inbox and follow the instructions to sign in.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
       Alert.alert('Error', 'An unexpected error occurred');
@@ -44,10 +49,6 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
     navigation.navigate('SignUp');
   };
   
-  const handleForgotPassword = () => {
-    navigation.navigate('ForgotPassword', {});
-  };
-  
   return (
     <Container
       useSafeArea={true}
@@ -57,51 +58,42 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation }) => {
       <View style={styles.container}>
         <View style={styles.contentContainer}>
           <Typography variant="heading1" style={styles.title}>
-            Sign In
+            {magicLinkSent ? 'Check Your Email' : 'Sign In'}
           </Typography>
           
-          <View style={styles.formContainer}>
-            <FormInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              testID="email-input"
-            />
-            
-            <FormInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Password"
-              secureTextEntry
-              testID="password-input"
-            />
-            
-            <TouchableOpacity
-              onPress={handleForgotPassword}
-              style={styles.forgotPasswordContainer}
-            >
-              <Typography
-                variant="bodySmall"
-                color={colors.primary.main}
-                style={styles.forgotPasswordText}
-              >
-                Forgot Password?
+          {magicLinkSent ? (
+            <Typography variant="bodyMedium" style={styles.message}>
+              We've sent a sign-in link to {email}. Please check your email and follow the instructions to sign in.
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="bodyMedium" style={styles.message}>
+                Enter your email and we'll send you a magic link to sign in. No password required!
               </Typography>
-            </TouchableOpacity>
-            
-            <Button
-              title="Sign In"
-              onPress={handleSignIn}
-              variant="contained"
-              size="large"
-              loading={loading}
-              disabled={loading}
-              fullWidth
-              style={styles.signInButton}
-            />
-          </View>
+              
+              <View style={styles.formContainer}>
+                <FormInput
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  testID="email-input"
+                />
+                
+                <Button
+                  title="Send Magic Link"
+                  onPress={handleSignIn}
+                  variant="contained"
+                  size="large"
+                  loading={loading}
+                  disabled={loading}
+                  fullWidth
+                  style={styles.signInButton}
+                />
+              </View>
+            </>
+          )}
         </View>
         
         <View style={styles.footer}>
@@ -135,15 +127,11 @@ const styles = StyleSheet.create({
   title: {
     marginBottom: spacing.xl,
   },
+  message: {
+    marginBottom: spacing.xl,
+  },
   formContainer: {
     width: '100%',
-  },
-  forgotPasswordContainer: {
-    alignItems: 'flex-end',
-    marginBottom: spacing.md,
-  },
-  forgotPasswordText: {
-    fontWeight: '500',
   },
   signInButton: {
     marginTop: spacing.md,
