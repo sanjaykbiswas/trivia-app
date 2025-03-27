@@ -1,9 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Environment variables would be better, but for simplicity:
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
 
 class AuthService {
   private supabase: SupabaseClient;
