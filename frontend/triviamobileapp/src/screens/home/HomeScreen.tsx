@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
+// frontend/triviamobileapp/src/screens/home/HomeScreen.tsx
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography } from '../../components/common';
 import { SelectionOption } from '../../components/layout';
 import { BottomNavBar } from '../../components/navigation';
+import { DisplayNameModal } from '../../components/auth';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
+import { useAuth } from '../../contexts/AuthContext';
+import UserService from '../../services/UserService';
 
 type HomeScreenProps = StackScreenProps<RootStackParamList, 'Home'>;
 type NavItemType = 'home' | 'packs' | 'create' | 'friends' | 'profile';
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [activeNavItem, setActiveNavItem] = useState<NavItemType>('home');
+  const [displayNameModalVisible, setDisplayNameModalVisible] = useState(false);
+  const [actionType, setActionType] = useState<'solo' | 'party'>('solo');
+  
+  // Get auth context to check user state
+  const { user } = useAuth();
 
   const handleNavItemPress = (itemId: NavItemType) => {
     setActiveNavItem(itemId);
@@ -19,13 +28,63 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     console.log(`Navigate to ${itemId}`);
   };
 
-  const handleSoloPress = () => {
-    // Handle Solo option press
-    console.log('Solo pressed');
+  // Handle Solo option press
+  const handleSoloPress = async () => {
+    setActionType('solo');
+    
+    // Check if user is authenticated or has a temporary user account
+    const isTemporary = await UserService.isTemporaryUser();
+    const hasUser = !!user || isTemporary;
+    
+    if (hasUser) {
+      console.log('User exists, starting solo game');
+      // Continue with solo game flow
+      navigateToGameSetup();
+    } else {
+      console.log('No user exists, showing display name modal');
+      // Show display name modal
+      setDisplayNameModalVisible(true);
+    }
   };
 
-  const handlePartyPress = () => {
-    // Navigate to Multiplayer screen
+  // Handle Party option press
+  const handlePartyPress = async () => {
+    setActionType('party');
+    
+    // Check if user is authenticated or has a temporary user account
+    const isTemporary = await UserService.isTemporaryUser();
+    const hasUser = !!user || isTemporary;
+    
+    if (hasUser) {
+      console.log('User exists, starting multiplayer game');
+      // Continue with party game flow
+      navigateToMultiplayer();
+    } else {
+      console.log('No user exists, showing display name modal');
+      // Show display name modal
+      setDisplayNameModalVisible(true);
+    }
+  };
+
+  // Handle successful display name creation
+  const handleDisplayNameSuccess = () => {
+    // Close the modal
+    setDisplayNameModalVisible(false);
+    
+    // Based on the action type, navigate to the appropriate screen
+    if (actionType === 'solo') {
+      navigateToGameSetup();
+    } else {
+      navigateToMultiplayer();
+    }
+  };
+  
+  // Navigation helpers
+  const navigateToGameSetup = () => {
+    navigation.navigate('GameSetup');
+  };
+  
+  const navigateToMultiplayer = () => {
     navigation.navigate('Multiplayer');
   };
 
@@ -75,6 +134,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
         <BottomNavBar
           activeItemId={activeNavItem}
           onItemPress={handleNavItemPress}
+        />
+        
+        {/* Display Name Modal */}
+        <DisplayNameModal
+          visible={displayNameModalVisible}
+          onClose={() => setDisplayNameModalVisible(false)}
+          onSuccess={handleDisplayNameSuccess}
         />
       </View>
     </Container>
