@@ -3,7 +3,7 @@ import { enableScreens } from 'react-native-screens';
 enableScreens(); // Enable native screens implementation
 
 import React, { useEffect } from 'react';
-import { StatusBar, View, Linking, Platform } from 'react-native';
+import { StatusBar, View, Linking, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
@@ -11,6 +11,13 @@ import { AppNavigator } from './src/navigation';
 import { navigationRef } from './src/navigation/navigationRef';
 import { ErrorBoundary } from './src/components/common';
 import { AuthProvider } from './src/contexts/AuthContext';
+
+// Ignore specific warnings that are not important for production
+LogBox.ignoreLogs([
+  'Warning: componentWill', // Related to componentWillReceiveProps deprecation
+  'Warning: Failed prop type', // For any prop type warnings
+  'Non-serializable values were found in the navigation state', // Navigation state serialization warnings
+]);
 
 /**
  * Main App component
@@ -35,9 +42,12 @@ function App(): React.JSX.Element {
       // Get the initial URL if the app was launched from an external URL
       const url = await Linking.getInitialURL();
       
+      console.log('App launched with URL:', url);
+      
       if (url != null) {
         // Check if the URL is an auth callback
-        if (url.includes('auth/v1/callback')) {
+        if (url.includes('auth/callback')) {
+          console.log('Handling auth callback URL:', url);
           // Return a specific URL that will be handled in the nested navigator
           return 'signin';
         }
@@ -50,8 +60,11 @@ function App(): React.JSX.Element {
     subscribe(listener: (url: string) => void) {
       // Listen to incoming links from deep linking
       const linkingSubscription = Linking.addEventListener('url', ({ url }) => {
+        console.log('Received deep link URL:', url);
+        
         // Check if the URL is an auth callback
-        if (url.includes('auth/v1/callback')) {
+        if (url.includes('auth/callback')) {
+          console.log('Handling auth callback URL via listener:', url);
           // Extract the token part or just redirect to a specific screen
           listener('signin');
           return;
@@ -78,6 +91,17 @@ function App(): React.JSX.Element {
     };
     
     handleInitialURL();
+    
+    // Also set up a listener for URL events
+    const handleUrlEvent = (event: { url: string }) => {
+      console.log('URL event received:', event.url);
+    };
+    
+    const urlListener = Linking.addEventListener('url', handleUrlEvent);
+    
+    return () => {
+      urlListener.remove();
+    };
   }, []);
 
   return (
@@ -90,7 +114,17 @@ function App(): React.JSX.Element {
               backgroundColor="transparent" 
               translucent
             />
-            <NavigationContainer ref={navigationRef} linking={linking}>
+            <NavigationContainer 
+              ref={navigationRef} 
+              linking={linking}
+              onStateChange={(state) => {
+                // Log navigation state changes for debugging
+                console.log('Navigation state changed');
+              }}
+              onReady={() => {
+                console.log('Navigation container is ready');
+              }}
+            >
               <AppNavigator />
             </NavigationContainer>
           </SafeAreaProvider>

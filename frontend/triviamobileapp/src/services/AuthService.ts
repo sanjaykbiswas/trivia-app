@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { appleAuth } from '@invertase/react-native-apple-authentication';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 
 // Make sure polyfills are processed first
 import 'react-native-url-polyfill/auto';
@@ -65,81 +65,9 @@ class AuthService {
       this.isGoogleConfigured = true;
       console.log('Google Sign-In configured successfully');
       
-      // Check if Google provider is enabled in Supabase
-      this.checkGoogleProviderEnabled();
-      
     } catch (error) {
       this.isGoogleConfigured = false;
       console.error('Failed to configure Google Sign In:', error);
-    }
-  }
-  
-  // Verify if Google provider is enabled in Supabase
-  private async checkGoogleProviderEnabled() {
-    try {
-      // Check the available OAuth providers
-      const { data, error } = await this.supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Error checking auth session:', error);
-        return;
-      }
-      
-      // Log for debugging
-      console.log('Auth session retrieved, checking available providers');
-      
-      // Additional check to verify Google provider is configured properly
-      try {
-        const testResponse = await fetch(`${SUPABASE_URL}/auth/v1/providers`, {
-          method: 'GET',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-          }
-        });
-        
-        // Check if we got a valid response before parsing
-        if (!testResponse.ok) {
-          console.log(`Provider check failed with status: ${testResponse.status}`);
-          return;
-        }
-        
-        const responseText = await testResponse.text();
-        
-        // Make sure we have valid JSON before parsing
-        if (!responseText || responseText.trim() === '') {
-          console.log('Empty response from provider check');
-          return;
-        }
-        
-        try {
-          const providers = JSON.parse(responseText);
-          console.log('Available providers:', providers);
-          
-          // Check if providers is an array before using Array methods
-          if (Array.isArray(providers)) {
-            // Look for Google in the available providers
-            const googleEnabled = providers.some((provider: any) => 
-              provider.id === 'google' && provider.enabled === true
-            );
-            
-            if (!googleEnabled) {
-              console.warn('Google provider is not enabled in Supabase project.');
-            } else {
-              console.log('Google provider is enabled in Supabase project.');
-            }
-          } else {
-            console.log('Providers response is not an array:', providers);
-          }
-        } catch (parseError) {
-          console.error('Failed to parse providers response:', parseError);
-          console.log('Response text:', responseText.substring(0, 100)); // Log first 100 chars
-        }
-      } catch (fetchError) {
-        console.error('Failed to fetch providers:', fetchError);
-      }
-    } catch (err) {
-      console.error('Failed to check Google provider status:', err);
     }
   }
   
@@ -398,7 +326,7 @@ class AuthService {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       }
       
-      console.log('Attempting Google sign-in...');
+      console.log('Attempting Google sign-in using native flow...');
       
       // First make sure we're signed out of Google
       try {
@@ -408,42 +336,51 @@ class AuthService {
         console.log('Sign out before sign in failed, continuing anyway:', signOutError);
       }
       
-      // FIXED APPROACH: Use Supabase's built-in OAuth flow instead of separate GoogleSignin flow
-      const { data, error } = await this.supabase.auth.signInWithOAuth({
+      // Use the native Google Sign-in flow
+      const userInfo = await GoogleSignin.signIn();
+      
+      // Check if we have user info
+      if (!userInfo) {
+        throw new Error('Google Sign In failed - no user info returned');
+      }
+      
+      console.log('Google Sign In successful, getting tokens...');
+      
+      // Get the ID token explicitly - this is the safe way regardless of version
+      const tokens = await GoogleSignin.getTokens();
+      
+      if (!tokens || !tokens.idToken) {
+        throw new Error('Failed to get Google ID token');
+      }
+      
+      const idToken = tokens.idToken;
+      
+      console.log('Successfully got Google ID token, signing in with Supabase...');
+      
+      // Sign in with Supabase using the Google ID token
+      const { data, error } = await this.supabase.auth.signInWithIdToken({
         provider: 'google',
-        options: {
-          redirectTo: 'triviamobileapp://auth/callback',
-          skipBrowserRedirect: true, // Important for mobile apps
-        }
+        token: idToken,
       });
       
       if (error) {
-        console.error('Supabase Google OAuth error:', error);
+        console.error('Supabase Google sign in error:', error);
         return { error };
       }
       
-      // Supabase returns a URL that we need to open in a browser for auth
-      if (data?.url) {
-        console.log('Opening Google Auth URL:', data.url);
-        
-        // For React Native, you'd typically open this URL in a WebView or browser
-        // Here we'll assume the auth redirect will bring the user back to the app
-        // via the deep link handler in App.tsx
-        
-        // NOTE: At this point, the authentication process continues in the browser
-        // and your app's deep link handler should process the auth callback URL
-        
-        // We don't have a direct result here - the auth state will update via
-        // the onAuthStateChange listener in AuthContext
-        
-        return { data };
+      // If successful and we have a temporary user, prepare to link identities
+      if (data.user) {
+        const tempUser = await this.getTempUser();
+        if (tempUser) {
+          await AsyncStorage.setItem('pending_link', JSON.stringify({
+            tempUserId: tempUser.id,
+            authProvider: 'google',
+            email: data.user.email,
+          }));
+        }
       }
       
-      return { 
-        error: { 
-          message: 'Failed to get authentication URL from Supabase' 
-        } 
-      };
+      return { data };
       
     } catch (error: any) {
       console.error('Google Sign In error:', error);
@@ -463,6 +400,37 @@ class AuthService {
           details: error.code ? `Error code: ${error.code}` : undefined
         }
       };
+    }
+  }
+  
+  // Helper method to check if specific OAuth providers are enabled in Supabase
+  async getEnabledProviders() {
+    try {
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/providers`, {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch providers: ${response.statusText}`);
+      }
+      
+      const providers = await response.json();
+      
+      if (!Array.isArray(providers)) {
+        throw new Error('Unexpected response format');
+      }
+      
+      // Return array of enabled provider IDs
+      return providers
+        .filter((provider: any) => provider.enabled === true)
+        .map((provider: any) => provider.id);
+    } catch (error) {
+      console.error('Error checking enabled providers:', error);
+      return [];
     }
   }
   

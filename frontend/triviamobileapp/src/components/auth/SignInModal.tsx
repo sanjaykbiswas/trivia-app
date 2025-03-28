@@ -98,8 +98,14 @@ const SignInModal: React.FC<SignInModalProps> = ({
 
   const handleGoogleSignIn = async () => {
     try {
+      // Set loading state before starting Google Sign In process
       setGoogleLoading(true);
-      const { error } = await signInWithGoogle();
+      console.log('Starting Google Sign In process...');
+      
+      // Call the Google Sign In method from auth context
+      const { data, error } = await signInWithGoogle();
+      
+      console.log('Google Sign In result:', { data: !!data, error });
       
       if (error) {
         if (error.message !== 'Sign in was canceled') {
@@ -110,13 +116,17 @@ const SignInModal: React.FC<SignInModalProps> = ({
           }
           Alert.alert('Sign In Error', errorMessage);
         }
-      } else {
+      } else if (data) {
         // Sign in successful, close modal
+        console.log('Google Sign In successful, closing modal');
         onClose();
+      } else {
+        // No data and no error is weird
+        console.warn('Google Sign In returned neither data nor error');
       }
     } catch (error: any) {
+      console.error('Unexpected error during Google Sign In:', error);
       Alert.alert('Sign In Error', error.message || 'Failed to sign in with Google');
-      console.error(error);
     } finally {
       setGoogleLoading(false);
     }
@@ -319,7 +329,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     borderRadius: 100,
     marginBottom: spacing.md,
-    height: 56, // Taller buttons as per screenshot
+    height: 56, // Taller buttons as per design
   },
   buttonContent: {
     flexDirection: 'row',
