@@ -1,8 +1,8 @@
 // frontend/triviamobileapp/src/services/QuestionService.ts
-// Service for fetching questions from the backend API
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Question model based on backend API structure
 export interface Question {
@@ -18,9 +18,10 @@ export interface Question {
 class QuestionService {
   private supabase: SupabaseClient | null = null;
   private baseApiUrl: string;
+  private useDirectSupabase: boolean = false;
 
   constructor() {
-    // Initialize Supabase client directly
+    // Initialize Supabase client
     try {
       this.supabase = createClient(
         SUPABASE_URL, 
@@ -34,61 +35,87 @@ class QuestionService {
         }
       );
       
-      // Set base API URL for FastAPI endpoints
-      // The backend API is hosted at the same URL as Supabase but with different paths
-      this.baseApiUrl = SUPABASE_URL;
+      // Set the API URL based on platform since API_URL isn't available from .env
+      if (Platform.OS === 'ios') {
+        this.baseApiUrl = 'http://localhost:8000';
+      } else {
+        this.baseApiUrl = 'http://10.0.2.2:8000'; // Android emulator
+      }
       
-      console.log('QuestionService initialized with base URL:', this.baseApiUrl);
+      // Start with direct Supabase mode until we confirm the API works
+      this.useDirectSupabase = true;
+      
+      console.log('QuestionService initialized:');
+      console.log('- API URL:', this.baseApiUrl);
+      console.log('- Direct Supabase mode:', this.useDirectSupabase);
+      
+      // Try to ping the API to see if it's available
+      this.checkApiAvailability();
+      
     } catch (error) {
-      console.error('Failed to initialize Supabase client:', error);
+      console.error('Failed to initialize QuestionService:', error);
       this.supabase = null;
       this.baseApiUrl = '';
+      this.useDirectSupabase = true;
     }
   }
 
   /**
-   * Fetch random game questions for the given categories
-   * 
-   * @param categories Optional array of category IDs
-   * @param count Number of questions to fetch (default: 10)
+   * Check if the API is available
+   */
+  private async checkApiAvailability(): Promise<void> {
+    try {
+      const response = await fetch(`${this.baseApiUrl}/`, { 
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      
+      if (response.ok) {
+        console.log('FastAPI backend is available!');
+        this.useDirectSupabase = false;
+      } else {
+        console.log('FastAPI backend returned error status:', response.status);
+        this.useDirectSupabase = true;
+      }
+    } catch (error) {
+      console.log('FastAPI backend is not available:', error);
+      this.useDirectSupabase = true;
+    }
+  }
+
+  /**
+   * Fetch random game questions
    */
   async getGameQuestions(categories?: string[], count: number = 10): Promise<Question[]> {
+    console.log(`Getting ${count} game questions`, categories ? `for categories: ${categories}` : '');
+    
     try {
-      // Check if API URL is configured
-      if (!this.baseApiUrl) {
-        throw new Error('API URL not configured');
+      // Direct Supabase approach - use if API is unavailable
+      if (this.useDirectSupabase) {
+        console.log('Using direct Supabase access for questions');
+        return this.getQuestionsFromSupabase(categories, count);
       }
       
-      // Build API URL following FastAPI route structure
-      // Based on backend/src/controllers/question_controller.py route definitions
+      // API approach - the original implementation
       let url = `${this.baseApiUrl}/questions/game?count=${count}`;
       
-      // Add categories parameter if provided
       if (categories && categories.length > 0) {
-        // Convert array to comma-separated string and append to URL
         const categoriesParam = categories.join(',');
         url += `&categories=${encodeURIComponent(categoriesParam)}`;
       }
       
-      console.log(`Fetching game questions from: ${url}`);
+      console.log(`Fetching from API: ${url}`);
       
-      // Make API request
       const response = await fetch(url);
-      
-      // Log more details about the response for debugging
-      console.log(`API Response status: ${response.status} ${response.statusText}`);
+      console.log(`Response status: ${response.status} ${response.statusText}`);
       
       if (!response.ok) {
-        console.error(`API error ${response.status}: ${response.statusText}`);
-        // For debugging, try to read the error message from response body
-        try {
-          const errorData = await response.text();
-          console.error('Error response body:', errorData);
-        } catch (e) {
-          console.error('Could not read error response body');
-        }
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        // Fall back to direct Supabase if API fails
+        console.log('Falling back to direct Supabase access');
+        return this.getQuestionsFromSupabase(categories, count);
       }
       
       const data = await response.json();
@@ -96,124 +123,182 @@ class QuestionService {
       
       return data;
     } catch (error) {
-      console.error('Error fetching game questions:', error);
-      throw error;
+      console.error('Error in getGameQuestions:', error);
+      
+      // Fall back to direct Supabase if API call throws an error
+      console.log('Error occurred, falling back to direct Supabase access');
+      return this.getQuestionsFromSupabase(categories, count);
     }
   }
   
   /**
-   * Fetch random game questions for a specific category
-   * 
-   * @param categoryId Category ID
-   * @param count Number of questions to fetch
+   * Direct Supabase approach - queries questions and answers from Supabase
    */
-  async getQuestionsByCategory(categoryId: string, count: number = 10): Promise<Question[]> {
-    console.log(`Fetching ${count} questions for category: ${categoryId}`);
-    
+  private async getQuestionsFromSupabase(categories?: string[], count: number = 10): Promise<Question[]> {
     try {
-      // Check if API URL is configured
-      if (!this.baseApiUrl) {
-        throw new Error('API URL not configured');
+      if (!this.supabase) {
+        throw new Error('Supabase client not initialized');
       }
       
-      // Use the category endpoint as defined in backend/src/controllers/question_controller.py
-      const url = `${this.baseApiUrl}/questions/category/${categoryId}?limit=${count}`;
-      console.log(`Fetching from category endpoint: ${url}`);
+      console.log('Querying Supabase for questions directly');
       
-      const response = await fetch(url);
+      // First, get questions with optional category filter
+      let questionsQuery = this.supabase
+        .from('questions')
+        .select('*')
+        .limit(count);
       
-      // Log response details
-      console.log(`API Response status: ${response.status} ${response.statusText}`);
+      // Add category filter if specified
+      if (categories && categories.length > 0) {
+        questionsQuery = questionsQuery.in('category', categories);
+      }
       
-      if (!response.ok) {
-        console.error(`API error ${response.status}: ${response.statusText}`);
-        try {
-          const errorData = await response.text();
-          console.error('Error response body:', errorData);
-        } catch (e) {
-          console.error('Could not read error response body');
+      // Add order by for randomness
+      questionsQuery = questionsQuery.order('created_at');
+      
+      const { data: questionData, error: questionError } = await questionsQuery;
+      
+      if (questionError) {
+        console.error('Supabase question query error:', questionError);
+        throw questionError;
+      }
+      
+      if (!questionData || questionData.length === 0) {
+        console.log('No questions found in Supabase');
+        return [];
+      }
+      
+      console.log(`Retrieved ${questionData.length} questions from Supabase`);
+      
+      // Get the question IDs to fetch their answers
+      const questionIds = questionData.map(q => q.id);
+      
+      // Get answers for these questions
+      const { data: answerData, error: answerError } = await this.supabase
+        .from('answers')
+        .select('*')
+        .in('question_id', questionIds);
+      
+      if (answerError) {
+        console.error('Supabase answer query error:', answerError);
+        throw answerError;
+      }
+      
+      console.log(`Retrieved ${answerData?.length || 0} answers from Supabase`);
+      
+      // Create a map of question_id to answer for easy lookup
+      const answerMap: Record<string, any> = {};
+      answerData?.forEach(answer => {
+        answerMap[answer.question_id] = answer;
+      });
+      
+      // Combine questions with their answers
+      const questions: Question[] = questionData.map(question => {
+        const answer = answerMap[question.id];
+        
+        // If no answer is found, create a placeholder
+        if (!answer) {
+          console.warn(`No answer found for question ${question.id}`);
+          return {
+            id: question.id,
+            content: question.content,
+            category: question.category,
+            correct_answer: 'Unknown',
+            incorrect_answers: ['Option 1', 'Option 2', 'Option 3'],
+            difficulty: question.difficulty,
+            modified_difficulty: question.modified_difficulty
+          };
         }
         
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        return {
+          id: question.id,
+          content: question.content,
+          category: question.category,
+          correct_answer: answer.correct_answer,
+          incorrect_answers: answer.incorrect_answers || [],
+          difficulty: question.difficulty,
+          modified_difficulty: question.modified_difficulty
+        };
+      });
+      
+      return questions;
+    } catch (error) {
+      console.error('Error retrieving questions from Supabase:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Fetch questions for a specific category
+   */
+  async getQuestionsByCategory(categoryId: string, count: number = 10): Promise<Question[]> {
+    console.log(`Getting ${count} questions for category: ${categoryId}`);
+    
+    try {
+      // Direct Supabase approach if API is unavailable
+      if (this.useDirectSupabase) {
+        console.log('Using direct Supabase access for category questions');
+        return this.getQuestionsFromSupabase([categoryId], count);
       }
       
-      const data = await response.json();
-      console.log(`Successfully fetched ${data.length} questions from category endpoint`);
+      // First try the category endpoint
+      const url = `${this.baseApiUrl}/questions/category/${categoryId}?limit=${count}`;
+      console.log(`Fetching from API: ${url}`);
       
-      return data;
+      const response = await fetch(url);
+      console.log(`Response status: ${response.status} ${response.statusText}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        // If the category endpoint failed, try generating questions
+        console.log('Category endpoint failed, trying to generate questions');
+        return this.generateQuestionsWithAnswers(categoryId, count);
+      }
+      
+      // The category endpoint might return questions without answers
+      // We need to get the complete questions with answers
+      try {
+        console.log('Category endpoint successful, generating complete questions');
+        return this.generateQuestionsWithAnswers(categoryId, count);
+      } catch (genError) {
+        console.error('Error generating complete questions:', genError);
+        
+        // Fall back to direct Supabase
+        console.log('Falling back to direct Supabase access');
+        return this.getQuestionsFromSupabase([categoryId], count);
+      }
     } catch (error) {
-      console.error(`Error fetching questions for category ${categoryId}:`, error);
-      throw error;
+      console.error(`Error in getQuestionsByCategory:`, error);
+      
+      // Fall back to direct Supabase
+      console.log('Error occurred, falling back to direct Supabase access');
+      return this.getQuestionsFromSupabase([categoryId], count);
     }
   }
 
   /**
-   * Get a complete question with answer by ID
-   * 
-   * @param questionId Question ID
+   * Generate complete questions with answers
    */
-  async getQuestionById(questionId: string): Promise<Question | null> {
+  async generateQuestionsWithAnswers(category: string, count: number = 10, difficulty?: string): Promise<Question[]> {
     try {
-      // Check if API URL is configured
       if (!this.baseApiUrl) {
         throw new Error('API URL not configured');
       }
       
-      // Use question endpoint as defined in backend/src/controllers/question_controller.py
-      const url = `${this.baseApiUrl}/questions/${questionId}`;
-      console.log(`Fetching question by ID from: ${url}`);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        console.error(`API error ${response.status}: ${response.statusText}`);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`Error fetching question ${questionId}:`, error);
-      return null;
-    }
-  }
-  
-  /**
-   * Generate new questions for a category
-   * 
-   * @param category Category name or ID
-   * @param count Number of questions to generate
-   * @param difficulty Optional difficulty level
-   */
-  async generateQuestions(category: string, count: number = 10, difficulty?: string): Promise<Question[]> {
-    try {
-      // Check if API URL is configured
-      if (!this.baseApiUrl) {
-        throw new Error('API URL not configured');
-      }
-      
-      // Use generate-complete endpoint as defined in backend/src/controllers/question_controller.py
       const url = `${this.baseApiUrl}/questions/generate-complete`;
-      console.log(`Generating questions for category ${category} from: ${url}`);
+      console.log(`Generating questions via API: ${url}`);
       
-      // Prepare the request body with proper typing
-      const requestBody: {
-        category: string;
-        count: number;
-        deduplicate: boolean;
-        difficulty?: string;
-      } = {
+      const requestBody = {
         category,
         count,
-        deduplicate: true
+        deduplicate: true,
+        ...(difficulty && { difficulty })
       };
       
-      // Add difficulty if provided
-      if (difficulty) {
-        requestBody.difficulty = difficulty;
-      }
+      console.log('Request payload:', JSON.stringify(requestBody));
       
-      // Make POST request
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -222,8 +307,11 @@ class QuestionService {
         body: JSON.stringify(requestBody),
       });
       
+      console.log(`Response status: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
-        console.error(`API error ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
       
@@ -232,7 +320,7 @@ class QuestionService {
       
       return data;
     } catch (error) {
-      console.error(`Error generating questions for category ${category}:`, error);
+      console.error(`Error generating questions:`, error);
       throw error;
     }
   }
