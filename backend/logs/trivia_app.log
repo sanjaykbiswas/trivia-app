@@ -325,3 +325,12 @@
 2025-03-27 22:33:27,462 - trivia_app - INFO - Application startup
 2025-03-28 16:22:55,558 - trivia_app - INFO - Logging configured for trivia_app
 2025-03-28 16:22:55,680 - trivia_app - INFO - Application startup
+2025-03-28 16:39:38,202 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 16:39:38,354 - trivia_app - INFO - Application startup
+2025-03-28 16:41:56,855 - trivia_app - INFO - Request: POST /auth/temp-user from 127.0.0.1
+2025-03-28 16:41:56,857 - services.user_service - INFO - Creating temporary user with username: test_user
+2025-03-28 16:41:56,857 - utils.supabase_actions - INFO - Creating temporary user with username: test_user
+2025-03-28 16:41:57,085 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
+2025-03-28 16:41:57,090 - utils.supabase_actions - INFO - Temporary user created with ID: 03ec846e-e129-4c55-a697-2315f3170500
+2025-03-28 16:41:57,090 - services.user_service - INFO - Temporary user created with ID: 03ec846e-e129-4c55-a697-2315f3170500
+2025-03-28 16:41:57,092 - trivia_app - INFO - Response: POST /auth/temp-user - Status: 200 - Time: 0.2368s
