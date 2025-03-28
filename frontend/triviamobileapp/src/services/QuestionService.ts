@@ -20,6 +20,7 @@ class QuestionService {
   private baseApiUrl: string;
   private useDirectSupabase: boolean = false;
   private apiAvailable: boolean = false;
+  private connectionTest: boolean = false; // Track if we've tested the connection
 
   constructor() {
     // Initialize Supabase client
@@ -91,10 +92,13 @@ class QuestionService {
         this.useDirectSupabase = true;
         this.apiAvailable = false;
       }
+      
+      this.connectionTest = true;
     } catch (error) {
       console.log(`🔴 FastAPI backend is not available:`, error);
       this.useDirectSupabase = true;
       this.apiAvailable = false;
+      this.connectionTest = true;
     }
   }
 
@@ -105,7 +109,8 @@ class QuestionService {
     console.log(`Getting ${count} game questions`, categories ? `for categories: ${categories}` : '');
     
     try {
-      if (!this.apiAvailable) {
+      // If we haven't tested the connection and haven't explicitly marked it as available
+      if (!this.connectionTest && !this.apiAvailable) {
         // Try to check API availability again
         await this.checkApiAvailability();
       }
@@ -126,7 +131,15 @@ class QuestionService {
       
       console.log(`Fetching from API: ${url}`);
       
-      const response = await fetch(url);
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(url, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
       console.log(`Response status: ${response.status} ${response.statusText}`);
       
       if (!response.ok) {
@@ -170,7 +183,37 @@ class QuestionService {
       
       // Add category filter if specified
       if (categories && categories.length > 0) {
-        questionsQuery = questionsQuery.in('category', categories);
+        // Log the categories we're filtering by
+        console.log(`Filtering by categories:`, categories);
+        
+        // Check if these are category IDs or names
+        if (categories.some(c => c.includes('-'))) {
+          // These look like UUIDs, use them directly
+          questionsQuery = questionsQuery.in('category', categories);
+        } else {
+          // These might be category names, try both approaches
+          try {
+            // Try filtering by name first
+            const { data: categoryData } = await this.supabase
+              .from('categories')
+              .select('name')
+              .in('id', categories);
+              
+            if (categoryData && categoryData.length > 0) {
+              // If we found categories by ID, use their names
+              const categoryNames = categoryData.map(c => c.name);
+              console.log(`Resolved category names:`, categoryNames);
+              questionsQuery = questionsQuery.in('category', categoryNames);
+            } else {
+              // Otherwise use the original values
+              questionsQuery = questionsQuery.in('category', categories);
+            }
+          } catch (e) {
+            // If that fails, just use the original values
+            console.log(`Category lookup failed, using original values:`, e);
+            questionsQuery = questionsQuery.in('category', categories);
+          }
+        }
       }
       
       // Add order by for randomness
@@ -185,6 +228,10 @@ class QuestionService {
       
       if (!questionData || questionData.length === 0) {
         console.log('No questions found in Supabase');
+        // Check if we have category information to provide a better error message
+        if (categories && categories.length > 0) {
+          console.log(`No questions found for categories: ${categories.join(', ')}`);
+        }
         return [];
       }
       
@@ -241,7 +288,13 @@ class QuestionService {
         };
       });
       
-      return questions;
+      // Only return questions that have both question content and answer data
+      const validQuestions = questions.filter(q => 
+        q.content && q.correct_answer && q.incorrect_answers && q.incorrect_answers.length > 0);
+      
+      console.log(`After filtering, returning ${validQuestions.length} valid questions`);
+      
+      return validQuestions;
     } catch (error) {
       console.error('Error retrieving questions from Supabase:', error);
       return [];
@@ -252,10 +305,10 @@ class QuestionService {
    * Fetch questions for a specific category
    */
   async getQuestionsByCategory(categoryId: string, count: number = 10): Promise<Question[]> {
-    console.log(`Getting ${count} questions for category: ${categoryId}`);
+    console.log(`Getting ${count} questions for category ID: ${categoryId}`);
     
     try {
-      if (!this.apiAvailable) {
+      if (!this.connectionTest && !this.apiAvailable) {
         // Try to check API availability again
         await this.checkApiAvailability();
       }
@@ -263,15 +316,55 @@ class QuestionService {
       // Direct Supabase approach if API is unavailable
       if (this.useDirectSupabase) {
         console.log('Using direct Supabase access for category questions');
+        
+        // First, look up the category name if given an ID
+        if (this.supabase && categoryId && categoryId.includes('-')) {
+          try {
+            const { data: categoryData } = await this.supabase
+              .from('categories')
+              .select('name')
+              .eq('id', categoryId)
+              .single();
+              
+            if (categoryData && categoryData.name) {
+              console.log(`Category ${categoryId} resolves to name: ${categoryData.name}`);
+              // We have two approaches:
+              // 1. Get questions by category name
+              // 2. Get questions by category ID
+              // Let's try both in sequence
+              
+              // Approach 1: By category name
+              const questionsByName = await this.getQuestionsFromSupabase([categoryData.name], count);
+              if (questionsByName.length > 0) {
+                console.log(`Found ${questionsByName.length} questions by category name`);
+                return questionsByName;
+              }
+              
+              // Approach 2: By category ID
+              console.log(`No questions found by name, trying by ID`);
+              return this.getQuestionsFromSupabase([categoryId], count);
+            }
+          } catch (e) {
+            console.error('Error looking up category name:', e);
+          }
+        }
+        
+        // Default approach: try directly with the category ID
         return this.getQuestionsFromSupabase([categoryId], count);
       }
       
-      // First try the category endpoint
-      const url = `${this.baseApiUrl}/questions/category/${encodeURIComponent(categoryId)}?limit=${count}`;
+      // API approach - only used if API is available
+      let url = `${this.baseApiUrl}/questions/game?count=${count}`;
+      
+      if (categoryId) {
+        // Encode the category as a single-item array
+        url += `&categories=${encodeURIComponent(categoryId)}`;
+      }
+      
       console.log(`Fetching from API: ${url}`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const response = await fetch(url, {
         signal: controller.signal
@@ -285,82 +378,27 @@ class QuestionService {
         const errorText = await response.text();
         console.error('Error response:', errorText);
         
-        // If the category endpoint failed, try generating questions
-        console.log('Category endpoint failed, trying to generate questions');
-        return this.generateQuestionsWithAnswers(categoryId, count);
-      }
-      
-      // The category endpoint might return questions without answers
-      // We need to get the complete questions with answers
-      try {
-        console.log('Category endpoint successful, generating complete questions');
-        return this.generateQuestionsWithAnswers(categoryId, count);
-      } catch (genError) {
-        console.error('Error generating complete questions:', genError);
-        
         // Fall back to direct Supabase
-        console.log('Falling back to direct Supabase access');
+        console.log('API request failed, falling back to direct Supabase access');
         return this.getQuestionsFromSupabase([categoryId], count);
       }
+      
+      const data = await response.json();
+      console.log(`Received ${data.length} questions from API`);
+      
+      if (data.length === 0) {
+        // If the API returned no questions, try Supabase directly
+        console.log('No questions found through API, trying Supabase directly');
+        return this.getQuestionsFromSupabase([categoryId], count);
+      }
+      
+      return data;
     } catch (error) {
       console.error(`Error in getQuestionsByCategory:`, error);
       
       // Fall back to direct Supabase
       console.log('Error occurred, falling back to direct Supabase access');
       return this.getQuestionsFromSupabase([categoryId], count);
-    }
-  }
-
-  /**
-   * Generate complete questions with answers
-   */
-  async generateQuestionsWithAnswers(category: string, count: number = 10, difficulty?: string): Promise<Question[]> {
-    try {
-      if (!this.baseApiUrl) {
-        throw new Error('API URL not configured');
-      }
-      
-      const url = `${this.baseApiUrl}/questions/generate-complete`;
-      console.log(`Generating questions via API: ${url}`);
-      
-      const requestBody = {
-        category,
-        count,
-        deduplicate: true,
-        ...(difficulty && { difficulty })
-      };
-      
-      console.log('Request payload:', JSON.stringify(requestBody));
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for generation
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal
-      });
-      
-      clearTimeout(timeoutId);
-      
-      console.log(`Response status: ${response.status} ${response.statusText}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log(`Successfully generated ${data.length} questions`);
-      
-      return data;
-    } catch (error) {
-      console.error(`Error generating questions:`, error);
-      throw error;
     }
   }
 }
