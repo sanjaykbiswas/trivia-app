@@ -42,30 +42,31 @@ class CategoryHelper:
             
         # Generate new guidelines
         prompt = f"""
-        Create a comprehensive guide for generating exceptional trivia questions in the category: '{category}'.
+        ## Create a comprehensive guide for generating exceptional trivia questions in the category: '{category}' by answering the following questions:
+        - Is there a play on words in '{category}'?  
+        - If there is a play on words, describe it.  If not, ignore this question.
+        - What are the distinctive elements of '{category}'?
+        - What are the key knowledge domains within '{category}'?
+        - What are elements within '{category}' that could make the questions fun or interesting?
+        
+        Format your response using the structure below:
 
-        Analyze the distinctive elements of '{category}' and develop specific guidelines that will help create engaging, accurate, and diverse trivia questions. Focus on:
+        ### Is '{category}' a play on words?
+        - Yes or No
+        - If Yes: Description of the play on words.  If No: do not include this line.
+        - If Yes: "Include the nuances of the play on words in your question generation."
+        
+        ### Key Knowledge Domains (maximum 10)
+        - Domain 1
+        - ...
+        - Domain N
+        
+        ### Fun, interesting, or distinctive elements (maximum 10)
+        - Element 1
+        - ...
+        - Element N
 
-        - Key knowledge domains within this category
-        - Different question formats that work well
-        - Types of facts that make for interesting questions
-        - Ways to ensure questions are factually accurate
-
-        Format your response using the exact structure below:
-
-        ### {category} Trivia Question Guidelines
-
-        **[Descriptive Guideline Title 1]**
-        Clear explanation of the guideline.
-
-        **[Descriptive Guideline Title 2]**
-        Clear explanation of the guideline.
-
-        [Continue with additional guidelines, maximum of 10 total]
-
-        Important: DO NOT INCLUDE ANY guidelines about the following: Visual Questions, Difficulty Balancing, Question Formats, Question Clarity, or Hypothetical Scenarios.
-
-        Focus exclusively on content and quality considerations for text-based trivia questions.
+        DO NOT INCLUDE ANY guidelines about the following: Visual Questions, Difficulty Balancing, Question Formats, Question Clarity, or Hypothetical Scenarios.
         """
         
         try:

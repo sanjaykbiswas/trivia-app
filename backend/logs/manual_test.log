@@ -2697,3 +2697,318 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-27 17:01:54,937 - utils.question_generator.answer_generator - INFO - Successfully parsed 25 answers in batch 1
 2025-03-27 17:01:54,937 - utils.question_generator.answer_generator - INFO - Generated 25 answers for 25 questions
 2025-03-27 17:01:55,110 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22created_at%22%2C%22question_id%22%2C%22correct_answer%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-27 17:22:35,795 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 17:23:36,625 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Modern+Literature "HTTP/2 200 OK"
+2025-03-27 17:23:36,724 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 17:23:36,725 - services.category_service - INFO - Created category 'Modern Literature' with ID: c6ca7ea6-2c29-4ecf-8c59-ab856cb780ae
+2025-03-27 17:23:46,873 - utils.question_generator.category_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for category guidelines
+2025-03-27 17:23:58,650 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:23:58,663 - utils.question_generator.category_helper - INFO - Received response from anthropic
+2025-03-27 17:23:58,664 - utils.question_generator.difficulty_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for difficulty guidelines
+2025-03-27 17:24:07,869 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:24:07,872 - utils.question_generator.difficulty_helper - INFO - Received response from anthropic
+2025-03-27 17:24:07,874 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Modern Literature'
+2025-03-27 17:24:07,874 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Modern Literature' - 'Easy'
+2025-03-27 17:24:07,874 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Modern Literature'
+2025-03-27 17:24:07,874 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Modern Literature' - 'Medium'
+2025-03-27 17:24:07,875 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:24:07,875 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:24:07,875 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Modern Literature'
+2025-03-27 17:24:07,879 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Modern Literature' - 'Hard'
+2025-03-27 17:24:07,879 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:24:07,880 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Modern Literature'
+2025-03-27 17:24:07,882 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Modern Literature' - 'Expert'
+2025-03-27 17:24:07,883 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Modern Literature'
+2025-03-27 17:24:07,883 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Modern Literature' - 'Master'
+2025-03-27 17:24:07,883 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:24:07,885 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:24:08,087 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-27 17:24:08,088 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-27 17:24:08,106 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-27 17:24:08,106 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-27 17:24:11,038 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:24:11,041 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which dystopian novel by Margaret Atwood features the Republic of Gilead and characters called ...
+2025-03-27 17:24:11,041 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:24:11,042 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:24:11,042 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:24:12,268 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:24:12,270 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:24:12,272 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which author's experimental novel 'Infinite Jest' features a lethal entertainment cartridge and...
+2025-03-27 17:24:12,537 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22modified_difficulty%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:24:12,538 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:24:12,543 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:24:12,544 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which author's 1990 novel 'Possession' won the Booker Prize and features parallel love stories ...
+2025-03-27 17:24:12,544 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:24:12,544 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:24:13,247 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:24:13,419 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22modified_difficulty%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:24:13,421 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:24:13,421 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:24:13,422 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:24:13,687 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:24:13,818 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22modified_difficulty%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:24:35,513 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:24:35,515 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which author's 2007 novel 'The Brief Wondrous Life of Oscar Wao' blends magical realism with Do...
+2025-03-27 17:24:35,516 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:24:35,516 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:24:35,516 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:24:36,229 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:24:36,385 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22modified_difficulty%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:24:36,414 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:24:36,416 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which reclusive author wrote 'The Bleeding Edge' and 'Gravity's Rainbow', pioneering postmodern...
+2025-03-27 17:24:36,417 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:24:36,417 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:24:36,417 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:24:36,642 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:24:36,758 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22modified_difficulty%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:24:36,760 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (25 questions)
+2025-03-27 17:24:36,760 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (25 questions)
+2025-03-27 17:24:36,760 - utils.question_generator.answer_generator - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for answer generation
+2025-03-27 17:25:00,321 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:25:00,324 - utils.question_generator.answer_generator - INFO - Received response from anthropic
+2025-03-27 17:25:00,325 - utils.question_generator.answer_generator - INFO - Successfully parsed 25 answers in batch 1
+2025-03-27 17:25:00,325 - utils.question_generator.answer_generator - INFO - Generated 25 answers for 25 questions
+2025-03-27 17:25:00,513 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22created_at%22%2C%22incorrect_answers%22%2C%22correct_answer%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 17:31:09,810 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 17:31:15,344 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.science "HTTP/2 200 OK"
+2025-03-27 17:31:15,448 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 17:31:15,451 - services.category_service - INFO - Created category 'science' with ID: 6ce4f78d-1b37-461b-8488-b6650755c34b
+2025-03-27 17:31:19,925 - utils.question_generator.category_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for category guidelines
+2025-03-27 17:31:32,695 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:31:32,710 - utils.question_generator.category_helper - INFO - Received response from anthropic
+2025-03-27 17:31:32,711 - utils.question_generator.difficulty_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for difficulty guidelines
+2025-03-27 17:31:41,191 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:31:41,194 - utils.question_generator.difficulty_helper - INFO - Received response from anthropic
+2025-03-27 17:31:41,195 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:31:41,195 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Easy'
+2025-03-27 17:31:41,195 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:31:41,196 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Medium'
+2025-03-27 17:31:41,196 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:31:41,196 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:31:41,198 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:31:41,199 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Hard'
+2025-03-27 17:31:41,201 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:31:41,201 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:31:41,201 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Expert'
+2025-03-27 17:31:41,204 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:31:41,204 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:31:41,205 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Master'
+2025-03-27 17:31:41,206 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:31:41,399 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-27 17:31:41,399 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-27 17:31:41,415 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-27 17:31:41,416 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-27 17:31:42,933 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:31:42,935 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "What gas makes up the majority of Earth's atmosphere?",
+  "Which planet in our solar system is ...
+2025-03-27 17:31:42,935 - utils.question_generator.generator - INFO - Successfully parsed 2 questions out of 2 requested
+2025-03-27 17:31:42,936 - utils.question_generator.deduplicator - INFO - Getting embeddings for 2 texts
+2025-03-27 17:31:42,936 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:31:43,144 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:31:43,146 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which radioactive element, used in smoke detectors, was discovered by Marie and Pierre Curie in...
+2025-03-27 17:31:43,571 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:31:43,771 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22content%22%2C%22modified_difficulty%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:31:43,776 - utils.question_generator.generator - INFO - Successfully parsed 2 questions out of 2 requested
+2025-03-27 17:31:43,777 - utils.question_generator.deduplicator - INFO - Getting embeddings for 2 texts
+2025-03-27 17:31:43,777 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:31:44,161 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:31:44,162 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:31:44,164 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which technique, employing a molecular 'scaffold', did Frances Arnold pioneer to create enzymes...
+2025-03-27 17:31:44,267 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22content%22%2C%22modified_difficulty%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:31:44,269 - utils.question_generator.generator - INFO - Successfully parsed 2 questions out of 2 requested
+2025-03-27 17:31:44,269 - utils.question_generator.deduplicator - INFO - Getting embeddings for 2 texts
+2025-03-27 17:31:44,269 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:31:44,775 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:31:44,876 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22content%22%2C%22modified_difficulty%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:32:07,354 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:32:07,356 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which radioactive element was discovered by Marie and Pierre Curie in 1898 and named after Mari...
+2025-03-27 17:32:07,356 - utils.question_generator.generator - INFO - Successfully parsed 2 questions out of 2 requested
+2025-03-27 17:32:07,356 - utils.question_generator.deduplicator - INFO - Getting embeddings for 2 texts
+2025-03-27 17:32:07,356 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:32:07,508 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:32:07,510 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "What element, represented by the symbol 'Au' on the periodic table, is known for its use in jew...
+2025-03-27 17:32:07,917 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:32:08,070 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22content%22%2C%22modified_difficulty%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:32:08,071 - utils.question_generator.generator - INFO - Successfully parsed 2 questions out of 2 requested
+2025-03-27 17:32:08,072 - utils.question_generator.deduplicator - INFO - Getting embeddings for 2 texts
+2025-03-27 17:32:08,072 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:32:08,317 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:32:08,417 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22created_at%22%2C%22category%22%2C%22content%22%2C%22modified_difficulty%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:32:08,417 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (10 questions)
+2025-03-27 17:32:08,418 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (10 questions)
+2025-03-27 17:32:08,418 - utils.question_generator.answer_generator - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for answer generation
+2025-03-27 17:32:16,726 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:32:16,729 - utils.question_generator.answer_generator - INFO - Received response from anthropic
+2025-03-27 17:32:16,730 - utils.question_generator.answer_generator - INFO - Successfully parsed 10 answers in batch 1
+2025-03-27 17:32:16,731 - utils.question_generator.answer_generator - INFO - Generated 10 answers for 10 questions
+2025-03-27 17:32:16,893 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22created_at%22%2C%22question_id%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-27 17:42:30,156 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 17:42:41,357 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 17:42:50,795 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:50,807 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 17:42:50,808 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 17:42:54,391 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:54,395 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 17:42:54,396 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:42:54,396 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Easy'
+2025-03-27 17:42:54,396 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:42:54,396 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Medium'
+2025-03-27 17:42:54,397 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:42:54,402 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:42:54,403 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:42:54,403 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Hard'
+2025-03-27 17:42:54,408 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:42:54,408 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:42:54,411 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Expert'
+2025-03-27 17:42:54,411 - utils.question_generator.generator - INFO - Using cached category guidelines for 'science'
+2025-03-27 17:42:54,412 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:42:54,412 - utils.question_generator.generator - INFO - Using cached difficulty context for 'science' - 'Master'
+2025-03-27 17:42:54,415 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:42:55,279 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:55,281 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "What gas do plants primarily convert into oxygen during photosynthesis?",
+  "Which element has ...
+2025-03-27 17:42:55,282 - utils.question_generator.generator - INFO - Successfully parsed 3 questions out of 3 requested
+2025-03-27 17:42:55,282 - utils.question_generator.deduplicator - INFO - Getting embeddings for 3 texts
+2025-03-27 17:42:55,282 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:42:55,343 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:55,344 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which gas makes up most of the Earth's atmosphere?",
+  "What type of bond forms by sharing elec...
+2025-03-27 17:42:55,655 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:55,658 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "Which principle explains why certain elements exhibit colors due to electron transiti...
+2025-03-27 17:42:55,686 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:55,688 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What principle of physics explains the buoyancy force acting on an object submerged in ...
+2025-03-27 17:42:55,816 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:42:55,847 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:42:55,849 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What moon of Saturn is known for its geysers that eject water into space, hinting at a ...
+2025-03-27 17:42:56,145 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:42:56,152 - utils.question_generator.generator - INFO - Successfully parsed 3 questions out of 3 requested
+2025-03-27 17:42:56,152 - utils.question_generator.deduplicator - INFO - Getting embeddings for 3 texts
+2025-03-27 17:42:56,152 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:42:56,796 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:42:56,965 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:42:56,967 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-27 17:42:56,967 - utils.question_generator.generator - INFO - Successfully parsed 3 questions out of 3 requested
+2025-03-27 17:42:56,967 - utils.question_generator.deduplicator - INFO - Getting embeddings for 3 texts
+2025-03-27 17:42:56,967 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:42:57,443 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:42:57,549 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:42:57,551 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-27 17:42:57,551 - utils.question_generator.generator - INFO - Successfully parsed 3 questions out of 3 requested
+2025-03-27 17:42:57,552 - utils.question_generator.deduplicator - INFO - Getting embeddings for 3 texts
+2025-03-27 17:42:57,552 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:42:58,182 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:42:58,296 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:42:58,298 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-27 17:42:58,298 - utils.question_generator.generator - INFO - Successfully parsed 3 questions out of 3 requested
+2025-03-27 17:42:58,298 - utils.question_generator.deduplicator - INFO - Getting embeddings for 3 texts
+2025-03-27 17:42:58,299 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:42:58,480 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:42:58,569 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22content%22%2C%22difficulty%22 "HTTP/2 201 Created"
+2025-03-27 17:42:58,571 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (15 questions)
+2025-03-27 17:42:58,572 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (15 questions)
+2025-03-27 17:42:58,572 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 17:43:03,792 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:43:03,796 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 17:43:03,797 - utils.question_generator.answer_generator - INFO - Successfully parsed 15 answers in batch 1
+2025-03-27 17:43:03,798 - utils.question_generator.answer_generator - INFO - Generated 15 answers for 15 questions
+2025-03-27 17:43:03,967 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22created_at%22%2C%22incorrect_answers%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 17:47:42,880 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 17:48:18,407 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Talk+Nerdy+To+Me "HTTP/2 200 OK"
+2025-03-27 17:48:18,561 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 17:48:18,563 - services.category_service - INFO - Created category 'Talk Nerdy To Me' with ID: db579ab4-63dd-4e23-9ebc-74caf5230f14
+2025-03-27 17:48:25,651 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 17:48:32,191 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:32,202 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 17:48:32,203 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 17:48:39,727 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:39,730 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 17:48:39,731 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Talk Nerdy To Me'
+2025-03-27 17:48:39,731 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Talk Nerdy To Me' - 'Easy'
+2025-03-27 17:48:39,731 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Talk Nerdy To Me'
+2025-03-27 17:48:39,731 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:48:39,731 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Talk Nerdy To Me' - 'Medium'
+2025-03-27 17:48:39,737 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Talk Nerdy To Me'
+2025-03-27 17:48:39,737 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Talk Nerdy To Me' - 'Hard'
+2025-03-27 17:48:39,737 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:48:39,741 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Talk Nerdy To Me'
+2025-03-27 17:48:39,741 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Talk Nerdy To Me' - 'Expert'
+2025-03-27 17:48:39,741 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:48:39,744 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:48:39,745 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Talk Nerdy To Me'
+2025-03-27 17:48:39,747 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Talk Nerdy To Me' - 'Master'
+2025-03-27 17:48:39,748 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 17:48:41,098 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:41,100 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which programming language is primarily used for iOS app development?",
+  "What is the main fun...
+2025-03-27 17:48:41,100 - utils.question_generator.generator - INFO - Successfully parsed 4 questions out of 4 requested
+2025-03-27 17:48:41,100 - utils.question_generator.deduplicator - INFO - Getting embeddings for 4 texts
+2025-03-27 17:48:41,100 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:48:41,308 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:41,310 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which algorithm's analysis led to the P vs NP problem in computer science?",
+  "What qu...
+2025-03-27 17:48:41,493 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:41,497 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What algorithmic concept allows computers to learn from data without explicit programmi...
+2025-03-27 17:48:41,528 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:41,530 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "What coding language was primarily used to develop the world's first search engine, Archie, in ...
+2025-03-27 17:48:41,651 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:48:41,685 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:41,686 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What programming language was developed at Bell Labs and first appeared in 1972?",
+  "W...
+2025-03-27 17:48:41,844 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22modified_difficulty%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 17:48:41,850 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-27 17:48:41,850 - utils.question_generator.generator - INFO - Successfully parsed 4 questions out of 4 requested
+2025-03-27 17:48:41,850 - utils.question_generator.deduplicator - INFO - Getting embeddings for 4 texts
+2025-03-27 17:48:41,850 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:48:42,122 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:48:42,245 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22modified_difficulty%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 17:48:42,247 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-27 17:48:42,247 - utils.question_generator.generator - INFO - Successfully parsed 4 questions out of 4 requested
+2025-03-27 17:48:42,247 - utils.question_generator.deduplicator - INFO - Getting embeddings for 4 texts
+2025-03-27 17:48:42,247 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:48:42,941 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:48:43,051 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22modified_difficulty%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 17:48:43,054 - utils.question_generator.generator - INFO - Successfully parsed 4 questions out of 4 requested
+2025-03-27 17:48:43,055 - utils.question_generator.deduplicator - INFO - Getting embeddings for 4 texts
+2025-03-27 17:48:43,055 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:48:43,865 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:48:43,954 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22modified_difficulty%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 17:48:43,956 - utils.question_generator.generator - INFO - LLM response was already a list, no parsing needed
+2025-03-27 17:48:43,956 - utils.question_generator.generator - INFO - Successfully parsed 4 questions out of 4 requested
+2025-03-27 17:48:43,956 - utils.question_generator.deduplicator - INFO - Getting embeddings for 4 texts
+2025-03-27 17:48:43,956 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:48:44,273 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:48:44,390 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22modified_difficulty%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 17:48:44,391 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (20 questions)
+2025-03-27 17:48:44,392 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (20 questions)
+2025-03-27 17:48:44,392 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 17:48:53,255 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 17:48:53,260 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 17:48:53,261 - utils.question_generator.answer_generator - INFO - Successfully parsed 20 answers in batch 1
+2025-03-27 17:48:53,261 - utils.question_generator.answer_generator - INFO - Generated 20 answers for 20 questions
+2025-03-27 17:48:53,430 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22 "HTTP/2 201 Created"

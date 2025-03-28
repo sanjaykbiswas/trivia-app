@@ -276,17 +276,29 @@ class QuestionGenerator:
             str or list: Raw question data from LLM
         """
         prompt = f"""
-        Generate {count} trivia questions for the category '{category}'.  Ensure each question is unique.
-        
-        Follow these primary guidelines when creating a response:
+        ## Generate {count} trivia questions for the category '{category}'.  Ensure each question is unique.  Follow the guidelines below:
 
-        **Output format**
-        -- Output the questions in valid JSON format.
-        -- One-dimensional JSON array of strings.  Do not nest the questions under a key.
-        -- No markdown, fluff, introductions, or finishes.
-        -- Output the questions only, no answers.
-        -- Do not number the questions.
-        -- Example format below:
+        ## Question Constraints
+        - Do not create duplicate questions
+        - Avoid repeating similar phrasing or testing the same fact more than once
+        - Limit each questions to 20 words or 120 characters, whichever comes first
+        - Do not create riddles
+        - Do not create true or false questions
+        - Do not create fill in the blank questions
+        - Do not create questions that require visual cues
+        - Avoid ambiguity in questions
+        - Ensure there is no room for multiple interpretations of the question
+        - Ensure there exists a factually accurate answer to the question
+        - Ensure questions are well-phrased and not overly complex or confusing
+        - Maintain a neutral tone appropriate for trivia competitions. Use cleverness or subtle wit only when it reinforces the category style. Avoid slang, sarcasm, or overly academic phrasing.
+
+        ## Output format
+        - Output the questions in a one-dimensional JSON array of strings
+        - Do not nest questions under a key
+        - Do not output markdown, fluff, introductions, or finishes
+        - Output the questions only, no answers
+        - Do not number the questions
+        - Example format below:
 
         [
           "Question?",
@@ -294,26 +306,13 @@ class QuestionGenerator:
           "Question?"
         ]
 
-        **Question Style**
-        -- Trivia style, but keep the question style somewhat diverse so it is not monotonous.
-        -- Ensure questions are suitable for multiple-choice trivia answers (e.g., the correct answer should not be a paragraph long)
-        -- Do not create riddles.
-        -- Do not create true or false questions.
-        -- Do not create fill in the blank questions
-        -- Avoid ambiguity in questions.
-        -- Ensure questions are well-phrased, avoiding jargon or overly complex language that might confuse participants. 
-        --Aim for succinct questions that clearly define what is being asked, reducing the chance of multiple interpretations and leading to a more straightforward answering process.
-        
-        **Difficulty**
-        -- Questions should match the difficulty context, if provided: {difficulty_context}.
-
-        Additionally, ensure you follow the following more specific guidelines for the category '{category}':
-
+        ## Category Specific Guidelines: {category}
         {category_guidelines}
-
-        Your overall goal is to create trivia questions that are not only educational and engaging but also diverse in style and difficulty. Make sure each question is unique, fun, thought-provoking, and follows the above guidelines.
         
-        IMPORTANT: All output MUST be valid JSON. Do not include any text before or after the JSON array.
+        ## Difficulty Guidelines
+        {difficulty_context}
+    
+        ## IMPORTANT: All output MUST be valid JSON. Do not include any text before or after the JSON array.
         """
         
         try:

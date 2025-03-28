@@ -3,6 +3,7 @@ import re
 import logging
 from config.llm_config import LLMConfigFactory
 from utils.json_parsing import JSONParsingUtils
+from utils.question_generator.category_helper import CategoryHelper
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -46,16 +47,22 @@ class DifficultyHelper:
             return self._difficulty_cache[category_key]
             
         prompt = f"""
-        Create 5 distinct difficulty tiers for the category: '{category}'.
+        ## Create 5 distinct difficulty tiers for the category: '{category}'
+        - Develop the 5 tiers based on a progression of difficulties that span beginner to expert-level knowledge
+        - The difficulty order should Easy, Medium, Hard, Expert, and Master 
 
-        Analyze the unique aspects of '{category}' and develop a progression of difficulty that spans from beginner-friendly to expert-level knowledge. Consider the following:
+        ## Use the following category guidelines for additional context:
+        {category_guidelines}
+        
+        ## Consider the following progression axes:
         - Knowledge progression (casual → specialized → expert)
-        - Skill levels required (basic recall → complex analysis)
+        - Skill level (basic recall → complex analysis)
         - Audience familiarity (general public → dedicated enthusiasts → professionals)
         - Depth of subject matter (common facts → obscure details)
-        - Breadth across subcategories within '{category}'
+        - Breadth across knowledge domains within '{category}'
+        - Number of contextual cues within question language (more = easier, fewer = harder, none = hardest)
 
-        Format your response in a way that can be automatically parsed as JSON, following this exact structure:
+        ## Format your response as JSON, following this exact structure:
 
         {{
             "Easy": "2-3 sentence description of knowledge level, question types, and target audience",
@@ -65,7 +72,7 @@ class DifficultyHelper:
             "Master": "2-3 sentence description of knowledge level, question types, and target audience"
         }}
 
-        Ensure you include all 5 tiers exactly as named above and provide detailed, unique descriptions for each level.
+        ## Ensure you include all 5 tiers exactly as named above and provide detailed, unique descriptions for each level.
         """
         
         try:
