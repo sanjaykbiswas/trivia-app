@@ -19,6 +19,7 @@ class QuestionService {
   private supabase: SupabaseClient | null = null;
   private baseApiUrl: string;
   private useDirectSupabase: boolean = false;
+  private apiAvailable: boolean = false;
 
   constructor() {
     // Initialize Supabase client
@@ -35,11 +36,13 @@ class QuestionService {
         }
       );
       
-      // Set the API URL based on platform since API_URL isn't available from .env
+      // Set the API URL based on platform
       if (Platform.OS === 'ios') {
+        // Use localhost for iOS
         this.baseApiUrl = 'http://localhost:8000';
       } else {
-        this.baseApiUrl = 'http://10.0.2.2:8000'; // Android emulator
+        // Use special IP for Android emulator
+        this.baseApiUrl = 'http://10.0.2.2:8000';
       }
       
       // Start with direct Supabase mode until we confirm the API works
@@ -65,21 +68,33 @@ class QuestionService {
    */
   private async checkApiAvailability(): Promise<void> {
     try {
+      console.log(`Checking FastAPI availability at: ${this.baseApiUrl}`);
+      const controller = new AbortController();
+      
+      // Set a timeout for the fetch request
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch(`${this.baseApiUrl}/`, { 
         method: 'GET',
-        headers: { 'Accept': 'application/json' }
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
-        console.log('FastAPI backend is available!');
+        console.log('🟢 FastAPI backend is available!');
         this.useDirectSupabase = false;
+        this.apiAvailable = true;
       } else {
-        console.log('FastAPI backend returned error status:', response.status);
+        console.log(`🔴 FastAPI backend returned error status: ${response.status}`);
         this.useDirectSupabase = true;
+        this.apiAvailable = false;
       }
     } catch (error) {
-      console.log('FastAPI backend is not available:', error);
+      console.log(`🔴 FastAPI backend is not available:`, error);
       this.useDirectSupabase = true;
+      this.apiAvailable = false;
     }
   }
 
@@ -90,13 +105,18 @@ class QuestionService {
     console.log(`Getting ${count} game questions`, categories ? `for categories: ${categories}` : '');
     
     try {
+      if (!this.apiAvailable) {
+        // Try to check API availability again
+        await this.checkApiAvailability();
+      }
+      
       // Direct Supabase approach - use if API is unavailable
       if (this.useDirectSupabase) {
         console.log('Using direct Supabase access for questions');
         return this.getQuestionsFromSupabase(categories, count);
       }
       
-      // API approach - the original implementation
+      // API approach
       let url = `${this.baseApiUrl}/questions/game?count=${count}`;
       
       if (categories && categories.length > 0) {
@@ -235,6 +255,11 @@ class QuestionService {
     console.log(`Getting ${count} questions for category: ${categoryId}`);
     
     try {
+      if (!this.apiAvailable) {
+        // Try to check API availability again
+        await this.checkApiAvailability();
+      }
+      
       // Direct Supabase approach if API is unavailable
       if (this.useDirectSupabase) {
         console.log('Using direct Supabase access for category questions');
@@ -242,10 +267,18 @@ class QuestionService {
       }
       
       // First try the category endpoint
-      const url = `${this.baseApiUrl}/questions/category/${categoryId}?limit=${count}`;
+      const url = `${this.baseApiUrl}/questions/category/${encodeURIComponent(categoryId)}?limit=${count}`;
       console.log(`Fetching from API: ${url}`);
       
-      const response = await fetch(url);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      
+      const response = await fetch(url, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
       console.log(`Response status: ${response.status} ${response.statusText}`);
       
       if (!response.ok) {
@@ -299,13 +332,19 @@ class QuestionService {
       
       console.log('Request payload:', JSON.stringify(requestBody));
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for generation
+      
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       console.log(`Response status: ${response.status} ${response.statusText}`);
       
