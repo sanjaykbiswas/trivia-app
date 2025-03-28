@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, Share, TouchableOpacity, ScrollView as RNScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView, Share, TouchableOpacity, ScrollView as RNScrollView, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { PageTitle, BottomActions } from '../../components/layout';
@@ -7,55 +7,29 @@ import { Header } from '../../components/navigation';
 import { ShareableCode, CategoryBubble, PackCard, SectionHeader } from '../../components/game';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
+import CategoryService, { Category } from '../../services/CategoryService';
 
 type GameSetupScreenProps = StackScreenProps<RootStackParamList, 'GameSetup'>;
 
 // Define category types
 type CategoryType = 'All' | 'My Packs' | 'Popular' | 'Free' | 'Shop';
 
-// Mock data for packs
-const myPacks = [
-  { id: 'mp1', title: 'Geography Expert', variant: 'myPack' },
-  { id: 'mp2', title: 'Geography Buff', variant: 'myPack' },
-  { id: 'mp3', title: 'Odds and Ends', variant: 'myPack' },
-  { id: 'mp4', title: 'Science Quiz', variant: 'myPack' },
-];
+// Interface for pack data
+interface Pack {
+  id: string;
+  title: string;
+  variant: string;
+  author?: string;
+}
 
-const freshPacks = [
-  { id: 'fp1', title: 'Shabirky Quiz', author: 'shabirky', variant: 'freshPack' },
-  { id: 'fp2', title: 'Do you even know Aiden?', author: 'Aiden_Galbraith_', variant: 'freshPack' },
-  { id: 'fp3', title: 'Meeee', author: 'Alyssa', variant: 'freshPack' },
-  { id: 'fp4', title: 'Fun Facts', author: 'Jasmine', variant: 'freshPack' },
-];
-
-const popularPacks = [
-  { id: 'pp1', title: 'Pop Culture', variant: 'popularPack' },
-  { id: 'pp2', title: 'Movie Trivia', variant: 'popularPack' },
-  { id: 'pp3', title: 'Sports', variant: 'popularPack' },
-  { id: 'pp4', title: 'Music Legends', variant: 'popularPack' },
-];
-
-const freePacks = [
-  { id: 'frp1', title: 'General Knowledge', variant: 'freePack' },
-  { id: 'frp2', title: 'Science', variant: 'freePack' },
-  { id: 'frp3', title: 'History', variant: 'freePack' },
-  { id: 'frp4', title: 'Food & Drink', variant: 'freePack' },
-];
-
-const shopPacks = [
-  { id: 'sp1', title: 'Premium Quiz', variant: 'shopPack' },
-  { id: 'sp2', title: 'Movie Masters', variant: 'shopPack' },
-  { id: 'sp3', title: 'Sports Elite', variant: 'shopPack' },
-  { id: 'sp4', title: 'Brain Teasers', variant: 'shopPack' },
-];
-
-/**
- * GameSetupScreen component
- * Allows users to configure game settings and select packs before starting a game
- */
 const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
   // Active category state
   const [activeCategory, setActiveCategory] = useState<CategoryType>('All');
+  
+  // State for real categories from backend
+  const [freeCategories, setFreeCategories] = useState<Pack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Generate a random 6-digit room code
   const [roomCode] = useState(() => {
@@ -67,8 +41,66 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
 
   const [copySuccess, setCopySuccess] = useState(false);
   
+  // Create placeholder packs for other sections
+  const myPacks = Array(5).fill(0).map((_, index) => ({
+    id: `mp${index + 1}`,
+    title: `Placeholder ${index + 1}`,
+    variant: 'myPack'
+  }));
+
+  const popularPacks = Array(5).fill(0).map((_, index) => ({
+    id: `pp${index + 1}`,
+    title: `Placeholder ${index + 1}`,
+    variant: 'popularPack'
+  }));
+
+  const shopPacks = Array(5).fill(0).map((_, index) => ({
+    id: `sp${index + 1}`,
+    title: `Placeholder ${index + 1}`,
+    variant: 'shopPack'
+  }));
+  
   // References
   const categoriesScrollViewRef = useRef<RNScrollView>(null);
+
+  // Fetch categories from backend on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Fetch categories from the backend
+  const fetchCategories = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Fetching categories...');
+      const categories = await CategoryService.getAllCategories();
+      console.log('Fetched categories:', categories);
+      
+      if (!categories || categories.length === 0) {
+        console.warn('No categories returned from service');
+        setError('No categories found. The database might be empty.');
+        setFreeCategories([]);
+        return;
+      }
+      
+      // Convert backend categories to pack format
+      const freePacks = categories.map(category => ({
+        id: category.id,
+        title: category.name,
+        variant: 'freePack',
+      }));
+      
+      console.log('Created free packs:', freePacks);
+      setFreeCategories(freePacks);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+      setError('Failed to load categories. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Reset copy success message after 3 seconds
   useEffect(() => {
@@ -130,8 +162,8 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
 
   // Render a horizontal pack list
   const renderPackRow = (
-    packs: { id: string; title: string; variant: string; author?: string }[],
-    variant: 'myPack' | 'freshPack' | 'popularPack' | 'freePack' | 'shopPack'
+    packs: Pack[],
+    variant: 'myPack' | 'popularPack' | 'freePack' | 'shopPack'
   ) => {
     return (
       <ScrollView
@@ -144,7 +176,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
             key={pack.id}
             title={pack.title}
             author={pack.author}
-            variant={variant as any}
+            variant={variant}
             onPress={() => handlePackPress(pack.id, pack.title, variant)}
             style={styles.packCard}
             testID={`pack-${pack.id}`}
@@ -222,19 +254,37 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollViewContent}
         >
+          {/* Loading Indicator */}
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary.main} />
+              <Typography variant="bodyMedium" style={styles.loadingText}>
+                Loading categories...
+              </Typography>
+            </View>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Typography variant="bodyMedium" color={colors.error.main} style={styles.errorText}>
+                {error}
+              </Typography>
+              <Button
+                title="Retry"
+                onPress={fetchCategories}
+                variant="outlined"
+                size="small"
+                style={styles.retryButton}
+              />
+            </View>
+          )}
+
           {/* My Packs Section */}
           {shouldShowSection('My Packs') && (
             <View style={styles.section}>
               <SectionHeader title="My Packs" testID="section-my-packs" />
               {renderPackRow(myPacks, 'myPack')}
-            </View>
-          )}
-
-          {/* Fresh Packs Section */}
-          {shouldShowSection('Popular') && (
-            <View style={styles.section}>
-              <SectionHeader title="Fresh Packs" testID="section-fresh-packs" />
-              {renderPackRow(freshPacks, 'freshPack')}
             </View>
           )}
 
@@ -250,7 +300,13 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
           {shouldShowSection('Free') && (
             <View style={styles.section}>
               <SectionHeader title="Free Packs" testID="section-free-packs" />
-              {renderPackRow(freePacks, 'freePack')}
+              {!loading && freeCategories.length > 0 ? (
+                renderPackRow(freeCategories, 'freePack')
+              ) : !loading && !error ? (
+                <Typography variant="bodyMedium" style={styles.emptyText}>
+                  No free packs available.
+                </Typography>
+              ) : null}
             </View>
           )}
 
@@ -318,6 +374,31 @@ const styles = StyleSheet.create({
   },
   shareableCode: {
     marginTop: 0, // Reset margin
+  },
+  loadingContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+  },
+  errorContainer: {
+    padding: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    marginBottom: spacing.md,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: spacing.sm,
+  },
+  emptyText: {
+    textAlign: 'center',
+    padding: spacing.md,
   },
 });
 
