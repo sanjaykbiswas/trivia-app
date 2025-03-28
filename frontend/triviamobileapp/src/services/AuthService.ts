@@ -81,7 +81,7 @@ class AuthService {
       const { data, error } = await this.supabase.auth.getSession();
       
       if (error) {
-        console.error('Error checking auth providers:', error);
+        console.error('Error checking auth session:', error);
         return;
       }
       
@@ -89,28 +89,55 @@ class AuthService {
       console.log('Auth session retrieved, checking available providers');
       
       // Additional check to verify Google provider is configured properly
-      const testResponse = await fetch(`${SUPABASE_URL}/auth/v1/providers`, {
-        method: 'GET',
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Content-Type': 'application/json',
+      try {
+        const testResponse = await fetch(`${SUPABASE_URL}/auth/v1/providers`, {
+          method: 'GET',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        // Check if we got a valid response before parsing
+        if (!testResponse.ok) {
+          console.log(`Provider check failed with status: ${testResponse.status}`);
+          return;
         }
-      });
-      
-      const providers = await testResponse.json();
-      console.log('Available providers:', providers);
-      
-      // Look for Google in the available providers
-      const googleEnabled = providers.some((provider: any) => 
-        provider.id === 'google' && provider.enabled === true
-      );
-      
-      if (!googleEnabled) {
-        console.warn('Google provider is not enabled in Supabase project.');
-      } else {
-        console.log('Google provider is enabled in Supabase project.');
+        
+        const responseText = await testResponse.text();
+        
+        // Make sure we have valid JSON before parsing
+        if (!responseText || responseText.trim() === '') {
+          console.log('Empty response from provider check');
+          return;
+        }
+        
+        try {
+          const providers = JSON.parse(responseText);
+          console.log('Available providers:', providers);
+          
+          // Check if providers is an array before using Array methods
+          if (Array.isArray(providers)) {
+            // Look for Google in the available providers
+            const googleEnabled = providers.some((provider: any) => 
+              provider.id === 'google' && provider.enabled === true
+            );
+            
+            if (!googleEnabled) {
+              console.warn('Google provider is not enabled in Supabase project.');
+            } else {
+              console.log('Google provider is enabled in Supabase project.');
+            }
+          } else {
+            console.log('Providers response is not an array:', providers);
+          }
+        } catch (parseError) {
+          console.error('Failed to parse providers response:', parseError);
+          console.log('Response text:', responseText.substring(0, 100)); // Log first 100 chars
+        }
+      } catch (fetchError) {
+        console.error('Failed to fetch providers:', fetchError);
       }
-      
     } catch (err) {
       console.error('Failed to check Google provider status:', err);
     }
