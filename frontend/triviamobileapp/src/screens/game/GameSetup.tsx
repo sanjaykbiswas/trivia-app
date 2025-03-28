@@ -1,4 +1,5 @@
 // frontend/triviamobileapp/src/screens/game/GameSetup.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Share, TouchableOpacity, ScrollView as RNScrollView, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -45,6 +46,13 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
   // Create placeholder packs for other sections
   const myPacks = Array(5).fill(0).map((_, index) => ({
     id: `mp${index + 1}`,
+    title: `Placeholder ${index + 1}`,
+    variant: 'myPack'
+  }));
+
+  // Create placeholder packs for custom section
+  const customPacks = Array(5).fill(0).map((_, index) => ({
+    id: `cp${index + 1}`,
     title: `Placeholder ${index + 1}`,
     variant: 'myPack'
   }));
@@ -290,10 +298,18 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
             </View>
           )}
 
+          {/* Custom Packs Section - Only shown for All or My Packs categories */}
+          {(activeCategory === 'All' || activeCategory === 'My Packs') && (
+            <View style={styles.section}>
+              <SectionHeader title="Custom" testID="section-custom-packs" />
+              {renderPackRow(customPacks, 'myPack')}
+            </View>
+          )}
+
           {/* Popular Packs Section */}
           {shouldShowSection('Popular') && (
             <View style={styles.section}>
-              <SectionHeader title="Popular Packs" testID="section-popular-packs" />
+              <SectionHeader title="Popular" testID="section-popular-packs" />
               {renderPackRow(popularPacks, 'popularPack')}
             </View>
           )}
@@ -301,7 +317,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
           {/* Free Packs Section */}
           {shouldShowSection('Free') && (
             <View style={styles.section}>
-              <SectionHeader title="Free Packs" testID="section-free-packs" />
+              <SectionHeader title="Free" testID="section-free-packs" />
               {!loading && freeCategories.length > 0 ? (
                 renderPackRow(freeCategories, 'freePack')
               ) : !loading && !error ? (
