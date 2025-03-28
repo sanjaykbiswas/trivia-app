@@ -1,3 +1,4 @@
+# backend/src/utils/question_generator/generator.py
 import json
 import logging
 import asyncio
@@ -38,9 +39,9 @@ class QuestionGenerator:
         self._category_guidelines_cache = {}
         self._difficulty_context_cache = {}
     
-    async def _fetch_guidelines_concurrently(self, category, difficulty=None):
+    async def _fetch_guidelines_sequentially(self, category, difficulty=None):
         """
-        Fetch category guidelines and difficulty tiers concurrently
+        Fetch category guidelines first, then use them for difficulty guidelines if needed
         
         Args:
             category (str): The category to generate guidelines for
@@ -49,18 +50,14 @@ class QuestionGenerator:
         Returns:
             tuple: (category_guidelines, difficulty_context)
         """
-        # Check cache for category guidelines
+        # Get category guidelines first (required for difficulty context)
         category_key = category.lower().strip()
         if category_key in self._category_guidelines_cache:
             logger.info(f"Using cached category guidelines for '{category}'")
             category_guidelines = self._category_guidelines_cache[category_key]
         else:
-            # Create task for category guidelines
-            category_task = asyncio.create_task(
-                self._get_category_guidelines(category)
-            )
-            # Wait for category guidelines
-            category_guidelines = await category_task
+            # Get category guidelines
+            category_guidelines = await self._get_category_guidelines(category)
             # Cache the result
             self._category_guidelines_cache[category_key] = category_guidelines
         
@@ -74,12 +71,12 @@ class QuestionGenerator:
             logger.info(f"Using cached difficulty context for '{category}' - '{difficulty}'")
             difficulty_context = self._difficulty_context_cache[difficulty_cache_key]
         else:
-            # Create task for difficulty context
-            difficulty_task = asyncio.create_task(
-                self._get_difficulty_context(category, difficulty)
+            # Get difficulty context using category guidelines
+            difficulty_context = await self._get_difficulty_context(
+                category, 
+                difficulty, 
+                category_guidelines
             )
-            # Wait for difficulty context
-            difficulty_context = await difficulty_task
             # Cache the result
             self._difficulty_context_cache[difficulty_cache_key] = difficulty_context
         
@@ -101,13 +98,14 @@ class QuestionGenerator:
             category
         )
     
-    async def _get_difficulty_context(self, category, difficulty):
+    async def _get_difficulty_context(self, category, difficulty, category_guidelines=None):
         """
         Get difficulty-specific context asynchronously
         
         Args:
             category (str): The category
             difficulty (str): The difficulty level
+            category_guidelines (str, optional): Category guidelines to provide context
             
         Returns:
             str: Difficulty context
@@ -115,10 +113,11 @@ class QuestionGenerator:
         # Standardize difficulty
         standard_difficulty = self._standardize_difficulty(difficulty)
         
-        # Generate all difficulty tiers
+        # Generate all difficulty tiers, passing in category guidelines
         difficulty_tiers = await asyncio.to_thread(
             self.difficulty_helper.generate_difficulty_guidelines,
-            category
+            category,
+            category_guidelines
         )
         
         # Get the specific tier description
@@ -168,8 +167,8 @@ class QuestionGenerator:
         Returns:
             list[Question]: Generated Question objects
         """
-        # Get guidelines concurrently
-        category_guidelines, difficulty_context = await self._fetch_guidelines_concurrently(
+        # Get guidelines sequentially - category first, then difficulty
+        category_guidelines, difficulty_context = await self._fetch_guidelines_sequentially(
             category, 
             difficulty
         )
@@ -279,9 +278,9 @@ class QuestionGenerator:
         ## Generate {count} trivia questions for the category '{category}'.  Ensure each question is unique.  Follow the guidelines below:
 
         ## Question Constraints
+        - Limit each questions to 20 words or 120 characters, whichever comes first
         - Do not create duplicate questions
         - Avoid repeating similar phrasing or testing the same fact more than once
-        - Limit each questions to 20 words or 120 characters, whichever comes first
         - Do not create riddles
         - Do not create true or false questions
         - Do not create fill in the blank questions
@@ -312,7 +311,7 @@ class QuestionGenerator:
         ## Difficulty Guidelines
         {difficulty_context}
     
-        ## IMPORTANT: All output MUST be valid JSON. Do not include any text before or after the JSON array.
+        ## IMPORTANT: All output MUST be valid JSON. Do not include any text before or after the JSON array.  Remember the question and character limits.
         """
         
         try:

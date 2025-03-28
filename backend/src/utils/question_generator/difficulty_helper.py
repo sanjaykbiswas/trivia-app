@@ -1,9 +1,9 @@
+# backend/src/utils/question_generator/difficulty_helper.py
 import json
 import re
 import logging
 from config.llm_config import LLMConfigFactory
 from utils.json_parsing import JSONParsingUtils
-from utils.question_generator.category_helper import CategoryHelper
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -30,12 +30,13 @@ class DifficultyHelper:
         # Add a cache for difficulty guidelines
         self._difficulty_cache = {}
     
-    def generate_difficulty_guidelines(self, category):
+    def generate_difficulty_guidelines(self, category, category_guidelines=None):
         """
         Generate guidelines for defining the difficulty of questions in a specific category
         
         Args:
             category (str): The category to generate difficulty guidelines for
+            category_guidelines (str, optional): Category guidelines to provide context
             
         Returns:
             dict: Structured difficulty guidelines with keys for each tier
@@ -45,6 +46,10 @@ class DifficultyHelper:
         if category_key in self._difficulty_cache:
             logger.info(f"Using cached difficulty guidelines for '{category}'")
             return self._difficulty_cache[category_key]
+        
+        # If no category_guidelines provided, use a placeholder
+        if not category_guidelines:
+            category_guidelines = f"Guidelines for the category '{category}'."
             
         prompt = f"""
         ## Create 5 distinct difficulty tiers for the category: '{category}'
