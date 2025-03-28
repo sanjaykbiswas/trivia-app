@@ -2,6 +2,13 @@ from fastapi import FastAPI, Depends, Request
 import supabase
 import logging
 import time
+import sys
+import os
+from typing import List
+
+# Add the src directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from utils.logging_config import setup_logging
 from config.environment import Environment
 from config.llm_config import LLMConfigFactory
@@ -19,7 +26,6 @@ from controllers.auth_controller import AuthController
 from controllers.question_controller import QuestionController, MultiDifficultyRequest, MultiDifficultyResponse
 from controllers.upload_controller import UploadController
 from controllers.category_controller import CategoryController, CategoryResponse
-from typing import List
 
 # Set up logging
 logger = setup_logging()

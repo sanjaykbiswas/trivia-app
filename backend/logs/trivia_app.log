@@ -321,3 +321,5 @@
 2025-03-18 19:38:02,922 - httpx - INFO - HTTP Request: GET http://testserver/questions/f040f68d-185c-4cd7-b2c9-a9f5d89781b8 "HTTP/1.1 200 OK"
 2025-03-18 19:38:02,922 - api_tests - INFO - Test PASSED
 2025-03-18 19:38:02,923 - api_tests - INFO - === ALL API TESTS PASSED ===
+2025-03-27 22:33:27,252 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-27 22:33:27,462 - trivia_app - INFO - Application startup
