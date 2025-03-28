@@ -9,7 +9,8 @@ import {
   GameSetupScreen,
   GameOptionsScreen,
   QuestionScreen,
-  SignInScreen
+  SignInScreen,
+  APITestScreen
   // SignUpScreen removed
 } from '../screens';
 import { RootStackParamList } from './types';
@@ -48,6 +49,9 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen name="GameSetup" component={GameSetupScreen} />
       <Stack.Screen name="GameOptions" component={GameOptionsScreen} />
       <Stack.Screen name="QuestionScreen" component={QuestionScreen} />
+      
+      {/* Debug screens */}
+      <Stack.Screen name="APITest" component={APITestScreen} />
       
       {/* Authentication screens */}
       <Stack.Screen name="SignIn" component={SignInScreen} />

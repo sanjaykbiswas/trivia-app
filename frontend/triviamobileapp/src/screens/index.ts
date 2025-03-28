@@ -4,3 +4,4 @@ export * from './home';
 export * from './multiplayer';
 export * from './game';
 export * from './auth';
+export * from './debug';

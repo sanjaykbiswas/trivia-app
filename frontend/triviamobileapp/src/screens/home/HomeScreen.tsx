@@ -113,6 +113,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     }
   };
 
+  // Navigate to API Test screen
+  const handleNavigateToApiTest = () => {
+    navigation.navigate('APITest');
+  };
+
   return (
     <Container
       useSafeArea={true}
@@ -134,6 +139,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           activeOpacity={0.7}
         >
           <Text style={styles.debugButtonText}>Clear User Data</Text>
+        </TouchableOpacity>
+
+        {/* API Test Button */}
+        <TouchableOpacity 
+          style={[styles.debugButton, styles.apiTestButton]} 
+          onPress={handleNavigateToApiTest}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.debugButtonText}>API Test</Text>
         </TouchableOpacity>
 
         <View style={styles.contentContainer}>
@@ -203,6 +217,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     zIndex: 10,
+  },
+  apiTestButton: {
+    top: spacing.md + 40, // Position below the clear user data button
+    backgroundColor: '#4A90E2', // Blue for API test
   },
   debugButtonText: {
     color: 'white',

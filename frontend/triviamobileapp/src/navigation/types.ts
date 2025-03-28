@@ -31,4 +31,5 @@ export type RootStackParamList = {
   };
   Profile: undefined;
   Settings: undefined;
+  APITest: undefined; // Added for API testing
 };
