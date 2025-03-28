@@ -1,8 +1,8 @@
 // frontend/triviamobileapp/src/screens/home/HomeScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Alert, Text } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
-import { Container, Typography } from '../../components/common';
+import { Container, Typography, Button } from '../../components/common';
 import { SelectionOption } from '../../components/layout';
 import { BottomNavBar } from '../../components/navigation';
 import { DisplayNameModal } from '../../components/auth';
@@ -10,6 +10,7 @@ import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../contexts/AuthContext';
 import UserService from '../../services/UserService';
+import AuthService from '../../services/AuthService';
 
 type HomeScreenProps = StackScreenProps<RootStackParamList, 'Home'>;
 type NavItemType = 'home' | 'packs' | 'create' | 'friends' | 'profile';
@@ -93,6 +94,25 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.goBack();
   };
 
+  // New debug function to clear temporary user data
+  const handleClearUserData = async () => {
+    try {
+      // Clear temporary user from AsyncStorage
+      await AuthService.clearTempUser();
+      console.log('Temporary user data cleared successfully');
+      
+      // Show confirmation alert
+      Alert.alert(
+        'Debug Action',
+        'Temporary user data has been cleared. The app will now ask for your nickname again.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error clearing temporary user data:', error);
+      Alert.alert('Error', 'Failed to clear user data. See console for details.');
+    }
+  };
+
   return (
     <Container
       useSafeArea={true}
@@ -105,6 +125,15 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           <View style={styles.backButtonCircle}>
             <Typography variant="bodyMedium">←</Typography>
           </View>
+        </TouchableOpacity>
+
+        {/* Debug Button - Added for temporary user debugging */}
+        <TouchableOpacity 
+          style={styles.debugButton} 
+          onPress={handleClearUserData}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.debugButtonText}>Clear User Data</Text>
         </TouchableOpacity>
 
         <View style={styles.contentContainer}>
@@ -164,6 +193,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.light,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  debugButton: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: '#FF6B6B', // Bright red to make it obvious
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  debugButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   contentContainer: {
     flex: 1,
