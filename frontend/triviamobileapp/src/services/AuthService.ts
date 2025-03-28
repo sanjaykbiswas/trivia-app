@@ -50,6 +50,7 @@ class AuthService {
         // Your actual Web Client ID from Google Cloud Console
         webClientId: '945168523687-fiqetr8sqbsfb4sge23qureoj5j3c2g3.apps.googleusercontent.com',
         offlineAccess: true,
+        iosClientId: '945168523687-4dvathak8sfh1ohg7rilm3n0lik5sobh.apps.googleusercontent.com',
       });
     } catch (error) {
       console.error('Failed to configure Google Sign In:', error);
