@@ -12,6 +12,7 @@ import 'react-native-url-polyfill/auto';
 class AuthService {
   private supabase: SupabaseClient;
   private readonly TEMP_USER_KEY = 'trivia_app_temp_user';
+  private isGoogleConfigured: boolean = false;
   
   constructor() {
     // Check if environment variables are available
@@ -44,16 +45,74 @@ class AuthService {
   }
 
   // Initialize Google Sign-In configuration
-  private initializeGoogleSignIn() {
+  private async initializeGoogleSignIn() {
     try {
+      // Verify Google Sign-In is properly installed
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+      
+      // Configure Google Sign-In
       GoogleSignin.configure({
         // Your actual Web Client ID from Google Cloud Console
         webClientId: '945168523687-fiqetr8sqbsfb4sge23qureoj5j3c2g3.apps.googleusercontent.com',
         offlineAccess: true,
         iosClientId: '945168523687-4dvathak8sfh1ohg7rilm3n0lik5sobh.apps.googleusercontent.com',
+        // Force user to select account each time (no silent login)
+        forceCodeForRefreshToken: true,
       });
+      
+      this.isGoogleConfigured = true;
+      console.log('Google Sign-In configured successfully');
+      
+      // Check if Google provider is enabled in Supabase
+      this.checkGoogleProviderEnabled();
+      
     } catch (error) {
+      this.isGoogleConfigured = false;
       console.error('Failed to configure Google Sign In:', error);
+    }
+  }
+  
+  // Verify if Google provider is enabled in Supabase
+  private async checkGoogleProviderEnabled() {
+    try {
+      // Check the available OAuth providers
+      const { data, error } = await this.supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Error checking auth providers:', error);
+        return;
+      }
+      
+      // Log for debugging
+      console.log('Auth session retrieved, checking available providers');
+      
+      // Additional check to verify Google provider is configured properly
+      const testResponse = await fetch(`${SUPABASE_URL}/auth/v1/providers`, {
+        method: 'GET',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      const providers = await testResponse.json();
+      console.log('Available providers:', providers);
+      
+      // Look for Google in the available providers
+      const googleEnabled = providers.some((provider: any) => 
+        provider.id === 'google' && provider.enabled === true
+      );
+      
+      if (!googleEnabled) {
+        console.warn('Google provider is not enabled in Supabase project.');
+      } else {
+        console.log('Google provider is enabled in Supabase project.');
+      }
+      
+    } catch (err) {
+      console.error('Failed to check Google provider status:', err);
     }
   }
   
@@ -297,30 +356,63 @@ class AuthService {
   
   async signInWithGoogle() {
     try {
-      // Check if play services are available
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // Check if Google Sign-In is properly configured
+      if (!this.isGoogleConfigured) {
+        // Try to initialize again
+        await this.initializeGoogleSignIn();
+        
+        if (!this.isGoogleConfigured) {
+          return { error: { message: 'Google Sign In is not properly configured' } };
+        }
+      }
+      
+      // Check if play services are available (Android specific)
+      if (Platform.OS === 'android') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      }
+      
+      // First, sign out to ensure a clean sign-in experience
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        // Ignore errors during sign out
+        console.log('Sign out before sign in failed, continuing anyway:', signOutError);
+      }
+      
+      console.log('Attempting Google sign-in...');
       
       // Perform the Google sign-in
-      await GoogleSignin.signIn();
+      const userInfo = await GoogleSignin.signIn();
+      console.log('Google sign-in successful, user info received');
       
       // Get the auth tokens - this is a separate step with the newer Google Sign-In API
+      console.log('Retrieving Google tokens...');
       const tokens = await GoogleSignin.getTokens();
+      console.log('Google tokens retrieved successfully');
       
       if (!tokens.idToken) {
         throw new Error('Google Sign In failed - no ID token returned');
       }
       
+      // Log token info for debugging (only first few characters)
+      console.log('ID Token received (first 10 chars):', tokens.idToken.substring(0, 10) + '...');
+      
       // Sign in with Supabase using the Google token
+      console.log('Signing in to Supabase with Google token...');
       const response = await this.supabase.auth.signInWithIdToken({
         provider: 'google' as Provider,
         token: tokens.idToken,
       });
+      
+      console.log('Supabase signInWithIdToken response:', 
+        response.error ? 'Error: ' + response.error.message : 'Success');
       
       // After successful sign-in, check if we have a temporary user to link
       const tempUser = await this.getTempUser();
       if (tempUser && !response.error) {
         // If we have both a temporary user and successful sign-in
         // Store the intent to link identities
+        console.log('Storing pending link for temp user ID:', tempUser.id);
         await AsyncStorage.setItem('pending_link', JSON.stringify({
           tempUserId: tempUser.id,
           authProvider: 'google',
@@ -330,13 +422,23 @@ class AuthService {
       
       return response;
     } catch (error: any) {
-      console.error('Google Sign In error:', error);
+      console.error('Google Sign In error details:', JSON.stringify(error));
       
+      // Provide more specific error messages based on error codes
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         return { error: { message: 'Sign in was canceled' } };
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        return { error: { message: 'Google Sign In is already in progress' } };
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        return { error: { message: 'Google Play Services is not available' } };
+      } else if (error.message && error.message.includes('not enabled')) {
+        return { error: { message: 'Google provider is not enabled in your Supabase project' } };
       }
       
-      return { error: { message: error.message || 'Google Sign In failed' } };
+      return { error: { 
+        message: error.message || 'Google Sign In failed',
+        details: error.code ? `Error code: ${error.code}` : undefined
+      }};
     }
   }
   
