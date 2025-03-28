@@ -125,11 +125,12 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
   };
 
   const handlePackPress = (packId: string, packTitle: string, variant: string) => {
-    console.log(`Pack selected: ${packId}`);
+    console.log(`Pack selected: ${packId}, ${packTitle}`);
     
     // Simplified pack data for navigation
     const packData = {
-      packTitle: packTitle
+      packTitle: packTitle,
+      categoryId: packId // Pass the pack/category ID
     };
     
     // Navigate to GameOptions with pack data

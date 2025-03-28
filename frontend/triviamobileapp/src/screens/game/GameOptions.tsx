@@ -42,6 +42,7 @@ const GameOptionsScreen: React.FC<GameOptionsScreenProps> = ({ navigation, route
     
     // Navigate to question screen with options
     navigation.navigate('QuestionScreen', {
+      categoryId: route.params?.categoryId, // Pass the category ID
       packTitle,
       questionCount: selectedQuestionCount,
       timerSeconds: selectedTimer,

@@ -1,16 +1,17 @@
 // frontend/triviamobileapp/src/navigation/types.ts
+// Updated to add categoryId to navigation params
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
   SignIn: {
     isSignUp?: boolean;
   };
-  // SignUp removed
   Home: undefined;
   Multiplayer: undefined;
   GameSetup: undefined;
   GameOptions: {
     packTitle?: string;
+    categoryId?: string;
   };
   GamePlay: {
     categoryId?: string; 
@@ -22,6 +23,7 @@ export type RootStackParamList = {
     timerSeconds?: number;
   };
   QuestionScreen: {
+    categoryId?: string;
     packTitle?: string;
     questionCount?: number;
     timerSeconds?: number;

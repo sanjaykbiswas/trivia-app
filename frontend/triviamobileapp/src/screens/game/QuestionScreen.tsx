@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Animated, BackHandler, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Animated, BackHandler, Alert, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { colors, spacing } from '../../theme';
@@ -7,45 +7,18 @@ import { RootStackParamList } from '../../navigation/types';
 import { QuestionTimer } from '../../components/game/QuestionTimer';
 import { AnswerOption } from '../../components/game/AnswerOption';
 import { FeedbackPanel } from '../../components/game/FeedbackPanel';
-
-// Mock data for questions
-const mockQuestions = [
-  {
-    id: 'q1',
-    question: 'What is the capital city of Australia?',
-    options: ['Sydney', 'Canberra', 'Melbourne', 'Perth'],
-    correctAnswer: 1, // Index of correct answer (Canberra)
-  },
-  {
-    id: 'q2',
-    question: 'Which planet is known as the Red Planet?',
-    options: ['Venus', 'Mars', 'Jupiter', 'Saturn'],
-    correctAnswer: 1, // Mars
-  },
-  {
-    id: 'q3',
-    question: 'What is the largest ocean on Earth?',
-    options: ['Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean', 'Pacific Ocean'],
-    correctAnswer: 3, // Pacific Ocean
-  },
-  {
-    id: 'q4',
-    question: 'Which country is known as the Land of the Rising Sun?',
-    options: ['China', 'Thailand', 'Japan', 'South Korea'],
-    correctAnswer: 2, // Japan
-  },
-  {
-    id: 'q5',
-    question: 'What is the smallest prime number?',
-    options: ['0', '1', '2', '3'],
-    correctAnswer: 2, // 2
-  }
-];
+import QuestionService, { Question } from '../../services/QuestionService';
 
 type QuestionScreenProps = StackScreenProps<RootStackParamList, 'QuestionScreen'>;
 
+interface QuestionItem extends Question {
+  options: string[];
+  correctAnswer: number; // Index of correct answer
+}
+
 const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) => {
   // Extract parameters from route or use defaults
+  const categoryId = route.params?.categoryId;
   const packTitle = route.params?.packTitle || 'Trivia Pack';
   const questionCount = route.params?.questionCount || 5;
   const timerSeconds = route.params?.timerSeconds || 30;
@@ -55,18 +28,85 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
   const [selectedAnswerIndex, setSelectedAnswerIndex] = useState<number | null>(null);
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState(false);
   const [isCorrectAnswer, setIsCorrectAnswer] = useState(false);
-  const [isTimerActive, setIsTimerActive] = useState(true);
+  const [isTimerActive, setIsTimerActive] = useState(false); // Start when questions are ready
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(timerSeconds);
 
-  // Questions state - in a real app, this would come from an API
-  const [questions, setQuestions] = useState(mockQuestions);
+  // Loading state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Questions state
+  const [questions, setQuestions] = useState<QuestionItem[]>([]);
 
   // Current question
   const currentQuestion = questions[currentQuestionIndex];
 
   // Animation for feedback panel
   const feedbackAnimation = useRef(new Animated.Value(100)).current;
+
+  // Load questions from the API when component mounts
+  useEffect(() => {
+    const loadQuestions = async () => {
+      setLoading(true);
+      setError(null);
+      
+      try {
+        console.log(`Loading questions for category ${categoryId}, count: ${questionCount}`);
+        
+        let apiQuestions: Question[] = [];
+        
+        if (categoryId) {
+          // Fetch questions for the specific category
+          apiQuestions = await QuestionService.getQuestionsByCategory(categoryId, questionCount);
+        } else {
+          // Fetch general questions if no category ID provided
+          apiQuestions = await QuestionService.getGameQuestions(undefined, questionCount);
+        }
+        
+        console.log(`Loaded ${apiQuestions.length} questions`);
+        
+        if (apiQuestions.length === 0) {
+          setError("No questions available. Please try a different category.");
+          setLoading(false);
+          return;
+        }
+        
+        // Transform the API questions into our QuestionItem format
+        const transformedQuestions: QuestionItem[] = apiQuestions.map(q => {
+          // Create array with correct answer and incorrect answers
+          const allOptions = [q.correct_answer, ...q.incorrect_answers];
+          
+          // Shuffle options (Fisher-Yates algorithm)
+          for (let i = allOptions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [allOptions[i], allOptions[j]] = [allOptions[j], allOptions[i]];
+          }
+          
+          // Find the index of the correct answer in the shuffled array
+          const correctAnswerIndex = allOptions.findIndex(option => option === q.correct_answer);
+          
+          return {
+            ...q,
+            options: allOptions,
+            correctAnswer: correctAnswerIndex
+          };
+        });
+        
+        setQuestions(transformedQuestions);
+      } catch (err) {
+        console.error('Error loading questions:', err);
+        setError("Failed to load questions. Please try again later.");
+      } finally {
+        setLoading(false);
+        // Start the timer after questions are loaded
+        setTimeLeft(timerSeconds);
+        setIsTimerActive(true);
+      }
+    };
+    
+    loadQuestions();
+  }, [categoryId, questionCount, timerSeconds]);
 
   // Handle back button press
   useEffect(() => {
@@ -122,7 +162,7 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
     setIsAnswerSubmitted(true);
 
     // Check if answer is correct
-    const isCorrect = selectedAnswerIndex === currentQuestion.correctAnswer;
+    const isCorrect = selectedAnswerIndex === currentQuestion?.correctAnswer;
     setIsCorrectAnswer(isCorrect);
 
     // Update score if correct
@@ -154,8 +194,7 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
         setTimeLeft(timerSeconds);
         setIsTimerActive(true);
       } else {
-        // End of quiz - navigate to results screen
-        // In a real app, you would navigate to a results screen
+        // End of quiz - display final results
         navigation.goBack();
         Alert.alert('Game Over', `Your score: ${score}/${questions.length}`);
       }
@@ -208,53 +247,82 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
           </TouchableOpacity>
         </View>
 
-        {/* Question content area */}
-        <View style={styles.questionContainer}>
-          {/* Question progress */}
-          <Typography 
-            variant="bodyMedium" 
-            color={colors.text.secondary}
-            style={styles.progress}
-          >
-            Question {currentQuestionIndex + 1} of {Math.min(questionCount, questions.length)}
-          </Typography>
-
-          {/* Question text */}
-          <Typography variant="heading2" style={styles.question}>
-            {currentQuestion.question}
-          </Typography>
-
-          {/* Answer options */}
-          <View style={styles.optionsContainer}>
-            {currentQuestion.options.map((option, index) => (
-              <AnswerOption
-                key={index}
-                letter={String.fromCharCode(65 + index)} // A, B, C, D
-                text={option}
-                isSelected={selectedAnswerIndex === index}
-                isCorrect={isAnswerSubmitted && index === currentQuestion.correctAnswer}
-                isIncorrect={isAnswerSubmitted && selectedAnswerIndex === index && index !== currentQuestion.correctAnswer}
-                onPress={() => handleSelectOption(index)}
-                disabled={isAnswerSubmitted}
-              />
-            ))}
+        {/* Loading state */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary.main} />
+            <Typography variant="bodyMedium" style={styles.loadingText}>
+              Loading questions...
+            </Typography>
           </View>
-        </View>
+        )}
 
-        {/* Bottom action button */}
-        <View style={styles.bottomActions}>
-          <Button
-            title={getButtonText()}
-            onPress={handleSubmitAnswer}
-            disabled={selectedAnswerIndex === null && !isAnswerSubmitted}
-            variant="contained"
-            size="large"
-            fullWidth
-          />
-        </View>
+        {/* Error state */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Typography variant="bodyMedium" color={colors.error.main} style={styles.errorText}>
+              {error}
+            </Typography>
+            <Button
+              title="Go Back"
+              onPress={() => navigation.goBack()}
+              variant="outlined"
+              size="medium"
+            />
+          </View>
+        )}
+
+        {/* Question content area - only show when questions are loaded and no error */}
+        {!loading && !error && currentQuestion && (
+          <View style={styles.questionContainer}>
+            {/* Question progress */}
+            <Typography 
+              variant="bodyMedium" 
+              color={colors.text.secondary}
+              style={styles.progress}
+            >
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </Typography>
+
+            {/* Question text */}
+            <Typography variant="heading2" style={styles.question}>
+              {currentQuestion.content}
+            </Typography>
+
+            {/* Answer options */}
+            <View style={styles.optionsContainer}>
+              {currentQuestion.options.map((option, index) => (
+                <AnswerOption
+                  key={index}
+                  letter={String.fromCharCode(65 + index)} // A, B, C, D
+                  text={option}
+                  isSelected={selectedAnswerIndex === index}
+                  isCorrect={isAnswerSubmitted && index === currentQuestion.correctAnswer}
+                  isIncorrect={isAnswerSubmitted && selectedAnswerIndex === index && index !== currentQuestion.correctAnswer}
+                  onPress={() => handleSelectOption(index)}
+                  disabled={isAnswerSubmitted}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Bottom action button - only show when questions are loaded and no error */}
+        {!loading && !error && currentQuestion && (
+          <View style={styles.bottomActions}>
+            <Button
+              title={getButtonText()}
+              onPress={handleSubmitAnswer}
+              disabled={selectedAnswerIndex === null && !isAnswerSubmitted}
+              variant="contained"
+              size="large"
+              fullWidth
+            />
+          </View>
+        )}
 
         {/* Feedback panel (conditionally rendered) */}
-        {isAnswerSubmitted && (
+        {isAnswerSubmitted && currentQuestion && (
           <FeedbackPanel
             isCorrect={isCorrectAnswer}
             correctAnswer={currentQuestion.options[currentQuestion.correctAnswer]}
@@ -316,6 +384,25 @@ const styles = StyleSheet.create({
     padding: spacing.page,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    marginTop: spacing.lg,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  errorText: {
+    textAlign: 'center',
+    marginBottom: spacing.xl,
   },
 });
 
