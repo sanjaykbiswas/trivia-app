@@ -1,5 +1,7 @@
+# backend/src/utils/question_generator/category_helper.py
 import logging
 from config.llm_config import LLMConfigFactory
+from repositories.category_repository import CategoryRepository
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -8,12 +10,13 @@ class CategoryHelper:
     """
     Generates category-specific guidelines for question generation
     """
-    def __init__(self, llm_config=None):
+    def __init__(self, llm_config=None, category_repository=None):
         """
         Initialize the category helper
         
         Args:
             llm_config (LLMConfig, optional): Specific LLM configuration to use
+            category_repository (CategoryRepository, optional): Repository for category operations
         """
         # Use provided config or create default
         self.llm_config = llm_config or LLMConfigFactory.create_default()
@@ -21,10 +24,117 @@ class CategoryHelper:
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
         
+        # Store category repository for lookups
+        self.category_repository = category_repository
+        
         # Add a cache for guidelines
         self._guidelines_cache = {}
+        # Add a cache for category ID to name mapping
+        self._category_id_name_cache = {}
     
-    def generate_category_guidelines(self, category):
+    async def get_category_repository(self):
+        """
+        Lazy initialization of category repository if not provided
+        
+        Returns:
+            CategoryRepository: Repository for category operations
+        """
+        if not self.category_repository:
+            from repositories.category_repository import CategoryRepository
+            from config.supabase_client import get_supabase_client
+            supabase_client = get_supabase_client()
+            self.category_repository = CategoryRepository(supabase_client)
+        return self.category_repository
+    
+    async def resolve_category_name(self, category_id: str) -> str:
+        """
+        Resolve a category name from ID
+        
+        Args:
+            category_id (str): Category ID to look up
+            
+        Returns:
+            str: Category name or the ID if not found
+        """
+        # Check if it looks like a UUID
+        if not category_id or not isinstance(category_id, str) or '-' not in category_id:
+            return category_id  # Not an ID, return as is
+            
+        # Check cache first
+        if category_id in self._category_id_name_cache:
+            return self._category_id_name_cache[category_id]
+            
+        try:
+            # Look up in database
+            repo = await self.get_category_repository()
+            category = await repo.get_by_id(category_id)
+            
+            if category:
+                # Store in cache
+                self._category_id_name_cache[category_id] = category.name
+                return category.name
+                
+            return category_id  # Not found, return ID as fallback
+        except Exception as e:
+            logger.error(f"Error resolving category name for ID {category_id}: {e}")
+            return category_id  # Return ID on error
+    
+    async def get_or_create_category_id(self, category_name: str) -> str:
+        """
+        Get a category ID from name or create if not found
+        
+        Args:
+            category_name (str): Category name to look up or create
+            
+        Returns:
+            str: Category ID
+        """
+        if not category_name:
+            return None
+            
+        try:
+            # Look up in database
+            repo = await self.get_category_repository()
+            category = await repo.get_or_create_by_name(category_name)
+            
+            if category:
+                # Store in cache
+                self._category_id_name_cache[category.id] = category.name
+                return category.id
+                
+            return None  # Should not happen if get_or_create works
+        except Exception as e:
+            logger.error(f"Error getting/creating category ID for name {category_name}: {e}")
+            return None
+    
+    async def generate_category_guidelines_async(self, category_id_or_name: str) -> str:
+        """
+        Generate guidelines for creating questions in a specific category (async version)
+        
+        Args:
+            category_id_or_name (str): The category ID or name to generate guidelines for
+            
+        Returns:
+            str: Guidelines text
+        """
+        # Resolve category name if ID was provided
+        category_name = await self.resolve_category_name(category_id_or_name)
+            
+        # Check cache using resolved name
+        category_key = category_name.lower().strip()
+        if category_key in self._guidelines_cache:
+            logger.info(f"Using cached category guidelines for '{category_name}'")
+            return self._guidelines_cache[category_key]
+            
+        # Generate guidelines using name
+        guidelines = self.generate_category_guidelines(category_name)
+        
+        # Cache using both ID and name if we have both
+        self._guidelines_cache[category_key] = guidelines
+        
+        return guidelines
+    
+    def generate_category_guidelines(self, category: str):
         """
         Generate guidelines for creating questions in a specific category
         

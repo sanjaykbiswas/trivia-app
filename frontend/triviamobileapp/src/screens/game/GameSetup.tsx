@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/screens/game/GameSetup.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Share, TouchableOpacity, ScrollView as RNScrollView, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -87,7 +88,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
       
       // Convert backend categories to pack format
       const freePacks = categories.map(category => ({
-        id: category.id,
+        id: category.id, // Use the category ID directly
         title: category.name,
         variant: 'freePack',
       }));
@@ -130,7 +131,7 @@ const GameSetupScreen: React.FC<GameSetupScreenProps> = ({ navigation }) => {
     // Simplified pack data for navigation
     const packData = {
       packTitle: packTitle,
-      categoryId: packId // Pass the pack/category ID
+      categoryId: packId // Pass the category ID directly
     };
     
     // Navigate to GameOptions with pack data

@@ -33,15 +33,20 @@ class CompleteQuestion:
         return self.question.modified_difficulty
     
     @property
-    def category(self):
-        return self.question.category
+    def category_id(self):
+        return self.question.category_id
+    
+    @property
+    def category_name(self):
+        return self.question.category_name
     
     def to_dict(self):
         """Convert to a single dictionary"""
         return {
             "id": self.question.id,
             "content": self.question.content,
-            "category": self.question.category,
+            "category_id": self.question.category_id,
+            "category_name": self.question.category_name,
             "correct_answer": self.answer.correct_answer,
             "incorrect_answers": self.answer.incorrect_answers,
             "difficulty": self.question.difficulty,

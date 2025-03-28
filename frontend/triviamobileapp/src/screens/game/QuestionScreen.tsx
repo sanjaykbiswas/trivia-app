@@ -1,3 +1,4 @@
+// frontend/triviamobileapp/src/screens/game/QuestionScreen.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Animated, BackHandler, Alert, ActivityIndicator } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
@@ -8,6 +9,7 @@ import { QuestionTimer } from '../../components/game/QuestionTimer';
 import { AnswerOption } from '../../components/game/AnswerOption';
 import { FeedbackPanel } from '../../components/game/FeedbackPanel';
 import QuestionService, { Question } from '../../services/QuestionService';
+import CategoryService from '../../services/CategoryService';
 
 type QuestionScreenProps = StackScreenProps<RootStackParamList, 'QuestionScreen'>;
 
@@ -31,6 +33,7 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
   const [isTimerActive, setIsTimerActive] = useState(false); // Start when questions are ready
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(timerSeconds);
+  const [categoryName, setCategoryName] = useState<string | null>(packTitle); // Default to packTitle
 
   // Loading state
   const [loading, setLoading] = useState(true);
@@ -45,6 +48,25 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
   // Animation for feedback panel
   const feedbackAnimation = useRef(new Animated.Value(100)).current;
 
+  // Resolve category name from ID if needed
+  useEffect(() => {
+    const getCategoryName = async () => {
+      if (categoryId && categoryId.includes('-')) {
+        try {
+          const name = await CategoryService.getCategoryNameById(categoryId);
+          if (name) {
+            console.log(`Resolved category name: ${name} from ID: ${categoryId}`);
+            setCategoryName(name);
+          }
+        } catch (err) {
+          console.error("Error resolving category name:", err);
+        }
+      }
+    };
+    
+    getCategoryName();
+  }, [categoryId]);
+
   // Load questions from the API when component mounts
   useEffect(() => {
     const loadQuestions = async () => {
@@ -57,7 +79,7 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
         let apiQuestions: Question[] = [];
         
         if (categoryId) {
-          // Fetch questions for the specific category
+          // Fetch questions using category ID
           apiQuestions = await QuestionService.getQuestionsByCategory(categoryId, questionCount);
         } else {
           // Fetch general questions if no category ID provided
@@ -258,7 +280,7 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
             />
           )}
           <Typography variant="bodyMedium" style={styles.packTitle}>
-            {packTitle}
+            {categoryName || packTitle}
           </Typography>
           <TouchableOpacity style={styles.closeButton} onPress={handleCloseGame}>
             <Typography variant="bodyMedium">✕</Typography>

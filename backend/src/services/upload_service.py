@@ -4,6 +4,7 @@ from models.answer import Answer
 from models.complete_question import CompleteQuestion
 from config.environment import Environment
 from utils.supabase_actions import SupabaseActions
+from repositories.category_repository import CategoryRepository
 
 class UploadService:
     """
@@ -11,14 +12,53 @@ class UploadService:
     
     This service orchestrates the upload of trivia questions and answers
     """
-    def __init__(self, supabase_client):
+    def __init__(self, supabase_client, category_repository=None):
         """
         Initialize the upload service
         
         Args:
             supabase_client: Initialized Supabase client
+            category_repository (CategoryRepository, optional): Repository for category operations
         """
         self.supabase_actions = SupabaseActions(supabase_client)
+        self.category_repository = category_repository
+    
+    async def get_category_repository(self):
+        """
+        Lazy initialization of category repository if not provided
+        
+        Returns:
+            CategoryRepository: Repository for category operations
+        """
+        if not self.category_repository:
+            # If our supabase_actions has a client, use that
+            if hasattr(self.supabase_actions, 'client'):
+                self.category_repository = CategoryRepository(self.supabase_actions.client)
+        return self.category_repository
+    
+    async def resolve_category_id(self, category_name: str) -> str:
+        """
+        Resolve a category ID from name, creating if necessary
+        
+        Args:
+            category_name (str): Category name to resolve
+            
+        Returns:
+            str: Category ID
+        """
+        if not category_name:
+            return None
+            
+        try:
+            category_repo = await self.get_category_repository()
+            if not category_repo:
+                return None
+                
+            category = await category_repo.get_or_create_by_name(category_name)
+            return category.id if category else None
+        except Exception as e:
+            print(f"Error resolving category ID for '{category_name}': {e}")
+            return None
     
     async def upload_complete_question(
         self, 
@@ -34,7 +74,7 @@ class UploadService:
         
         Args:
             question_content (str): The question text
-            category (str): Category of the question
+            category (str): Category name or ID
             correct_answer (str): The correct answer
             incorrect_answers (List[str]): List of incorrect answers
             difficulty (Optional[str]): Difficulty level
@@ -43,10 +83,28 @@ class UploadService:
         Returns:
             CompleteQuestion: The saved complete question
         """
+        # Determine if category is an ID or name
+        category_id = None
+        category_name = None
+        
+        if '-' in category:  # Looks like UUID
+            category_id = category
+            # Try to resolve the name for reference
+            category_repo = await self.get_category_repository()
+            if category_repo:
+                category = await category_repo.get_by_id(category_id)
+                if category:
+                    category_name = category.name
+        else:
+            # Resolve category name to ID
+            category_name = category
+            category_id = await self.resolve_category_id(category_name)
+        
         # Create question object
         question = Question(
             content=question_content,
-            category=category,
+            category_id=category_id,
+            category_name=category_name,
             difficulty=difficulty,
             modified_difficulty=modified_difficulty or difficulty  # Use difficulty if modified_difficulty not provided
         )
@@ -85,12 +143,53 @@ class UploadService:
         questions = []
         answers = []
         
+        # For batching category name resolution
+        category_name_to_id = {}
+        
+        # First pass: collect unique category names
+        category_names = set()
+        for q_data in complete_questions:
+            category = q_data.get("category")
+            if category and isinstance(category, str) and '-' not in category:
+                category_names.add(category)
+        
+        # Batch resolve category names to IDs
+        category_repo = await self.get_category_repository()
+        if category_repo and category_names:
+            for name in category_names:
+                category = await category_repo.get_or_create_by_name(name)
+                if category:
+                    category_name_to_id[name] = category.id
+        
         # Prepare question and answer objects
         for q_data in complete_questions:
+            # Handle category resolution
+            category = q_data.get("category")
+            category_id = None
+            category_name = None
+            
+            if category:
+                if isinstance(category, str):
+                    if '-' in category:  # Looks like UUID
+                        category_id = category
+                        # Try to find name if we have the repository
+                        if category_repo:
+                            cat_obj = await category_repo.get_by_id(category_id)
+                            if cat_obj:
+                                category_name = cat_obj.name
+                    else:
+                        category_name = category
+                        # Use cached ID if available
+                        category_id = category_name_to_id.get(category_name)
+                        if not category_id:
+                            # Resolve individually if not in cache
+                            category_id = await self.resolve_category_id(category_name)
+            
             # Create question object
             question = Question(
                 content=q_data["content"],
-                category=q_data["category"],
+                category_id=category_id,
+                category_name=category_name,
                 difficulty=q_data.get("difficulty"),
                 modified_difficulty=q_data.get("modified_difficulty") or q_data.get("difficulty")
             )

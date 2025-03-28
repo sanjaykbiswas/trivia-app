@@ -8,7 +8,8 @@ import { Platform } from 'react-native';
 export interface Question {
   id: string;
   content: string;
-  category: string;
+  category_id: string;
+  category_name?: string;
   correct_answer: string;
   incorrect_answers: string[];
   difficulty?: string;
@@ -178,7 +179,7 @@ class QuestionService {
       // First, get questions with optional category filter
       let questionsQuery = this.supabase
         .from('questions')
-        .select('*')
+        .select('*, categories(id, name)')
         .limit(count);
       
       // Add category filter if specified
@@ -188,30 +189,28 @@ class QuestionService {
         
         // Check if these are category IDs or names
         if (categories.some(c => c.includes('-'))) {
-          // These look like UUIDs, use them directly
-          questionsQuery = questionsQuery.in('category', categories);
+          // These look like UUIDs, use them directly for category_id
+          questionsQuery = questionsQuery.in('category_id', categories);
         } else {
-          // These might be category names, try both approaches
+          // These might be category names, try to find matching categories
           try {
-            // Try filtering by name first
+            // Try getting categories by name first
             const { data: categoryData } = await this.supabase
               .from('categories')
-              .select('name')
-              .in('id', categories);
+              .select('id')
+              .in('name', categories);
               
             if (categoryData && categoryData.length > 0) {
-              // If we found categories by ID, use their names
-              const categoryNames = categoryData.map(c => c.name);
-              console.log(`Resolved category names:`, categoryNames);
-              questionsQuery = questionsQuery.in('category', categoryNames);
+              // If we found categories, use their IDs
+              const categoryIds = categoryData.map(c => c.id);
+              console.log(`Resolved category IDs:`, categoryIds);
+              questionsQuery = questionsQuery.in('category_id', categoryIds);
             } else {
-              // Otherwise use the original values
-              questionsQuery = questionsQuery.in('category', categories);
+              // If no categories found, query will likely return empty result
+              console.log(`No categories found with names:`, categories);
             }
           } catch (e) {
-            // If that fails, just use the original values
-            console.log(`Category lookup failed, using original values:`, e);
-            questionsQuery = questionsQuery.in('category', categories);
+            console.log(`Category lookup failed:`, e);
           }
         }
       }
@@ -228,10 +227,6 @@ class QuestionService {
       
       if (!questionData || questionData.length === 0) {
         console.log('No questions found in Supabase');
-        // Check if we have category information to provide a better error message
-        if (categories && categories.length > 0) {
-          console.log(`No questions found for categories: ${categories.join(', ')}`);
-        }
         return [];
       }
       
@@ -263,13 +258,24 @@ class QuestionService {
       const questions: Question[] = questionData.map(question => {
         const answer = answerMap[question.id];
         
+        // Extract category information from joined data
+        let category_id = question.category_id;
+        let category_name = question.category_name;
+        
+        // If we have the categories join data, use it
+        if (question.categories) {
+          if (!category_id) category_id = question.categories.id;
+          if (!category_name) category_name = question.categories.name;
+        }
+        
         // If no answer is found, create a placeholder
         if (!answer) {
           console.warn(`No answer found for question ${question.id}`);
           return {
             id: question.id,
             content: question.content,
-            category: question.category,
+            category_id: category_id,
+            category_name: category_name,
             correct_answer: 'Unknown',
             incorrect_answers: ['Option 1', 'Option 2', 'Option 3'],
             difficulty: question.difficulty,
@@ -280,7 +286,8 @@ class QuestionService {
         return {
           id: question.id,
           content: question.content,
-          category: question.category,
+          category_id: category_id,
+          category_name: category_name,
           correct_answer: answer.correct_answer,
           incorrect_answers: answer.incorrect_answers || [],
           difficulty: question.difficulty,
@@ -328,28 +335,14 @@ class QuestionService {
               
             if (categoryData && categoryData.name) {
               console.log(`Category ${categoryId} resolves to name: ${categoryData.name}`);
-              // We have two approaches:
-              // 1. Get questions by category name
-              // 2. Get questions by category ID
-              // Let's try both in sequence
-              
-              // Approach 1: By category name
-              const questionsByName = await this.getQuestionsFromSupabase([categoryData.name], count);
-              if (questionsByName.length > 0) {
-                console.log(`Found ${questionsByName.length} questions by category name`);
-                return questionsByName;
-              }
-              
-              // Approach 2: By category ID
-              console.log(`No questions found by name, trying by ID`);
-              return this.getQuestionsFromSupabase([categoryId], count);
+              // Just for logging
             }
           } catch (e) {
             console.error('Error looking up category name:', e);
           }
         }
         
-        // Default approach: try directly with the category ID
+        // Use the category ID directly
         return this.getQuestionsFromSupabase([categoryId], count);
       }
       
