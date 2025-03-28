@@ -161,6 +161,7 @@ class QuestionGenerator:
         
         Args:
             category (str): The category to generate questions for
+                This can be either a category ID (UUID) or a category name
             count (int): Number of questions to generate
             difficulty (str or int, optional): Specific difficulty level
             
@@ -168,8 +169,14 @@ class QuestionGenerator:
             list[Question]: Generated Question objects
         """
         # Get guidelines sequentially - category first, then difficulty
+        # For guidelines, we always use the category name for better context
+        category_name = category
+        
+        # If it looks like a UUID, we'll still use it for LLM context as-is
+        # The category name would ideally be resolved by the service layer when needed
+        
         category_guidelines, difficulty_context = await self._fetch_guidelines_sequentially(
-            category, 
+            category_name, 
             difficulty
         )
         
@@ -187,7 +194,7 @@ class QuestionGenerator:
             difficulty_context
         )
         
-        # Parse and process questions
+        # Process and create Question objects
         return self._process_raw_questions(raw_response, category, count, standard_difficulty)
     
     def generate_questions(self, category, count=10, difficulty=None):
@@ -220,7 +227,7 @@ class QuestionGenerator:
         
         Args:
             raw_response: Raw LLM response
-            category (str): Question category
+            category (str): Question category (name or ID)
             count (int): Requested count
             standard_difficulty (str): Standardized difficulty level
             
@@ -252,9 +259,19 @@ class QuestionGenerator:
             # Log the final count
             logger.info(f"Successfully parsed {len(question_list)} questions out of {count} requested")
                 
-            # Create Question objects with difficulty information
-            return [Question(content=q, category=category, difficulty=standard_difficulty) 
-                    for q in question_list]
+            # Determine if category is ID or name
+            is_category_id = isinstance(category, str) and '-' in category
+            
+            # Create Question objects with correct parameters based on category type
+            if is_category_id:
+                # If category looks like a UUID, use it as category_id
+                return [Question(content=q, category_id=category, difficulty=standard_difficulty) 
+                        for q in question_list]
+            else:
+                # If category is a name, we need to resolve it to an ID later
+                # Don't set category_name as it's not in the database schema anymore
+                return [Question(content=q, category_id=None, difficulty=standard_difficulty) 
+                        for q in question_list]
         
         except Exception as e:
             logger.error(f"Error parsing questions: {e}")

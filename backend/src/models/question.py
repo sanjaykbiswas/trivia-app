@@ -10,8 +10,8 @@ class Question:
     Data model for trivia questions
     """
     content: str
-    category_id: str  # UUID as string for the category
-    category_name: Optional[str] = None  # Optional name for backward compatibility
+    category_id: Optional[str] = None  # UUID as string for the category
+    category_name: Optional[str] = None  # Used for in-memory reference only, not stored in DB
     difficulty: Optional[str] = None  # Possible values: "Easy", "Medium", "Hard", "Expert", "Master"
     modified_difficulty: Optional[str] = None  # Initially same as difficulty, can be modified later
     id: Optional[str] = None
@@ -19,15 +19,24 @@ class Question:
     
     def to_dict(self):
         """Convert to dictionary for database storage"""
-        return {
+        # Only include fields that are in the database schema
+        db_dict = {
             "content": self.content,
-            "category_id": self.category_id,
-            "category_name": self.category_name,
             "difficulty": self.difficulty,
             "modified_difficulty": self.modified_difficulty,
             "created_at": self.created_at.isoformat(),
-            **({"id": self.id} if self.id else {})
         }
+        
+        # Add category_id if it exists - this is in the DB schema
+        if self.category_id:
+            db_dict["category_id"] = self.category_id
+            
+        # Add ID if it exists
+        if self.id:
+            db_dict["id"] = self.id
+            
+        # Remove None values to avoid database issues
+        return {k: v for k, v in db_dict.items() if v is not None}
     
     @classmethod
     def from_dict(cls, data):
