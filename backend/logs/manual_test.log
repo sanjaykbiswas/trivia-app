@@ -2610,3 +2610,90 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-26 23:10:44,522 - utils.supabase_actions - INFO - Creating new user: 00000000-0000-0000-0000-000000000000
 2025-03-26 23:10:44,617 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/users "HTTP/2 201 Created"
 2025-03-26 23:10:44,619 - utils.supabase_actions - INFO - User 00000000-0000-0000-0000-000000000000 created successfully
+2025-03-27 16:51:06,608 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 16:51:41,303 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 16:52:21,897 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 16:57:35,573 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 16:57:56,418 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 16:58:44,733 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 16:59:00,998 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Science "HTTP/2 200 OK"
+2025-03-27 16:59:01,127 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 16:59:01,129 - services.category_service - INFO - Created category 'Science' with ID: 8674cb41-9572-4733-9d64-9cd14add1b16
+2025-03-27 17:00:04,515 - manual_test - INFO - Logging configured for manual_test
+2025-03-27 17:00:22,087 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Hip+Hop "HTTP/2 200 OK"
+2025-03-27 17:00:22,195 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 17:00:22,197 - services.category_service - INFO - Created category 'Hip Hop' with ID: 483bc0f4-1a91-49aa-99aa-1328a4df2f10
+2025-03-27 17:00:29,225 - utils.question_generator.category_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for category guidelines
+2025-03-27 17:00:48,170 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:00:48,185 - utils.question_generator.category_helper - INFO - Received response from anthropic
+2025-03-27 17:00:48,186 - utils.question_generator.difficulty_helper - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for difficulty guidelines
+2025-03-27 17:00:58,305 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:00:58,309 - utils.question_generator.difficulty_helper - INFO - Received response from anthropic
+2025-03-27 17:00:58,311 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Hip Hop'
+2025-03-27 17:00:58,311 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Hip Hop' - 'Easy'
+2025-03-27 17:00:58,311 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Hip Hop'
+2025-03-27 17:00:58,311 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Hip Hop' - 'Medium'
+2025-03-27 17:00:58,311 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:00:58,314 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:00:58,314 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Hip Hop'
+2025-03-27 17:00:58,316 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Hip Hop' - 'Hard'
+2025-03-27 17:00:58,316 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Hip Hop'
+2025-03-27 17:00:58,316 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Hip Hop' - 'Expert'
+2025-03-27 17:00:58,317 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:00:58,318 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Hip Hop'
+2025-03-27 17:00:58,319 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Hip Hop' - 'Master'
+2025-03-27 17:00:58,319 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:00:58,319 - utils.question_generator.generator - INFO - Using model: claude-3-7-sonnet-20250219 from provider: anthropic
+2025-03-27 17:00:58,522 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-27 17:00:58,523 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-27 17:00:58,524 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 429 Too Many Requests"
+2025-03-27 17:00:58,525 - anthropic._base_client - INFO - Retrying request to /v1/messages in 24.000000 seconds
+2025-03-27 17:01:02,093 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:01:02,094 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which rapper released the 2018 album 'Astroworld' that featured the hit single 'Sicko Mode'?",
+...
+2025-03-27 17:01:02,095 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:01:02,095 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:01:02,095 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:01:02,813 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:01:02,815 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which 1988 album by N.W.A is often credited with pioneering gangsta rap and featured the contro...
+2025-03-27 17:01:02,918 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:01:03,298 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-27 17:01:03,303 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:01:03,303 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:01:03,303 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:01:03,935 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:01:03,937 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which producer's technique of time-stretching samples became a defining characteristic of the '...
+2025-03-27 17:01:04,029 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:01:04,154 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-27 17:01:04,156 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:01:04,156 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:01:04,156 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:01:05,062 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:01:05,183 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-27 17:01:27,765 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:01:27,767 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which producer and rapper, known for his 'boom bap' sound, founded the Underground Hip Hop labe...
+2025-03-27 17:01:27,768 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:01:27,768 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:01:27,768 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:01:28,021 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:01:28,023 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which underground producer, known for his 'SP-1200 era' and work with MF DOOM, produced the alb...
+2025-03-27 17:01:28,675 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:01:28,859 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-27 17:01:28,861 - utils.question_generator.generator - INFO - Successfully parsed 5 questions out of 5 requested
+2025-03-27 17:01:28,861 - utils.question_generator.deduplicator - INFO - Getting embeddings for 5 texts
+2025-03-27 17:01:28,861 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 17:01:29,709 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 17:01:29,824 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22modified_difficulty%22%2C%22category%22%2C%22created_at%22%2C%22difficulty%22%2C%22content%22 "HTTP/2 201 Created"
+2025-03-27 17:01:29,826 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/1 (25 questions)
+2025-03-27 17:01:29,827 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/1 (25 questions)
+2025-03-27 17:01:29,827 - utils.question_generator.answer_generator - INFO - Calling anthropic model claude-3-7-sonnet-20250219 for answer generation
+2025-03-27 17:01:54,933 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-03-27 17:01:54,936 - utils.question_generator.answer_generator - INFO - Received response from anthropic
+2025-03-27 17:01:54,937 - utils.question_generator.answer_generator - INFO - Successfully parsed 25 answers in batch 1
+2025-03-27 17:01:54,937 - utils.question_generator.answer_generator - INFO - Generated 25 answers for 25 questions
+2025-03-27 17:01:55,110 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22created_at%22%2C%22question_id%22%2C%22correct_answer%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"

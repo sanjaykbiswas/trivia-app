@@ -34,6 +34,8 @@ from models.complete_question import CompleteQuestion
 from utils.logging_config import setup_logging
 from utils.question_generator.category_helper import CategoryHelper
 from utils.question_generator.difficulty_helper import DifficultyHelper
+from repositories.category_repository import CategoryRepository
+from services.category_service import CategoryService
 
 # Setup logging
 logger = setup_logging(app_name="manual_test", log_level=logging.INFO)
@@ -662,17 +664,146 @@ async def test_concurrent_guideline_generation():
             print(f"\n{level}:")
             print(difficulty_tiers[level])
 
+async def setup_category_service():
+    """Set up category service with dependencies"""
+    # Get Supabase client
+    client = await setup_supabase()
+    
+    # Create repository
+    category_repository = CategoryRepository(client)
+    
+    # Create and return category service
+    category_service = CategoryService(category_repository)
+    
+    return category_service, client
+
+async def test_category_creation():
+    """Test creating a new category"""
+    category_service, _ = await setup_category_service()
+    
+    # Get category details from user
+    print("\nCATEGORY CREATION")
+    print("=" * 40)
+    
+    # Get category name
+    name = input("Enter category name: ")
+    if not name:
+        print("Category name cannot be empty!")
+        return False
+    
+    # Get price (optional)
+    price_str = input("Enter price (0 for free, default is 0): ")
+    try:
+        price = float(price_str) if price_str else 0.0
+    except ValueError:
+        print("Invalid price, using 0.0")
+        price = 0.0
+    
+    # Check if user wants to create as system user
+    system_user = input("Create as system user? (y/n, default is y): ")
+    user_id = "00000000-0000-0000-0000-000000000000" if system_user.lower() != 'n' else None
+    
+    print(f"\nCreating category '{name}' with price {price}...")
+    
+    # Create the category
+    try:
+        category = await category_service.create_category(
+            name=name,
+            user_id=user_id,
+            price=price
+        )
+        
+        print("Category created successfully!")
+        print(f"Category ID: {category.id}")
+        
+        # Format the result for display
+        display_data = {
+            "id": category.id,
+            "name": category.name,
+            "price": category.price,
+            "play_count": category.play_count,
+            "creator": category.creator.value
+        }
+        
+        print(f"\nCategory data: {json.dumps(display_data, indent=2)}")
+        return True
+    except Exception as e:
+        print(f"Error creating category: {e}")
+        return False
+
+async def test_get_categories():
+    """Test retrieving categories"""
+    category_service, _ = await setup_category_service()
+    
+    print("\nRETRIEVING CATEGORIES")
+    print("=" * 40)
+    
+    try:
+        # Get all categories
+        categories = await category_service.get_all_categories()
+        
+        print(f"Found {len(categories)} categories:")
+        for idx, category in enumerate(categories, 1):
+            print(f"{idx}. {category.name} (ID: {category.id}, Plays: {category.play_count})")
+        
+        # Get popular categories
+        popular_limit = 5
+        popular_categories = await category_service.get_popular_categories(popular_limit)
+        
+        print(f"\nTop {len(popular_categories)} popular categories:")
+        for idx, category in enumerate(popular_categories, 1):
+            print(f"{idx}. {category.name} (Plays: {category.play_count})")
+        
+        # Ask if user wants to look up a specific category
+        lookup_id = input("\nEnter a category ID to look up (or press Enter to skip): ")
+        if lookup_id:
+            category = await category_service.get_category_by_id(lookup_id)
+            if category:
+                print(f"Found category: {category.name} (Plays: {category.play_count}, Creator: {category.creator.value})")
+            else:
+                print(f"No category found with ID: {lookup_id}")
+        
+        return True
+    except Exception as e:
+        print(f"Error retrieving categories: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 async def test_multi_difficulty_generation():
     """Test generating questions with multiple difficulty levels concurrently"""
     question_service, _ = await setup_question_service()
+    category_service, _ = await setup_category_service()
     
     # Get test parameters
     print("\nMULTI-DIFFICULTY QUESTION GENERATION")
     print("=" * 40)
     
-    category = input("Enter category (e.g., History, Science, Movies): ")
-    if not category:
-        category = "General Knowledge"
+    # First, check if user wants to create a new category
+    create_new_category = input("Create a new category first? (y/n): ")
+    
+    category_name = ""
+    if create_new_category.lower() == 'y':
+        # Get category name from user
+        category_name = input("Enter new category name: ")
+        if category_name:
+            # Create the category
+            try:
+                category = await category_service.create_category(
+                    name=category_name,
+                    user_id="00000000-0000-0000-0000-000000000000",  # System user
+                    price=0.0  # Free category
+                )
+                print(f"Category '{category_name}' created with ID: {category.id}")
+            except Exception as e:
+                print(f"Error creating category: {e}")
+                # Continue anyway, just use the name without creating
+    else:
+        # Just get the category name
+        category_name = input("Enter category (e.g., History, Science, Movies): ")
+    
+    if not category_name:
+        category_name = "General Knowledge"
     
     # Get difficulty counts
     difficulty_counts = {}
@@ -691,7 +822,7 @@ async def test_multi_difficulty_generation():
         difficulty_counts = {"Easy": 2, "Medium": 2}
     
     total_count = sum(difficulty_counts.values())
-    print(f"\nGenerating {total_count} '{category}' questions across {len(difficulty_counts)} difficulty levels...")
+    print(f"\nGenerating {total_count} '{category_name}' questions across {len(difficulty_counts)} difficulty levels...")
     print(f"Difficulty distribution: {difficulty_counts}")
     
     # Timing starts before any operations begin
@@ -699,7 +830,7 @@ async def test_multi_difficulty_generation():
     
     try:
         result = await question_service.create_multi_difficulty_question_set(
-            category=category,
+            category=category_name,
             difficulty_counts=difficulty_counts,
             deduplicate=True
         )
@@ -746,9 +877,11 @@ async def main():
     print("9. Generate complete questions using ASYNC methods (concurrent)")
     print("10. Generate guidelines concurrently")
     print("11. Generate questions with multiple difficulties concurrently")
-    print("12. Exit")
+    print("12. Category management")
+    print("13. List categories")
+    print("14. Exit")
     
-    choice = input("\nEnter your choice (1-12): ")
+    choice = input("\nEnter your choice (1-14): ")
     
     if choice == "1":
         await test_user_creation()
@@ -775,6 +908,10 @@ async def main():
     elif choice == "11":
         await test_multi_difficulty_generation()
     elif choice == "12":
+        await test_category_creation()
+    elif choice == "13":
+        await test_get_categories()
+    elif choice == "14":
         print("Exiting...")
         return
     else:
