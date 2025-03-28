@@ -103,10 +103,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Implement sign in with Google
   const signInWithGoogle = async () => {
     try {
+      console.log('AuthContext: Initiating Google Sign In...');
       const response = await AuthService.signInWithGoogle();
+      
+      if (response.error) {
+        console.log('AuthContext: Google Sign In returned error:', response.error.message);
+      } else {
+        console.log('AuthContext: Google Sign In successful');
+      }
+      
       return response;
     } catch (error: any) {
-      console.error('Google Sign In error in context:', error);
+      console.error('AuthContext: Unexpected error during Google Sign In:', error);
       return { error: { message: error.message || 'Google Sign In failed' } };
     }
   };

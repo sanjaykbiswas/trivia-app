@@ -234,9 +234,10 @@ class AuthService {
     // If signed in with Google, sign out from there too
     try {
       // Try to sign out from Google without checking if signed in first
-      // This is safer as the check method might change between versions
+      // This is safer as the isSignedIn method might not be available in some versions
       try {
         await GoogleSignin.signOut();
+        console.log('Successfully signed out from Google');
       } catch (error: any) {
         // Only log the error if it's not "No user signed in"
         if (error?.code !== statusCodes.SIGN_IN_REQUIRED) {
@@ -245,6 +246,7 @@ class AuthService {
       }
     } catch (error) {
       console.error('Google Sign Out handling error:', error);
+      // Continue with Supabase sign out even if Google sign out fails
     }
     
     // Sign out from Supabase
@@ -309,55 +311,68 @@ class AuthService {
     }
   }
   
+  /**
+   * Sign in with Google - Updated implementation
+   * This handles the entire Google Sign-In flow in a more streamlined way,
+   * avoiding token retrieval issues
+   */
   async signInWithGoogle() {
+    // Clear any previous error state
+    console.log('Starting Google Sign-In flow...');
+    
     try {
       // Check if Google Sign-In is properly configured
       if (!this.isGoogleConfigured) {
-        // Try to initialize again
+        console.log('Google Sign-In not configured, attempting to initialize...');
         await this.initializeGoogleSignIn();
         
         if (!this.isGoogleConfigured) {
+          console.error('Google Sign-In initialization failed');
           return { error: { message: 'Google Sign In is not properly configured' } };
         }
       }
       
       // Check if play services are available (Android specific)
       if (Platform.OS === 'android') {
+        console.log('Checking for Google Play Services...');
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       }
       
-      console.log('Attempting Google sign-in using native flow...');
-      
-      // First make sure we're signed out of Google
+      // Try to sign out first to ensure a fresh authentication flow
+      // This is safer than checking isSignedIn which might not be available in all versions
       try {
+        console.log('Ensuring clean Google Sign-In state...');
         await GoogleSignin.signOut();
-      } catch (signOutError) {
-        // Ignore errors during sign out
-        console.log('Sign out before sign in failed, continuing anyway:', signOutError);
+      } catch (signOutError: any) {
+        // Ignore errors during sign out (likely just means no user was signed in)
+        if (signOutError?.code !== statusCodes.SIGN_IN_REQUIRED) {
+          console.log('Pre-sign-in cleanup note:', signOutError.message || 'Unknown error');
+        }
       }
       
-      // Use the native Google Sign-in flow
+      // Perform the sign-in
+      console.log('Initiating Google Sign-In...');
       const userInfo = await GoogleSignin.signIn();
       
-      // Check if we have user info
       if (!userInfo) {
-        throw new Error('Google Sign In failed - no user info returned');
+        console.error('No user info returned from Google Sign-In');
+        throw new Error('Google Sign In returned empty user info');
       }
       
-      console.log('Google Sign In successful, getting tokens...');
+      console.log('Google Sign-In successful, retrieved user info');
       
-      // Get the ID token explicitly - this is the safe way regardless of version
+      // Get tokens directly - this is the recommended approach
+      console.log('Getting Google auth tokens...');
       const tokens = await GoogleSignin.getTokens();
-      
-      if (!tokens || !tokens.idToken) {
-        throw new Error('Failed to get Google ID token');
-      }
-      
       const idToken = tokens.idToken;
       
-      console.log('Successfully got Google ID token, signing in with Supabase...');
+      if (!idToken) {
+        console.error('No ID token available after retrieval attempt');
+        throw new Error('Could not obtain Google ID token');
+      }
       
       // Sign in with Supabase using the Google ID token
+      console.log('Signing in with Supabase using Google ID token...');
       const { data, error } = await this.supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
@@ -368,10 +383,13 @@ class AuthService {
         return { error };
       }
       
+      console.log('Supabase sign-in successful');
+      
       // If successful and we have a temporary user, prepare to link identities
       if (data.user) {
         const tempUser = await this.getTempUser();
         if (tempUser) {
+          console.log('Preparing to link temporary user with Google identity');
           await AsyncStorage.setItem('pending_link', JSON.stringify({
             tempUserId: tempUser.id,
             authProvider: 'google',
@@ -385,19 +403,24 @@ class AuthService {
     } catch (error: any) {
       console.error('Google Sign In error:', error);
       
-      // Provide more specific error messages based on error codes
+      // Handle specific error codes from Google Sign-In
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('User cancelled the sign-in flow');
         return { error: { message: 'Sign in was canceled' } };
       } else if (error.code === statusCodes.IN_PROGRESS) {
+        console.log('Another sign-in operation is in progress');
         return { error: { message: 'Google Sign In is already in progress' } };
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        return { error: { message: 'Google Play Services is not available' } };
+        console.log('Google Play Services is not available');
+        return { error: { message: 'Google Play Services is not available or outdated' } };
       }
       
+      // For other errors, provide as much context as possible
       return { 
         error: { 
           message: error.message || 'Google Sign In failed',
-          details: error.code ? `Error code: ${error.code}` : undefined
+          details: error.code ? `Error code: ${error.code}` : undefined,
+          originalError: error.toString()
         }
       };
     }
