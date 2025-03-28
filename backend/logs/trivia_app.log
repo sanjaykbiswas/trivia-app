@@ -323,3 +323,5 @@
 2025-03-18 19:38:02,923 - api_tests - INFO - === ALL API TESTS PASSED ===
 2025-03-27 22:33:27,252 - trivia_app - INFO - Logging configured for trivia_app
 2025-03-27 22:33:27,462 - trivia_app - INFO - Application startup
+2025-03-28 16:22:55,558 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 16:22:55,680 - trivia_app - INFO - Application startup

@@ -103,25 +103,70 @@ class AuthService {
   // Create temporary user with just a username
   async createTempUser(username: string): Promise<{ id: string, username: string } | null> {
     try {
-      // Make API call to backend
-      const response = await fetch(`${SUPABASE_URL}/auth/temp-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username }),
-      });
+      console.log(`Creating temporary user with username: ${username}`);
       
-      if (!response.ok) {
-        throw new Error(`Failed to create temporary user: ${response.statusText}`);
+      // Try to generate a local user first as fallback
+      const localUserId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      
+      const localUserData = {
+        id: localUserId,
+        username: username
+      };
+      
+      // Determine the correct API URL for the backend
+      // Try to access API_URL from .env but provide fallbacks
+      let apiBaseUrl: string;
+      try {
+        // @ts-ignore - Ignore TypeScript error for potential missing API_URL
+        const envApiUrl = require('@env').API_URL;
+        apiBaseUrl = envApiUrl || (Platform.OS === 'ios' ? 'http://localhost:8000' : 'http://10.0.2.2:8000');
+      } catch (err) {
+        // If @env doesn't have API_URL or fails to load, use platform-specific defaults
+        apiBaseUrl = Platform.OS === 'ios' ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
       }
       
-      const userData = await response.json();
-      
-      // Save to local storage
-      await this.saveTempUser(userData);
-      
-      return userData;
+      try {
+        // First try to make API call to backend (with timeout)
+        console.log(`Attempting API call to create temp user: ${apiBaseUrl}/auth/temp-user`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`${apiBaseUrl}/auth/temp-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username }),
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.warn(`API returned status ${response.status}: ${response.statusText}`);
+          throw new Error(`API error: ${response.statusText}`);
+        }
+        
+        const userData = await response.json();
+        console.log('Successfully created temp user via API:', userData);
+        
+        // Save to local storage
+        await this.saveTempUser(userData);
+        
+        return userData;
+      } catch (apiError) {
+        // Log the API error
+        console.warn(`API method failed, using local fallback: ${apiError}`);
+        
+        // Fall back to local user creation
+        console.log('Creating local temporary user:', localUserData);
+        
+        // Save to local storage
+        await this.saveTempUser(localUserData);
+        
+        return localUserData;
+      }
     } catch (error) {
       console.error('Failed to create temporary user:', error);
       return null;
@@ -139,8 +184,20 @@ class AuthService {
         return false;
       }
       
+      // Determine the correct API URL for the backend
+      // Try to access API_URL from .env but provide fallbacks
+      let apiBaseUrl: string;
+      try {
+        // @ts-ignore - Ignore TypeScript error for potential missing API_URL
+        const envApiUrl = require('@env').API_URL;
+        apiBaseUrl = envApiUrl || (Platform.OS === 'ios' ? 'http://localhost:8000' : 'http://10.0.2.2:8000');
+      } catch (err) {
+        // If @env doesn't have API_URL or fails to load, use platform-specific defaults
+        apiBaseUrl = Platform.OS === 'ios' ? 'http://localhost:8000' : 'http://10.0.2.2:8000';
+      }
+      
       // Make API call to backend with authentication
-      const response = await fetch(`${SUPABASE_URL}/auth/link-identity`, {
+      const response = await fetch(`${apiBaseUrl}/auth/link-identity`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
