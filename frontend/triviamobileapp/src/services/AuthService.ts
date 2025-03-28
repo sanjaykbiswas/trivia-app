@@ -47,8 +47,8 @@ class AuthService {
   private initializeGoogleSignIn() {
     try {
       GoogleSignin.configure({
-        // You need to replace this with your actual Web Client ID from Google Cloud Console
-        webClientId: '123456789-example.apps.googleusercontent.com', // Replace with actual Client ID
+        // Your actual Web Client ID from Google Cloud Console
+        webClientId: '945168523687-fiqetr8sqbsfb4sge23qureoj5j3c2g3.apps.googleusercontent.com',
         offlineAccess: true,
       });
     } catch (error) {

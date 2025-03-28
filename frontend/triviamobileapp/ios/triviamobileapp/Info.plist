@@ -30,8 +30,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>triviamobileapp</string>
-				<!-- Add your Google reversed client ID here if you have one -->
-				<!-- <string>com.googleusercontent.apps.YOUR-CLIENT-ID</string> -->
+				<string>com.googleusercontent.apps.945168523687-4dvathak8sfh1ohg7rilm3n0lik5sobh</string>
 			</array>
 		</dict>
 	</array>
@@ -66,5 +65,7 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>GIDClientID</key>
+	<string>945168523687-4dvathak8sfh1ohg7rilm3n0lik5sobh.apps.googleusercontent.com</string>
 </dict>
 </plist>
