@@ -220,13 +220,12 @@ const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ navigation }) => {
           style={styles.bottomTray}
         />
 
-        {/* Sign In Modal */}
+        {/* Sign In Modal - Note: isSignUp prop removed */}
         <SignInModal
           visible={signInModalVisible}
           onClose={handleCloseSignInModal}
           onContinueWithEmail={() => handleContinueWithEmail(false)}
           title="Sign In"
-          isSignUp={false}
         />
       </View>
     </Container>

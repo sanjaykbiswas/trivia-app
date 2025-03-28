@@ -56,17 +56,6 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, route }) => {
     }
   };
   
-  const handleSignUp = () => {
-    // Instead of navigation, show the modal
-    setSignUpModalVisible(true);
-  };
-  
-  const handleContinueWithEmailSignUp = () => {
-    setSignUpModalVisible(false);
-    // Navigate to SignIn screen with isSignUp parameter
-    navigation.navigate('SignIn', { isSignUp: true });
-  };
-  
   const dismissKeyboard = () => {
     Keyboard.dismiss();
   };
@@ -126,41 +115,14 @@ const SignInScreen: React.FC<SignInScreenProps> = ({ navigation, route }) => {
             )}
           </View>
           
-          <View style={styles.footer}>
-            {!isSignUp ? (
-              <TouchableOpacity onPress={handleSignUp}>
-                <Typography variant="bodyMedium" style={styles.signUpText}>
-                  Don't have an account? <Typography
-                    variant="bodyMedium"
-                    color={colors.primary.main}
-                    style={styles.signUpLink}
-                  >
-                    Sign Up
-                  </Typography>
-                </Typography>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={() => navigation.navigate('SignIn', { isSignUp: false })}>
-                <Typography variant="bodyMedium" style={styles.signUpText}>
-                  Already have an account? <Typography
-                    variant="bodyMedium"
-                    color={colors.primary.main}
-                    style={styles.signUpLink}
-                  >
-                    Sign In
-                  </Typography>
-                </Typography>
-              </TouchableOpacity>
-            )}
-          </View>
+          {/* Footer section removed as requested */}
           
           {/* Sign Up Modal */}
           <SignInModal
             visible={signUpModalVisible}
             onClose={() => setSignUpModalVisible(false)}
-            onContinueWithEmail={handleContinueWithEmailSignUp}
+            onContinueWithEmail={() => navigation.navigate('SignIn', { isSignUp: true })}
             title="Create an account"
-            isSignUp={true}
           />
         </View>
       </TouchableWithoutFeedback>
@@ -189,16 +151,6 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     marginTop: spacing.md,
-  },
-  footer: {
-    paddingVertical: spacing.xl,
-    alignItems: 'center',
-  },
-  signUpText: {
-    textAlign: 'center',
-  },
-  signUpLink: {
-    fontWeight: '600',
   },
 });
 

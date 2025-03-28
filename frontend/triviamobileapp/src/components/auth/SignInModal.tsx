@@ -27,7 +27,6 @@ interface SignInModalProps {
   onContinueWithEmail: () => void;
   iconTextSpacing?: number; // Variable spacing between icon and text
   title?: string; // Add title prop
-  isSignUp?: boolean; // Flag to indicate if this is for sign up
 }
 
 const SignInModal: React.FC<SignInModalProps> = ({ 
@@ -36,7 +35,6 @@ const SignInModal: React.FC<SignInModalProps> = ({
   onContinueWithEmail,
   iconTextSpacing = 12, // Default spacing
   title = "Sign In", // Default title
-  isSignUp = false // Default to sign in flow
 }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const { signInWithApple, signInWithGoogle } = useAuth();
@@ -160,6 +158,11 @@ const SignInModal: React.FC<SignInModalProps> = ({
                 </Pressable>
               </View>
               
+              {/* Subtitle */}
+              <Typography variant="bodyMedium" color={colors.text.secondary} style={styles.subtitle}>
+                No account? We'll create one for you.
+              </Typography>
+              
               {/* Divider line */}
               <View style={styles.divider} />
 
@@ -182,7 +185,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
                       </Svg>
                     )}
                     <Text style={styles.appleButtonText}>
-                      {isSignUp ? 'Sign up with Apple' : 'Sign in with Apple'}
+                      Sign in with Apple
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -218,7 +221,7 @@ const SignInModal: React.FC<SignInModalProps> = ({
                     </Svg>
                   )}
                   <Text style={styles.googleButtonText}>
-                    {isSignUp ? 'Sign up with Google' : 'Sign in with Google'}
+                    Sign in with Google
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -284,10 +287,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginBottom: spacing.md, // Reduced margin to make room for divider
+    marginBottom: spacing.xs, // Reduced margin for subtitle
   },
   title: {
     textAlign: 'center',
+  },
+  subtitle: {
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   closeButton: {
     position: 'absolute',
