@@ -53,8 +53,7 @@ def patched_generate_category_guidelines(self, category):
     print(f"\n======= Generating Category Guidelines for '{category}' =======")
     guidelines = original_generate_category_guidelines(self, category)
     print(f"\n======= Category Guidelines =======")
-    preview = guidelines[:300] + "..." if len(guidelines) > 300 else guidelines
-    print(preview)
+    print(guidelines)  # Print full guidelines without truncation
     print("================================\n")
     return guidelines
 
