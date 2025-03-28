@@ -96,12 +96,14 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
         setQuestions(transformedQuestions);
       } catch (err) {
         console.error('Error loading questions:', err);
-        setError("Failed to load questions. Please try again later.");
+        setError("Failed to load questions. Check your internet connection and try again.");
       } finally {
         setLoading(false);
         // Start the timer after questions are loaded
-        setTimeLeft(timerSeconds);
-        setIsTimerActive(true);
+        if (!error) {
+          setTimeLeft(timerSeconds);
+          setIsTimerActive(true);
+        }
       }
     };
     
@@ -213,6 +215,20 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
     );
   };
 
+  // Try again after error
+  const handleRetry = () => {
+    setLoading(true);
+    setError(null);
+    // Re-mount the component by triggering a state update
+    setQuestions([]);
+    
+    // Set a small timeout to ensure state updates before reloading
+    setTimeout(() => {
+      // This will trigger the useEffect to load questions again
+      setLoading(true);
+    }, 100);
+  };
+
   // Get button text based on state
   const getButtonText = () => {
     if (isAnswerSubmitted) {
@@ -234,11 +250,13 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
       <View style={styles.container}>
         {/* Header with timer and title */}
         <View style={styles.header}>
-          <QuestionTimer
-            timeLeft={timeLeft}
-            totalTime={timerSeconds}
-            active={isTimerActive}
-          />
+          {isTimerActive && currentQuestion && (
+            <QuestionTimer
+              timeLeft={timeLeft}
+              totalTime={timerSeconds}
+              active={isTimerActive}
+            />
+          )}
           <Typography variant="bodyMedium" style={styles.packTitle}>
             {packTitle}
           </Typography>
@@ -264,10 +282,18 @@ const QuestionScreen: React.FC<QuestionScreenProps> = ({ navigation, route }) =>
               {error}
             </Typography>
             <Button
+              title="Try Again"
+              onPress={handleRetry}
+              variant="contained"
+              size="medium"
+              style={styles.retryButton}
+            />
+            <Button
               title="Go Back"
               onPress={() => navigation.goBack()}
               variant="outlined"
               size="medium"
+              style={styles.backButton}
             />
           </View>
         )}
@@ -403,6 +429,12 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: 'center',
     marginBottom: spacing.xl,
+  },
+  retryButton: {
+    marginBottom: spacing.md,
+  },
+  backButton: {
+    marginTop: spacing.sm,
   },
 });
 
