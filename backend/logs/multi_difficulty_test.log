@@ -153,3 +153,982 @@
 2025-03-27 20:57:02,871 - utils.question_generator.answer_generator - INFO - Successfully parsed 25 answers in batch 1
 2025-03-27 20:57:02,871 - utils.question_generator.answer_generator - INFO - Generated 25 answers for 25 questions
 2025-03-27 20:57:03,068 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22created_at%22%2C%22question_id%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-27 21:05:25,995 - multi_difficulty_test - INFO - Logging configured for multi_difficulty_test
+2025-03-27 21:09:01,139 - multi_difficulty_test - INFO - Logging configured for multi_difficulty_test
+2025-03-27 21:09:08,669 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Science "HTTP/2 200 OK"
+2025-03-27 21:09:08,776 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Science "HTTP/2 200 OK"
+2025-03-27 21:09:08,886 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:09:08,888 - services.category_service - INFO - Created category 'Science' with ID: 591ce5a1-1e34-459f-86e2-33c27d1d2ca4
+2025-03-27 21:09:08,889 - multi_difficulty_test - INFO - Created category 'Science' with ID: 591ce5a1-1e34-459f-86e2-33c27d1d2ca4
+2025-03-27 21:09:14,031 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:09:16,052 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:16,064 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:09:16,065 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:09:22,035 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:22,039 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:09:22,041 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-27 21:09:22,041 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Easy'
+2025-03-27 21:09:22,041 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-27 21:09:22,041 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Medium'
+2025-03-27 21:09:22,042 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:09:22,047 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-27 21:09:22,048 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Hard'
+2025-03-27 21:09:22,048 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:09:22,052 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-27 21:09:22,052 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:09:22,052 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Expert'
+2025-03-27 21:09:22,057 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Science'
+2025-03-27 21:09:22,057 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:09:22,057 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Science' - 'Master'
+2025-03-27 21:09:22,060 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:09:24,344 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:24,346 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "What is the main component of the air we breathe called?",
+  "Which gas is essential for photos...
+2025-03-27 21:09:24,347 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:09:24,347 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:09:24,347 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:09:24,858 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:24,859 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:24,861 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What law explains that for every action, there's an equal and opposite reaction?",
+  "W...
+2025-03-27 21:09:24,862 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What unique feature allows tardigrades to survive extreme conditions including outer sp...
+2025-03-27 21:09:25,173 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:09:25,455 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:09:25,459 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:09:25,459 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:09:25,459 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:09:25,606 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:25,608 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What experiment demonstrated that DNA is the genetic material of a cell?",
+  "Which the...
+2025-03-27 21:09:25,693 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:25,695 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "What physics principle explains the bend of light as it enters different media?",
+  "Which brai...
+2025-03-27 21:09:25,882 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:09:26,113 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:09:26,115 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:09:26,115 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:09:26,115 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:09:26,794 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:09:27,017 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:09:27,023 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:09:27,024 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:09:27,024 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:09:27,621 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:09:27,767 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:09:27,770 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:09:27,771 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:09:27,771 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:09:28,423 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:09:28,785 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:09:28,789 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:09:28,789 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:09:28,789 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:09:28,790 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:09:28,790 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:09:28,795 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:09:41,548 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:41,552 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:09:41,553 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:09:47,079 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:09:47,082 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:09:47,084 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:09:47,084 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:09:47,327 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:10:06,820 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Odds+And+Ends "HTTP/2 200 OK"
+2025-03-27 21:10:06,916 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Odds+And+Ends "HTTP/2 200 OK"
+2025-03-27 21:10:07,001 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:10:07,002 - services.category_service - INFO - Created category 'Odds And Ends' with ID: d093a599-ee68-44ab-85c8-ed124a287681
+2025-03-27 21:10:07,003 - multi_difficulty_test - INFO - Created category 'Odds And Ends' with ID: d093a599-ee68-44ab-85c8-ed124a287681
+2025-03-27 21:10:18,699 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:10:21,589 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:21,591 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:10:21,592 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:10:25,067 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:25,069 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:10:25,069 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Odds And Ends'
+2025-03-27 21:10:25,070 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Odds And Ends' - 'Easy'
+2025-03-27 21:10:25,070 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Odds And Ends'
+2025-03-27 21:10:25,070 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:10:25,070 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Odds And Ends' - 'Medium'
+2025-03-27 21:10:25,076 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Odds And Ends'
+2025-03-27 21:10:25,076 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Odds And Ends' - 'Hard'
+2025-03-27 21:10:25,076 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Odds And Ends'
+2025-03-27 21:10:25,076 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Odds And Ends' - 'Expert'
+2025-03-27 21:10:25,076 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Odds And Ends'
+2025-03-27 21:10:25,077 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Odds And Ends' - 'Master'
+2025-03-27 21:10:25,077 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:10:25,081 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:10:25,081 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:10:25,081 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:10:28,929 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:28,932 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which fruit's name is derived from a Latin word meaning 'seeded apple'?",
+  "What curio...
+2025-03-27 21:10:28,933 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:10:28,933 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:10:28,933 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:10:29,575 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:10:29,682 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:29,684 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What pop culture character's name means 'no one' in ancient Greek mythology?",
+  "Which...
+2025-03-27 21:10:29,776 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:29,782 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "Which U.S. state has a town that's bilingual with the official language of French?",
+...
+2025-03-27 21:10:29,915 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:10:29,919 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:10:29,919 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:10:29,919 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:10:30,598 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:30,599 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "What is the origin of the word 'quarantine' and its connection to the number forty?",...
+2025-03-27 21:10:30,737 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:10:30,940 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:10:30,942 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:10:30,942 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:10:30,942 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:10:31,520 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:10:31,837 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:10:31,839 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:10:31,839 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:10:31,839 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:10:32,044 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:10:32,197 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:10:33,976 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:33,979 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What inventor's quirky clock counted sheep leaping over it?",
+  "Which historical oddit...
+2025-03-27 21:10:33,979 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:10:33,979 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:10:33,980 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:10:35,372 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:10:35,516 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:10:35,519 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:10:35,519 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:10:35,519 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:10:35,519 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:10:35,519 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:10:35,520 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:10:58,267 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:10:58,275 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:10:58,277 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:11:00,810 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:00,863 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:11:00,865 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:11:00,866 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:11:01,194 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:11:26,703 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.American+History "HTTP/2 200 OK"
+2025-03-27 21:11:26,817 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.American+History "HTTP/2 200 OK"
+2025-03-27 21:11:26,925 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:11:26,927 - services.category_service - INFO - Created category 'American History' with ID: f597cd2e-3719-4c15-8130-a49ad0f44027
+2025-03-27 21:11:26,927 - multi_difficulty_test - INFO - Created category 'American History' with ID: f597cd2e-3719-4c15-8130-a49ad0f44027
+2025-03-27 21:11:31,684 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:11:34,043 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:34,045 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:11:34,046 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:11:37,670 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:37,672 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:11:37,673 - utils.question_generator.generator - INFO - Using cached category guidelines for 'American History'
+2025-03-27 21:11:37,673 - utils.question_generator.generator - INFO - Using cached difficulty context for 'American History' - 'Easy'
+2025-03-27 21:11:37,673 - utils.question_generator.generator - INFO - Using cached category guidelines for 'American History'
+2025-03-27 21:11:37,673 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:11:37,673 - utils.question_generator.generator - INFO - Using cached difficulty context for 'American History' - 'Medium'
+2025-03-27 21:11:37,679 - utils.question_generator.generator - INFO - Using cached category guidelines for 'American History'
+2025-03-27 21:11:37,679 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:11:37,679 - utils.question_generator.generator - INFO - Using cached difficulty context for 'American History' - 'Hard'
+2025-03-27 21:11:37,684 - utils.question_generator.generator - INFO - Using cached category guidelines for 'American History'
+2025-03-27 21:11:37,684 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:11:37,684 - utils.question_generator.generator - INFO - Using cached difficulty context for 'American History' - 'Expert'
+2025-03-27 21:11:37,688 - utils.question_generator.generator - INFO - Using cached category guidelines for 'American History'
+2025-03-27 21:11:37,688 - utils.question_generator.generator - INFO - Using cached difficulty context for 'American History' - 'Master'
+2025-03-27 21:11:37,688 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:11:37,692 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:11:40,536 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:40,539 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What year did the United States declare independence from Britain?",
+  "Who was the fir...
+2025-03-27 21:11:40,539 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:11:40,539 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:11:40,539 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:11:41,051 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:41,052 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:11:41,054 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which event officially ended with the signing of the Treaty of Paris in 1783?",
+  "What...
+2025-03-27 21:11:41,295 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:11:41,302 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:11:41,302 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:11:41,302 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:11:41,972 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:11:42,140 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:11:42,585 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:42,587 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:42,588 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which American president authored the Declaration of Independence but did not sign it?"...
+2025-03-27 21:11:42,589 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:11:42,590 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What Virginia settlement, founded in 1607, was the first permanent English colony in Am...
+2025-03-27 21:11:42,590 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:11:42,590 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:11:43,269 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:11:43,423 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:11:43,425 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:11:43,425 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:11:43,425 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:11:43,847 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:11:44,055 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:11:44,807 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:11:44,812 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which Founding Father is known for his role in drafting the Declaration of Independence...
+2025-03-27 21:11:44,813 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:11:44,813 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:11:44,813 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:11:45,171 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:11:45,347 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:11:45,349 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:11:45,349 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:11:45,349 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:11:45,349 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:11:45,349 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:11:45,358 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:12:02,654 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:02,666 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:12:02,667 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:12:03,578 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:03,600 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:12:03,602 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:12:03,602 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:12:03,817 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:12:17,719 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Geography "HTTP/2 200 OK"
+2025-03-27 21:12:17,788 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Geography "HTTP/2 200 OK"
+2025-03-27 21:12:17,884 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:12:17,886 - services.category_service - INFO - Created category 'Geography' with ID: 2307cf9d-f23f-4659-add6-2ba3f429d513
+2025-03-27 21:12:17,886 - multi_difficulty_test - INFO - Created category 'Geography' with ID: 2307cf9d-f23f-4659-add6-2ba3f429d513
+2025-03-27 21:12:22,413 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:12:25,282 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:25,302 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:12:25,302 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:12:29,002 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:29,011 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:12:29,012 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Geography'
+2025-03-27 21:12:29,012 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Geography' - 'Easy'
+2025-03-27 21:12:29,012 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Geography'
+2025-03-27 21:12:29,012 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Geography' - 'Medium'
+2025-03-27 21:12:29,012 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Geography'
+2025-03-27 21:12:29,012 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:12:29,013 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:12:29,013 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Geography' - 'Hard'
+2025-03-27 21:12:29,019 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Geography'
+2025-03-27 21:12:29,020 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Geography' - 'Expert'
+2025-03-27 21:12:29,020 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Geography'
+2025-03-27 21:12:29,020 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:12:29,020 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:12:29,020 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Geography' - 'Master'
+2025-03-27 21:12:29,026 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:12:31,314 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:31,317 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the capital city of Australia?",
+  "Which country has the longest coastline in ...
+2025-03-27 21:12:31,317 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:12:31,317 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:12:31,317 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:12:31,736 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:31,736 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which country is the only double-landlocked country in the world?",
+  "What is the long...
+2025-03-27 21:12:31,755 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:12:31,858 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:31,860 - utils.question_generator.generator - INFO - Raw LLM Response: [
+    "What is the longest river in the world by length?",
+    "Which desert is the largest hot dese...
+2025-03-27 21:12:32,004 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:32,005 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which continent is home to the country with the longest continuous coastline?",
+  "What...
+2025-03-27 21:12:32,100 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:12:32,104 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:12:32,105 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:12:32,105 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:12:32,330 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:12:32,517 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:12:32,519 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:12:32,519 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:12:32,519 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:12:33,585 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:12:33,752 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:12:33,754 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:12:33,754 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:12:33,754 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:12:33,943 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:33,947 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which African lake is the world's deepest and holds the largest volume of freshwater?",...
+2025-03-27 21:12:34,410 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:12:34,718 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:12:34,720 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:12:34,720 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:12:34,720 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:12:35,157 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:12:35,295 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:12:35,296 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:12:35,296 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:12:35,297 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:12:35,297 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:12:35,297 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:12:35,301 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:12:49,670 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:49,673 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:12:49,675 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:12:56,723 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:12:56,726 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:12:56,728 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:12:56,728 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:12:57,038 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:14:08,975 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Space+And+Astronomy "HTTP/2 200 OK"
+2025-03-27 21:14:09,044 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Space+And+Astronomy "HTTP/2 200 OK"
+2025-03-27 21:14:09,123 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:14:09,124 - services.category_service - INFO - Created category 'Space And Astronomy' with ID: 8820dee8-1fb0-4f5f-96ee-90b1a228a7c5
+2025-03-27 21:14:09,124 - multi_difficulty_test - INFO - Created category 'Space And Astronomy' with ID: 8820dee8-1fb0-4f5f-96ee-90b1a228a7c5
+2025-03-27 21:14:12,896 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:14:15,879 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:15,881 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:14:15,881 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:14:19,408 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:19,412 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:14:19,413 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Space And Astronomy'
+2025-03-27 21:14:19,413 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Space And Astronomy' - 'Easy'
+2025-03-27 21:14:19,413 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Space And Astronomy'
+2025-03-27 21:14:19,413 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:14:19,413 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Space And Astronomy' - 'Medium'
+2025-03-27 21:14:19,418 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Space And Astronomy'
+2025-03-27 21:14:19,418 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Space And Astronomy' - 'Hard'
+2025-03-27 21:14:19,418 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Space And Astronomy'
+2025-03-27 21:14:19,418 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:14:19,418 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Space And Astronomy' - 'Expert'
+2025-03-27 21:14:19,419 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:14:19,422 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Space And Astronomy'
+2025-03-27 21:14:19,426 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:14:19,426 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Space And Astronomy' - 'Master'
+2025-03-27 21:14:19,429 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:14:22,403 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:22,406 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the largest planet in our solar system?",
+  "Which planet is known as the Red P...
+2025-03-27 21:14:22,407 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:14:22,407 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:14:22,407 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:14:22,655 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:22,658 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the largest planet in our solar system?",
+  "Which galaxy is Earth located in?"...
+2025-03-27 21:14:22,797 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:14:22,880 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:22,885 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the closest known exoplanet to Earth?",
+  "Which element primarily fuels nuclea...
+2025-03-27 21:14:23,075 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:14:23,077 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:14:23,078 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:14:23,078 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:14:23,354 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:14:23,396 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:23,422 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What planet is known for its prominent ring system in our solar system?",
+  "Which spac...
+2025-03-27 21:14:23,537 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:14:23,543 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:14:23,543 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:14:23,543 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:14:23,967 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:23,968 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which planet in our solar system experiences the most extreme temperature changes betwe...
+2025-03-27 21:14:24,029 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:14:24,374 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:14:24,376 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:14:24,376 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:14:24,376 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:14:25,402 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:14:25,512 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:14:25,515 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:14:25,515 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:14:25,515 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:14:26,087 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:14:26,343 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:14:26,344 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:14:26,344 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:14:26,344 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:14:26,344 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:14:26,344 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:14:26,345 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:14:39,440 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:39,473 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:14:39,475 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:14:39,736 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:14:39,753 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:14:39,755 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:14:39,755 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:14:40,050 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:14:57,186 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Fast+Facts "HTTP/2 200 OK"
+2025-03-27 21:14:57,286 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Fast+Facts "HTTP/2 200 OK"
+2025-03-27 21:14:57,386 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:14:57,388 - services.category_service - INFO - Created category 'Fast Facts' with ID: f1dbc0b9-7621-49db-a854-a5003058b1c3
+2025-03-27 21:14:57,388 - multi_difficulty_test - INFO - Created category 'Fast Facts' with ID: f1dbc0b9-7621-49db-a854-a5003058b1c3
+2025-03-27 21:15:02,629 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:15:05,343 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:05,345 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:15:05,345 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:15:09,181 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:09,184 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:15:09,185 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fast Facts'
+2025-03-27 21:15:09,185 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fast Facts' - 'Easy'
+2025-03-27 21:15:09,185 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fast Facts'
+2025-03-27 21:15:09,185 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:15:09,185 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fast Facts' - 'Medium'
+2025-03-27 21:15:09,191 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fast Facts'
+2025-03-27 21:15:09,191 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:15:09,191 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fast Facts' - 'Hard'
+2025-03-27 21:15:09,196 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fast Facts'
+2025-03-27 21:15:09,196 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fast Facts' - 'Expert'
+2025-03-27 21:15:09,196 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:15:09,196 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fast Facts'
+2025-03-27 21:15:09,200 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:15:09,200 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fast Facts' - 'Master'
+2025-03-27 21:15:09,203 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:15:11,787 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:11,789 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the fastest land animal?",
+  "Which ocean is the largest on Earth?",
+  "What te...
+2025-03-27 21:15:11,789 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:15:11,789 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:15:11,790 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:15:12,142 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:15:12,342 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:12,344 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which country has the fastest recorded wind speed on Earth?",
+  "What is the world’s fa...
+2025-03-27 21:15:12,398 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:15:12,401 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:15:12,402 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:15:12,402 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:15:12,458 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:12,461 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the fastest recorded speed a human has run in the Olympics?",
+  "Which bird hol...
+2025-03-27 21:15:13,019 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:15:13,024 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:13,025 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "Which mammal holds the record for fastest land speed?",
+    "What is the quickest int...
+2025-03-27 21:15:13,165 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:13,166 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which planet completes its orbit around the Sun in just 88 Earth days?",
+  "What is the...
+2025-03-27 21:15:13,198 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:15:13,199 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:15:13,200 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:15:13,200 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:15:14,339 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:15:14,568 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:15:14,570 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:15:14,570 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:15:14,570 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:15:15,073 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:15:15,264 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:15:15,265 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:15:15,265 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:15:15,265 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:15:15,987 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:15:16,117 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:15:16,118 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:15:16,118 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:15:16,118 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:15:16,118 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:15:16,119 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:15:16,119 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:15:32,576 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:32,580 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:15:32,581 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:15:39,231 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:15:39,256 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:15:39,257 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:15:39,257 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:15:39,454 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:16:04,582 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Taylor+Swift+Fangirls "HTTP/2 200 OK"
+2025-03-27 21:16:04,661 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Taylor+Swift+Fangirls "HTTP/2 200 OK"
+2025-03-27 21:16:04,739 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:16:04,742 - services.category_service - INFO - Created category 'Taylor Swift Fangirls' with ID: a8ee8745-4ba9-4879-ac6c-65a932e6da5b
+2025-03-27 21:16:04,742 - multi_difficulty_test - INFO - Created category 'Taylor Swift Fangirls' with ID: a8ee8745-4ba9-4879-ac6c-65a932e6da5b
+2025-03-27 21:16:08,654 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:16:15,247 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:15,249 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:16:15,250 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:16:18,450 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:18,453 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:16:18,453 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Taylor Swift Fangirls'
+2025-03-27 21:16:18,454 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Taylor Swift Fangirls' - 'Easy'
+2025-03-27 21:16:18,454 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Taylor Swift Fangirls'
+2025-03-27 21:16:18,454 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:16:18,454 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Taylor Swift Fangirls' - 'Medium'
+2025-03-27 21:16:18,459 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Taylor Swift Fangirls'
+2025-03-27 21:16:18,460 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:16:18,460 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Taylor Swift Fangirls' - 'Hard'
+2025-03-27 21:16:18,464 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Taylor Swift Fangirls'
+2025-03-27 21:16:18,464 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Taylor Swift Fangirls' - 'Expert'
+2025-03-27 21:16:18,464 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:16:18,464 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Taylor Swift Fangirls'
+2025-03-27 21:16:18,464 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:16:18,467 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Taylor Swift Fangirls' - 'Master'
+2025-03-27 21:16:18,471 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:16:22,956 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:22,959 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which song is the 13th track on Taylor Swift's album '1989'?",
+  "Name the cat featured...
+2025-03-27 21:16:22,960 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:16:22,960 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:16:22,960 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:16:23,251 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:23,253 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What album features the song 'All Too Well,' famous for its storytelling?",
+  "Which mu...
+2025-03-27 21:16:23,363 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:16:23,376 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:23,386 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the significance of the number 13 to Taylor Swift?",
+  "Which album did Taylor ...
+2025-03-27 21:16:23,506 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:23,507 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which Taylor Swift album introduced her to the pop music genre after leaving country?",...
+2025-03-27 21:16:23,638 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:23,643 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What 2014 Taylor Swift album marked her shift from country to pop?",
+  "In which Taylor...
+2025-03-27 21:16:23,788 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:16:23,792 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:16:23,793 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:16:23,793 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:16:24,289 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:16:24,401 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:16:24,402 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:16:24,402 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:16:24,402 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:16:24,949 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:16:25,160 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:16:25,162 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:16:25,162 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:16:25,162 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:16:25,620 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:16:26,069 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:16:26,071 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:16:26,072 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:16:26,072 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:16:26,643 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:16:26,757 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:16:26,759 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:16:26,759 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:16:26,759 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:16:26,759 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:16:26,759 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:16:26,763 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:16:45,708 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:45,740 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:16:45,742 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:16:46,203 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:16:46,205 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:16:46,207 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:16:46,207 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:16:46,409 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:17:23,527 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Harry+Potter "HTTP/2 200 OK"
+2025-03-27 21:17:23,629 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Harry+Potter "HTTP/2 200 OK"
+2025-03-27 21:17:23,732 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:17:23,734 - services.category_service - INFO - Created category 'Harry Potter' with ID: f73b5abf-4409-49b1-be1a-6855889de6fc
+2025-03-27 21:17:23,734 - multi_difficulty_test - INFO - Created category 'Harry Potter' with ID: f73b5abf-4409-49b1-be1a-6855889de6fc
+2025-03-27 21:17:28,821 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:17:31,463 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:31,466 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:17:31,467 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:17:40,165 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:40,167 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:17:40,168 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Harry Potter'
+2025-03-27 21:17:40,168 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Harry Potter' - 'Easy'
+2025-03-27 21:17:40,168 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Harry Potter'
+2025-03-27 21:17:40,168 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:17:40,168 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Harry Potter' - 'Medium'
+2025-03-27 21:17:40,174 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Harry Potter'
+2025-03-27 21:17:40,174 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:17:40,174 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Harry Potter' - 'Hard'
+2025-03-27 21:17:40,179 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Harry Potter'
+2025-03-27 21:17:40,179 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:17:40,179 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Harry Potter' - 'Expert'
+2025-03-27 21:17:40,183 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Harry Potter'
+2025-03-27 21:17:40,183 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Harry Potter' - 'Master'
+2025-03-27 21:17:40,183 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:17:40,187 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:17:43,202 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:43,205 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What form does Harry Potter's Patronus take?",
+  "Who is the founder of Slytherin House...
+2025-03-27 21:17:43,206 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:17:43,206 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:17:43,206 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:17:43,280 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:43,282 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the full name of Albus Dumbledore?",
+  "Which magical creature's tears have hea...
+2025-03-27 21:17:43,461 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:43,466 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "What is the core material of Harry Potter's wand?",
+    "Which spell is used to disar...
+2025-03-27 21:17:43,635 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:43,640 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who is the Half-Blood Prince in the Harry Potter series?",
+  "What magical creature can...
+2025-03-27 21:17:43,723 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:17:43,782 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:17:43,786 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who is the author of the 'Harry Potter' series?",
+  "Which house at Hogwarts values bra...
+2025-03-27 21:17:44,063 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:17:44,065 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:17:44,066 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:17:44,066 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:17:44,572 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:17:44,822 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:17:44,823 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:17:44,823 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:17:44,823 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:17:45,353 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:17:45,632 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:17:45,634 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:17:45,634 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:17:45,634 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:17:46,003 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:17:46,259 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:17:46,261 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:17:46,261 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:17:46,261 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:17:46,624 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:17:46,754 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22content%22%2C%22difficulty%22%2C%22category%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:17:46,758 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:17:46,758 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:17:46,758 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:17:46,758 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:17:46,758 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:17:46,758 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:18:05,261 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:05,309 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:18:05,316 - utils.json_parsing - INFO - Successfully extracted 50 Q&A pairs using regex
+2025-03-27 21:18:05,316 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:18:12,945 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:12,948 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:18:12,950 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:18:12,950 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:18:13,215 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-27 21:18:34,639 - multi_difficulty_test - INFO - Logging configured for multi_difficulty_test
+2025-03-27 21:18:38,837 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.General+Knowledge "HTTP/2 200 OK"
+2025-03-27 21:18:38,911 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.General+Knowledge "HTTP/2 200 OK"
+2025-03-27 21:18:38,990 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:18:38,992 - services.category_service - INFO - Created category 'General Knowledge' with ID: aad355cb-edb6-494c-b17c-286b3eba1a4b
+2025-03-27 21:18:38,992 - multi_difficulty_test - INFO - Created category 'General Knowledge' with ID: aad355cb-edb6-494c-b17c-286b3eba1a4b
+2025-03-27 21:18:42,603 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:18:44,463 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:44,472 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:18:44,473 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:18:47,652 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:47,676 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:18:47,677 - utils.question_generator.generator - INFO - Using cached category guidelines for 'General Knowledge'
+2025-03-27 21:18:47,678 - utils.question_generator.generator - INFO - Using cached difficulty context for 'General Knowledge' - 'Easy'
+2025-03-27 21:18:47,678 - utils.question_generator.generator - INFO - Using cached category guidelines for 'General Knowledge'
+2025-03-27 21:18:47,678 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:18:47,678 - utils.question_generator.generator - INFO - Using cached difficulty context for 'General Knowledge' - 'Medium'
+2025-03-27 21:18:47,684 - utils.question_generator.generator - INFO - Using cached category guidelines for 'General Knowledge'
+2025-03-27 21:18:47,684 - utils.question_generator.generator - INFO - Using cached difficulty context for 'General Knowledge' - 'Hard'
+2025-03-27 21:18:47,684 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:18:47,685 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:18:47,685 - utils.question_generator.generator - INFO - Using cached category guidelines for 'General Knowledge'
+2025-03-27 21:18:47,691 - utils.question_generator.generator - INFO - Using cached difficulty context for 'General Knowledge' - 'Expert'
+2025-03-27 21:18:47,691 - utils.question_generator.generator - INFO - Using cached category guidelines for 'General Knowledge'
+2025-03-27 21:18:47,692 - utils.question_generator.generator - INFO - Using cached difficulty context for 'General Knowledge' - 'Master'
+2025-03-27 21:18:47,692 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:18:47,695 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:18:49,606 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:49,607 - utils.question_generator.generator - INFO - Raw LLM Response: [
+    "Which planet is known as the Red Planet?",
+    "What is the largest mammal in the world?",
+  ...
+2025-03-27 21:18:49,608 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:18:49,608 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:18:49,608 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:18:49,959 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:18:50,067 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:50,075 - utils.question_generator.generator - INFO - Raw LLM Response: [
+    "What continent is the Sahara Desert located on?",
+    "Which planet is known as the Red Plane...
+2025-03-27 21:18:50,201 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:18:50,204 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:18:50,204 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:18:50,204 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:18:50,938 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:18:50,939 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:50,942 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which ancient civilization is credited with inventing the wheel around 3500 BC?",
+  "Wh...
+2025-03-27 21:18:51,207 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:18:51,215 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:18:51,215 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:18:51,215 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:18:51,488 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:51,491 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What ancient language forms the basis for many medical and scientific terms today?",
+  ...
+2025-03-27 21:18:54,078 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:18:54,315 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:18:54,317 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:18:54,317 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:18:54,317 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:18:55,034 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:18:55,090 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:18:55,091 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What is the name of the first artificial satellite launched by humans?",
+  "Which early...
+2025-03-27 21:18:55,151 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:18:55,152 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:18:55,152 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:18:55,152 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:18:55,443 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:18:55,584 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:18:55,585 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:18:55,585 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:18:55,585 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:18:55,585 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:18:55,585 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:18:55,589 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:19:08,345 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:08,350 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:19:08,351 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:19:10,664 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:10,690 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:19:10,692 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:19:10,692 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:19:10,918 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 21:19:15,341 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Fun+For+All "HTTP/2 200 OK"
+2025-03-27 21:19:15,427 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Fun+For+All "HTTP/2 200 OK"
+2025-03-27 21:19:15,513 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:19:15,515 - services.category_service - INFO - Created category 'Fun For All' with ID: 34b62416-6b31-4071-9c02-5dae366e3cae
+2025-03-27 21:19:15,515 - multi_difficulty_test - INFO - Created category 'Fun For All' with ID: 34b62416-6b31-4071-9c02-5dae366e3cae
+2025-03-27 21:19:19,756 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:19:21,866 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:21,868 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:19:21,869 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:19:24,938 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:24,940 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:19:24,941 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fun For All'
+2025-03-27 21:19:24,941 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fun For All' - 'Easy'
+2025-03-27 21:19:24,941 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fun For All'
+2025-03-27 21:19:24,942 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fun For All' - 'Medium'
+2025-03-27 21:19:24,942 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fun For All'
+2025-03-27 21:19:24,942 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:19:24,942 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fun For All' - 'Hard'
+2025-03-27 21:19:24,948 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fun For All'
+2025-03-27 21:19:24,949 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:19:24,949 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fun For All' - 'Expert'
+2025-03-27 21:19:24,953 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:19:24,954 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Fun For All'
+2025-03-27 21:19:24,957 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Fun For All' - 'Master'
+2025-03-27 21:19:24,957 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:19:24,961 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:19:27,155 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:27,160 - utils.question_generator.generator - INFO - Raw LLM Response: [
+  "Which country gifted the Statue of Liberty to the United States?",
+  "Who played Jack Dawson in...
+2025-03-27 21:19:27,160 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:19:27,161 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:19:27,161 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:19:27,682 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:19:27,910 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:19:27,952 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:27,954 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What color is the iconic background of the Facebook logo?",
+  "What popular fruit share...
+2025-03-27 21:19:27,955 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:19:27,955 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:19:27,955 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:19:28,059 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:28,062 - utils.question_generator.generator - INFO - Raw LLM Response: [
+    "What iconic toy set consisting of interlocking bricks was invented in Denmark in 1932?",
+    ...
+2025-03-27 21:19:28,351 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:19:28,590 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:19:28,590 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:19:28,590 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:19:28,591 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:19:28,934 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:19:29,168 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:19:29,185 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:29,190 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which singer holds the record for most Grammy wins in a single night?",
+  "What is the ...
+2025-03-27 21:19:29,191 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:19:29,191 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:19:29,191 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:19:29,646 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:19:29,828 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:19:31,590 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:31,591 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "What street did the Gryffindor House ghost haunt in its former life before Hogwarts?"...
+2025-03-27 21:19:31,592 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:19:31,592 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:19:31,592 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:19:31,797 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:19:31,914 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:19:31,915 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:19:31,915 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:19:31,915 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:19:31,915 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:19:31,915 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:19:31,919 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:19:45,455 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:45,486 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:19:45,487 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:19:46,358 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:19:46,393 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:19:46,395 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:19:46,396 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:19:46,577 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-27 21:20:14,209 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.80s+Hit+Music "HTTP/2 200 OK"
+2025-03-27 21:20:14,297 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.80s+Hit+Music "HTTP/2 200 OK"
+2025-03-27 21:20:14,377 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-27 21:20:14,379 - services.category_service - INFO - Created category '80s Hit Music' with ID: b5e3edbe-74fd-4802-af07-3b52343cffad
+2025-03-27 21:20:14,379 - multi_difficulty_test - INFO - Created category '80s Hit Music' with ID: b5e3edbe-74fd-4802-af07-3b52343cffad
+2025-03-27 21:20:17,599 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-27 21:20:20,952 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:20,954 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-27 21:20:20,955 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-27 21:20:25,589 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:25,592 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-27 21:20:25,594 - utils.question_generator.generator - INFO - Using cached category guidelines for '80s Hit Music'
+2025-03-27 21:20:25,594 - utils.question_generator.generator - INFO - Using cached difficulty context for '80s Hit Music' - 'Easy'
+2025-03-27 21:20:25,594 - utils.question_generator.generator - INFO - Using cached category guidelines for '80s Hit Music'
+2025-03-27 21:20:25,594 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:20:25,594 - utils.question_generator.generator - INFO - Using cached difficulty context for '80s Hit Music' - 'Medium'
+2025-03-27 21:20:25,600 - utils.question_generator.generator - INFO - Using cached category guidelines for '80s Hit Music'
+2025-03-27 21:20:25,600 - utils.question_generator.generator - INFO - Using cached difficulty context for '80s Hit Music' - 'Hard'
+2025-03-27 21:20:25,600 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:20:25,600 - utils.question_generator.generator - INFO - Using cached category guidelines for '80s Hit Music'
+2025-03-27 21:20:25,600 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:20:25,605 - utils.question_generator.generator - INFO - Using cached difficulty context for '80s Hit Music' - 'Expert'
+2025-03-27 21:20:25,609 - utils.question_generator.generator - INFO - Using cached category guidelines for '80s Hit Music'
+2025-03-27 21:20:25,609 - utils.question_generator.generator - INFO - Using cached difficulty context for '80s Hit Music' - 'Master'
+2025-03-27 21:20:25,609 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:20:25,609 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-27 21:20:30,164 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:30,166 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who sang the 1982 hit 'Come On Eileen'?",
+  "What was the first video played on MTV, by...
+2025-03-27 21:20:30,167 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:20:30,167 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:20:30,167 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:20:30,574 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:30,576 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:30,578 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "Which music video did Michael Jackson debut his iconic dance move, the Moonwalk?",
+  ...
+2025-03-27 21:20:30,579 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who popularized the moonwalk during a Motown 25 performance in 1983?",
+  "Which hit sin...
+2025-03-27 21:20:30,673 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:20:31,061 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:20:31,066 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:20:31,066 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:20:31,066 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:20:31,333 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:20:31,363 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:31,371 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which artist is known as the King of Pop, with hits like 'Thriller' from the '80s?",
+  ...
+2025-03-27 21:20:31,551 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:20:31,552 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:20:31,552 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:20:31,552 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:20:31,915 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:20:31,999 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:32,003 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which iconic 1983 song featured in the music video with a werewolf transformation scene...
+2025-03-27 21:20:32,050 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:20:32,051 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:20:32,051 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:20:32,051 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:20:32,523 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:20:32,628 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:20:32,629 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-27 21:20:32,629 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-27 21:20:32,630 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-27 21:20:33,129 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-27 21:20:33,461 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category%22%2C%22difficulty%22%2C%22content%22%2C%22created_at%22%2C%22modified_difficulty%22 "HTTP/2 201 Created"
+2025-03-27 21:20:33,462 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-27 21:20:33,463 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-27 21:20:33,463 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-27 21:20:33,463 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-27 21:20:33,463 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:20:33,463 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-27 21:20:51,362 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:51,365 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:20:51,367 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-27 21:20:52,488 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-27 21:20:52,491 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-27 21:20:52,493 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-27 21:20:52,493 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-27 21:20:52,690 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22 "HTTP/2 201 Created"

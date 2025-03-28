@@ -29,6 +29,7 @@ from utils.question_generator.category_helper import CategoryHelper
 from utils.question_generator.difficulty_helper import DifficultyHelper
 from repositories.category_repository import CategoryRepository
 from services.category_service import CategoryService
+from models.category import CreatorType
 
 # Setup logging
 logger = setup_logging(app_name="multi_difficulty_test", log_level=logging.INFO)
@@ -119,6 +120,40 @@ async def setup_category_service():
     
     return category_service, client
 
+async def ensure_category_exists(category_name: str, category_service: CategoryService):
+    """
+    Ensure the specified category exists in the database
+    Creates it with SYSTEM creator type if it doesn't already exist
+    
+    Args:
+        category_name (str): The name of the category to check/create
+        category_service (CategoryService): The category service to use
+    
+    Returns:
+        bool: True if the category was created, False if it already existed
+    """
+    # Check if the category already exists
+    existing_category = await category_service.get_category_by_name(category_name)
+    
+    if existing_category:
+        logger.info(f"Category '{category_name}' already exists with ID: {existing_category.id}")
+        print(f"Category '{category_name}' already exists in the database.")
+        return False
+    
+    # Create the category with SYSTEM creator type
+    try:
+        created_category = await category_service.create_category(
+            name=category_name,
+            # No user_id means SYSTEM creator type will be used
+        )
+        logger.info(f"Created category '{category_name}' with ID: {created_category.id}")
+        print(f"✅ Created new category '{category_name}' in the database with SYSTEM creator.")
+        return True
+    except Exception as e:
+        logger.error(f"Error creating category '{category_name}': {e}")
+        print(f"⚠️ Failed to create category '{category_name}': {e}")
+        return False
+
 async def test_multi_difficulty_generation():
     """Test generating questions with multiple difficulty levels concurrently"""
     question_service, _ = await setup_question_service()
@@ -132,6 +167,9 @@ async def test_multi_difficulty_generation():
     category_name = input("Enter category (e.g., History, Science, Movies): ")
     if not category_name:
         category_name = "General Knowledge"
+    
+    # Ensure the category exists in the database
+    await ensure_category_exists(category_name, category_service)
     
     # Get difficulty counts
     difficulty_counts = {}
