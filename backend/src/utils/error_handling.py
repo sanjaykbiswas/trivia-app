@@ -188,3 +188,15 @@ class ErrorHandler:
             "status_code": 500,
             "details": None
         }
+
+# Add compatibility function for existing code
+def async_handle_errors(func=None, **kwargs):
+    """
+    Compatibility wrapper for ErrorHandler.handle_async_errors
+    
+    This function provides backward compatibility for code that imports
+    async_handle_errors directly.
+    """
+    if func is None:
+        return lambda f: ErrorHandler.handle_async_errors(**kwargs)(f)
+    return ErrorHandler.handle_async_errors()(func)

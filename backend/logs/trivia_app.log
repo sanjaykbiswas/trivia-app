@@ -440,3 +440,17 @@
 2025-03-29 10:00:47,116 - trivia_app - INFO - Application startup
 2025-03-29 10:01:00,610 - trivia_app - INFO - Logging configured for trivia_app
 2025-03-29 10:01:00,713 - trivia_app - INFO - Application startup
+2025-03-29 10:22:33,252 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 10:22:33,290 - trivia_app - INFO - Using refactored category service
+2025-03-29 10:22:33,320 - trivia_app - INFO - Using refactored user service
+2025-03-29 10:22:33,385 - trivia_app - INFO - Using refactored upload service
+2025-03-29 10:22:33,496 - trivia_app - INFO - Using refactored question service
+2025-03-29 10:22:33,521 - trivia_app - INFO - Application startup
+2025-03-29 10:22:33,522 - trivia_app - INFO - Using refactored services
+2025-03-29 10:23:35,095 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 10:23:35,129 - trivia_app - INFO - Using refactored category service
+2025-03-29 10:23:35,154 - trivia_app - INFO - Using refactored user service
+2025-03-29 10:23:35,191 - trivia_app - INFO - Using refactored upload service
+2025-03-29 10:23:35,253 - trivia_app - INFO - Using refactored question service
+2025-03-29 10:23:35,269 - trivia_app - INFO - Application startup
+2025-03-29 10:23:35,269 - trivia_app - INFO - Using refactored services

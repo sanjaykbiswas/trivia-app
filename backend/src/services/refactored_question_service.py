@@ -8,7 +8,7 @@ from services.service_base import ServiceBase
 from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
-from utils.error_handling import async_handle_errors
+from utils.error_handling import ErrorHandler
 from utils.category_utils import CategoryUtils
 from config.llm_config import LLMConfigFactory
 
@@ -66,7 +66,7 @@ class RefactoredQuestionService(ServiceBase):
         # Standard difficulty levels (5 tiers)
         self.difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Master"]
     
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def generate_and_save_questions(
         self, 
         category: str, 
@@ -135,7 +135,7 @@ class RefactoredQuestionService(ServiceBase):
             logger.error(f"Error in question generation: {e}")
             raise
     
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def generate_answers_for_questions(
         self,
         questions: List[Question],
@@ -196,7 +196,7 @@ class RefactoredQuestionService(ServiceBase):
         
         return saved_answers
     
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def create_complete_question_set(
         self,
         category: str,
@@ -265,7 +265,7 @@ class RefactoredQuestionService(ServiceBase):
         
         return complete_questions
 
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def create_multi_difficulty_question_set(
         self,
         category: str,
@@ -384,7 +384,7 @@ class RefactoredQuestionService(ServiceBase):
         return "Medium"
     
     # Query methods
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def get_questions_by_category(
         self,
         category: str,
@@ -408,7 +408,7 @@ class RefactoredQuestionService(ServiceBase):
             # Look up by category name
             return await self.repository.find_by_category_name(category, limit)
     
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def get_random_game_questions(
         self,
         categories=None,
@@ -438,7 +438,7 @@ class RefactoredQuestionService(ServiceBase):
         
         return await self.repository.get_random_game_questions(categories, count)
     
-    @async_handle_errors
+    @ErrorHandler.handle_async_errors
     async def get_complete_question(
         self,
         question_id: str
