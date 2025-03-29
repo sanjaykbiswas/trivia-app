@@ -454,3 +454,10 @@
 2025-03-29 10:23:35,253 - trivia_app - INFO - Using refactored question service
 2025-03-29 10:23:35,269 - trivia_app - INFO - Application startup
 2025-03-29 10:23:35,269 - trivia_app - INFO - Using refactored services
+2025-03-29 10:26:14,166 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 10:26:14,202 - trivia_app - INFO - Using refactored category service
+2025-03-29 10:26:14,227 - trivia_app - INFO - Using refactored user service
+2025-03-29 10:26:14,280 - trivia_app - INFO - Using refactored upload service
+2025-03-29 10:26:14,346 - trivia_app - INFO - Using refactored question service
+2025-03-29 10:26:14,362 - trivia_app - INFO - Application startup
+2025-03-29 10:26:14,362 - trivia_app - INFO - Using refactored services

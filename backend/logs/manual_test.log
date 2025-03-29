@@ -3012,3 +3012,4 @@ Craft questions that relate scientific principles to real-world applications. Ex
 2025-03-27 17:48:53,261 - utils.question_generator.answer_generator - INFO - Successfully parsed 20 answers in batch 1
 2025-03-27 17:48:53,261 - utils.question_generator.answer_generator - INFO - Generated 20 answers for 20 questions
 2025-03-27 17:48:53,430 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22incorrect_answers%22%2C%22correct_answer%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-29 10:26:18,865 - manual_test - INFO - Logging configured for manual_test

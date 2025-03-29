@@ -4,3 +4,65 @@
 2025-03-29 10:23:50,246 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Movies "HTTP/2 200 OK"
 2025-03-29 10:23:50,381 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
 2025-03-29 10:23:50,381 - refactor_test - INFO - Created category 'Movies' with ID: 387d8326-ab5f-41c8-96b3-4c56a94f11ad
+2025-03-29 10:26:36,823 - refactor_test - INFO - Logging configured for refactor_test
+2025-03-29 10:26:43,876 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Big+Movies "HTTP/2 200 OK"
+2025-03-29 10:26:44,092 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Big+Movies "HTTP/2 200 OK"
+2025-03-29 10:26:44,303 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Big+Movies "HTTP/2 200 OK"
+2025-03-29 10:26:44,501 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-29 10:26:44,502 - refactor_test - INFO - Created category 'Big Movies' with ID: 635df30d-7ade-4487-bcc9-fe57f4c05f85
+2025-03-29 10:26:49,221 - services.refactored_question_service - INFO - Pre-generating shared guidelines for category: 'Big Movies'
+2025-03-29 10:26:49,222 - utils.error_handling - ERROR - Error in async generate_and_save_questions: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+Traceback (most recent call last):
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/utils/error_handling.py", line 137, in wrapper
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/services/refactored_question_service.py", line 102, in generate_and_save_questions
+    category_id = await self.category_utils.get_or_create_category_id(category)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CategoryUtils' object has no attribute 'get_or_create_category_id'. Did you mean: 'get_or_create_category'?
+
+2025-03-29 10:26:49,222 - utils.error_handling - ERROR - Error in async generate_and_save_questions: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+Traceback (most recent call last):
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/utils/error_handling.py", line 137, in wrapper
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/services/refactored_question_service.py", line 102, in generate_and_save_questions
+    category_id = await self.category_utils.get_or_create_category_id(category)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CategoryUtils' object has no attribute 'get_or_create_category_id'. Did you mean: 'get_or_create_category'?
+
+2025-03-29 10:26:49,223 - utils.error_handling - ERROR - Error in async generate_and_save_questions: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+Traceback (most recent call last):
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/utils/error_handling.py", line 137, in wrapper
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/services/refactored_question_service.py", line 102, in generate_and_save_questions
+    category_id = await self.category_utils.get_or_create_category_id(category)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CategoryUtils' object has no attribute 'get_or_create_category_id'. Did you mean: 'get_or_create_category'?
+
+2025-03-29 10:26:49,223 - utils.error_handling - ERROR - Error in async generate_and_save_questions: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+Traceback (most recent call last):
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/utils/error_handling.py", line 137, in wrapper
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/services/refactored_question_service.py", line 102, in generate_and_save_questions
+    category_id = await self.category_utils.get_or_create_category_id(category)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CategoryUtils' object has no attribute 'get_or_create_category_id'. Did you mean: 'get_or_create_category'?
+
+2025-03-29 10:26:49,223 - utils.error_handling - ERROR - Error in async generate_and_save_questions: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+Traceback (most recent call last):
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/utils/error_handling.py", line 137, in wrapper
+    return await fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sanjaybiswas/development/trivia-app/backend/src/services/refactored_question_service.py", line 102, in generate_and_save_questions
+    category_id = await self.category_utils.get_or_create_category_id(category)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'CategoryUtils' object has no attribute 'get_or_create_category_id'. Did you mean: 'get_or_create_category'?
+
+2025-03-29 10:26:49,223 - services.refactored_question_service - ERROR - Error generating questions for Easy difficulty: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+2025-03-29 10:26:49,223 - services.refactored_question_service - ERROR - Error generating questions for Medium difficulty: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+2025-03-29 10:26:49,223 - services.refactored_question_service - ERROR - Error generating questions for Hard difficulty: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+2025-03-29 10:26:49,223 - services.refactored_question_service - ERROR - Error generating questions for Expert difficulty: 'CategoryUtils' object has no attribute 'get_or_create_category_id'
+2025-03-29 10:26:49,223 - services.refactored_question_service - ERROR - Error generating questions for Master difficulty: 'CategoryUtils' object has no attribute 'get_or_create_category_id'

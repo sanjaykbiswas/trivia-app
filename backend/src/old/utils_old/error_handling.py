@@ -1,3 +1,4 @@
+# backend/src/utils/error_handling.py
 import logging
 import functools
 import traceback
@@ -46,16 +47,13 @@ class ErrorHandler:
     """
     
     @staticmethod
-    def handle_errors(
-        default_message: str = "An unexpected error occurred",
-        error_map: Optional[Dict[Type[Exception], Callable[[Exception], Any]]] = None,
-        log_traceback: bool = True,
-        reraise: bool = True
-    ):
+    def handle_errors(func=None, *, default_message="An unexpected error occurred", 
+                      error_map=None, log_traceback=True, reraise=True):
         """
         Decorator to handle errors with specific handlers
         
         Args:
+            func: The function to decorate (None if used with parameters)
             default_message (str): Default error message
             error_map (Dict[Type[Exception], Callable]): Mapping of exception types to handler functions
             log_traceback (bool): Whether to log full traceback
@@ -71,20 +69,20 @@ class ErrorHandler:
             def my_function():
                 # Function implementation
         """
-        def decorator(func: F) -> F:
-            @functools.wraps(func)
+        def decorator(fn):
+            @functools.wraps(fn)
             def wrapper(*args, **kwargs):
                 try:
-                    return func(*args, **kwargs)
+                    return fn(*args, **kwargs)
                 except Exception as e:
                     # Log the error
                     if log_traceback:
                         logger.error(
-                            f"Error in {func.__name__}: {str(e)}\n"
+                            f"Error in {fn.__name__}: {str(e)}\n"
                             f"{traceback.format_exc()}"
                         )
                     else:
-                        logger.error(f"Error in {func.__name__}: {str(e)}")
+                        logger.error(f"Error in {fn.__name__}: {str(e)}")
                     
                     # Handle specific errors
                     if error_map and type(e) in error_map:
@@ -102,19 +100,21 @@ class ErrorHandler:
             
             return wrapper
         
+        # Direct decoration without arguments
+        if func is not None:
+            return decorator(func)
+        
+        # Decoration with arguments
         return decorator
     
     @staticmethod
-    def handle_async_errors(
-        default_message: str = "An unexpected error occurred",
-        error_map: Optional[Dict[Type[Exception], Callable[[Exception], Any]]] = None,
-        log_traceback: bool = True,
-        reraise: bool = True
-    ):
+    def handle_async_errors(func=None, *, default_message="An unexpected error occurred", 
+                          error_map=None, log_traceback=True, reraise=True):
         """
         Decorator to handle errors in async functions
         
         Args:
+            func: The function to decorate (None if used with parameters)
             default_message (str): Default error message
             error_map (Dict[Type[Exception], Callable]): Mapping of exception types to handler functions
             log_traceback (bool): Whether to log full traceback
@@ -130,20 +130,20 @@ class ErrorHandler:
             async def my_async_function():
                 # Async function implementation
         """
-        def decorator(func: F) -> F:
-            @functools.wraps(func)
+        def decorator(fn):
+            @functools.wraps(fn)
             async def wrapper(*args, **kwargs):
                 try:
-                    return await func(*args, **kwargs)
+                    return await fn(*args, **kwargs)
                 except Exception as e:
                     # Log the error
                     if log_traceback:
                         logger.error(
-                            f"Error in async {func.__name__}: {str(e)}\n"
+                            f"Error in async {fn.__name__}: {str(e)}\n"
                             f"{traceback.format_exc()}"
                         )
                     else:
-                        logger.error(f"Error in async {func.__name__}: {str(e)}")
+                        logger.error(f"Error in async {fn.__name__}: {str(e)}")
                     
                     # Handle specific errors
                     if error_map and type(e) in error_map:
@@ -161,6 +161,11 @@ class ErrorHandler:
             
             return wrapper
         
+        # Direct decoration without arguments
+        if func is not None:
+            return decorator(func)
+        
+        # Decoration with arguments
         return decorator
     
     @staticmethod
