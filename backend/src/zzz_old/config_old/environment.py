@@ -21,7 +21,7 @@ class Environment:
         self.supabase_url = os.getenv("SUPABASE_URL")
         self.supabase_key = os.getenv("SUPABASE_KEY")
         self.supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET")  # Add this line
-        self.llm_provider = os.getenv("LLM_PROVIDER", "anthropic")  # Default to anthropic
+        self.llm_provider = os.getenv("LLM_PROVIDER", "openai")  # Default to Openai
     
     def get(self, key, default=None):
         """Get an environment variable"""
