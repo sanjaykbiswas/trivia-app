@@ -16,7 +16,7 @@ from .user_pack_history_repository import UserPackHistoryRepository
 from .pack_creation_data_repository import PackCreationDataRepository
 
 __all__ = [
-    "BaseRepository", # Exporting the base abstract class can be useful for type hinting
+    "BaseRepository", # Exporting the base abstract class for type hinting
     "UserRepository",
     "QuestionRepository",
     "IncorrectAnswersRepository",

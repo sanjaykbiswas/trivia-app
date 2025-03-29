@@ -14,7 +14,8 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Iden
     """
     Abstract base class for data repositories.
 
-    Defines the standard interface for CRUD operations.
+    Defines the standard interface for CRUD operations with separate
+    schema types for creation and update operations.
     """
 
     @abstractmethod
@@ -29,15 +30,15 @@ class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType, Iden
 
     @abstractmethod
     async def create(self, *, obj_in: CreateSchemaType) -> ModelType:
-        """Create a new item."""
+        """Create a new item using the creation schema."""
         pass
 
     @abstractmethod
     async def update(self, *, id: IdentifierType, obj_in: UpdateSchemaType) -> Optional[ModelType]:
-        """Update an existing item by its unique identifier."""
+        """Update an existing item by its unique identifier using the update schema."""
         pass
 
     @abstractmethod
     async def delete(self, *, id: IdentifierType) -> Optional[ModelType]:
-        """Delete an item by its unique identifier."""
+        """Delete an item by its unique identifier and return the deleted item if successful."""
         pass

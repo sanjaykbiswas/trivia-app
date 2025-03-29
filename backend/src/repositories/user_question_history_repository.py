@@ -3,10 +3,10 @@ import uuid
 from typing import List, Optional
 from supabase_py_async import AsyncClient
 
-from ..models.user_question_history import UserQuestionHistory
+from ..models.user_question_history import UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate
 from .base_repository_impl import BaseRepositoryImpl
 
-class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, UserQuestionHistory, UserQuestionHistory, uuid.UUID]):
+class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate, uuid.UUID]):
     """
     Repository for managing UserQuestionHistory data in Supabase.
     """

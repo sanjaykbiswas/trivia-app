@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field, EmailStr
 
+from .base_schema import BaseCreateSchema, BaseUpdateSchema
+
 
 class User(BaseModel):
     """
@@ -28,3 +30,21 @@ class User(BaseModel):
     
     class Config:
         orm_mode = True
+
+
+class UserCreate(BaseCreateSchema):
+    """Schema for creating a new user."""
+    displayname: Optional[str] = None
+    email: Optional[EmailStr] = None
+    is_temporary: bool
+    auth_provider: Optional[str] = None
+    auth_id: Optional[str] = None
+
+
+class UserUpdate(BaseUpdateSchema):
+    """Schema for updating an existing user."""
+    displayname: Optional[str] = None
+    email: Optional[EmailStr] = None
+    is_temporary: Optional[bool] = None
+    auth_provider: Optional[str] = None
+    auth_id: Optional[str] = None

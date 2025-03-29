@@ -4,10 +4,10 @@ from typing import List, Optional
 from supabase_py_async import AsyncClient
 from datetime import datetime
 
-from ..models.user_pack_history import UserPackHistory
+from ..models.user_pack_history import UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate
 from .base_repository_impl import BaseRepositoryImpl
 
-class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHistory, UserPackHistory, uuid.UUID]):
+class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate, uuid.UUID]):
     """
     Repository for managing UserPackHistory data in Supabase.
     """
@@ -73,8 +73,8 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
                 return self.model.parse_obj(response.data[0])
             return None # Update failed?
         else:
-            # Create new entry
-            new_history = UserPackHistory(
+            # Create new entry with the proper create schema
+            new_history = UserPackHistoryCreate(
                 user_id=user_id,
                 pack_id=pack_id,
                 play_count=1,

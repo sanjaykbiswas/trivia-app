@@ -1,7 +1,10 @@
 # backend/src/models/pack_group.py
 import uuid
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field
+
+from .base_schema import BaseCreateSchema, BaseUpdateSchema
 
 
 class PackGroup(BaseModel):
@@ -19,3 +22,13 @@ class PackGroup(BaseModel):
     
     class Config:
         orm_mode = True
+
+
+class PackGroupCreate(BaseCreateSchema):
+    """Schema for creating a new pack group."""
+    name: str
+
+
+class PackGroupUpdate(BaseUpdateSchema):
+    """Schema for updating an existing pack group."""
+    name: Optional[str] = None

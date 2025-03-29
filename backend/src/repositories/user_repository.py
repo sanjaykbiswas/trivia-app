@@ -3,12 +3,10 @@ import uuid
 from typing import Optional, List
 from supabase_py_async import AsyncClient
 
-from ..models.user import User
+from ..models.user import User, UserCreate, UserUpdate
 from .base_repository_impl import BaseRepositoryImpl
 
-# Assuming your User model is used for Create/Update as well
-# If you had separate UserCreate, UserUpdate models, you'd use them here.
-class UserRepository(BaseRepositoryImpl[User, User, User, uuid.UUID]):
+class UserRepository(BaseRepositoryImpl[User, UserCreate, UserUpdate, uuid.UUID]):
     """
     Repository for managing User data in Supabase.
     Inherits generic CRUD operations from BaseRepositoryImpl.

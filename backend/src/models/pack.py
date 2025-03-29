@@ -5,6 +5,8 @@ from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
+from .base_schema import BaseCreateSchema, BaseUpdateSchema
+
 
 class CreatorType(str, Enum):
     """Enum for types of pack creators"""
@@ -37,3 +39,23 @@ class Pack(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class PackCreate(BaseCreateSchema):
+    """Schema for creating a new pack."""
+    name: str
+    description: Optional[str] = None
+    price: float
+    pack_group_id: Optional[List[uuid.UUID]] = None
+    creator_type: CreatorType
+    correct_answer_rate: Optional[float] = None
+
+
+class PackUpdate(BaseUpdateSchema):
+    """Schema for updating an existing pack."""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    pack_group_id: Optional[List[uuid.UUID]] = None
+    creator_type: Optional[CreatorType] = None
+    correct_answer_rate: Optional[float] = None

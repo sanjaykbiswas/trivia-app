@@ -1,7 +1,10 @@
 # backend/src/models/user_pack_history.py
 import uuid
 from datetime import datetime
+from typing import Optional
 from pydantic import BaseModel, Field
+
+from .base_schema import BaseCreateSchema, BaseUpdateSchema
 
 
 class UserPackHistory(BaseModel):
@@ -23,3 +26,17 @@ class UserPackHistory(BaseModel):
     
     class Config:
         orm_mode = True
+
+
+class UserPackHistoryCreate(BaseCreateSchema):
+    """Schema for creating a new user pack history entry."""
+    user_id: uuid.UUID
+    pack_id: uuid.UUID
+    play_count: int
+    last_played_at: Optional[datetime] = None
+
+
+class UserPackHistoryUpdate(BaseUpdateSchema):
+    """Schema for updating an existing user pack history entry."""
+    play_count: Optional[int] = None
+    last_played_at: Optional[datetime] = None

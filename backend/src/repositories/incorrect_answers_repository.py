@@ -3,10 +3,10 @@ import uuid
 from typing import Optional, List
 from supabase_py_async import AsyncClient
 
-from ..models.incorrect_answers import IncorrectAnswers
+from ..models.incorrect_answers import IncorrectAnswers, IncorrectAnswersCreate, IncorrectAnswersUpdate
 from .base_repository_impl import BaseRepositoryImpl
 
-class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectAnswers, IncorrectAnswers, uuid.UUID]):
+class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectAnswersCreate, IncorrectAnswersUpdate, uuid.UUID]):
     """
     Repository for managing IncorrectAnswers data in Supabase.
     """

@@ -1,8 +1,10 @@
 # backend/src/models/incorrect_answers.py
 import uuid
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
+
+from .base_schema import BaseCreateSchema, BaseUpdateSchema
 
 
 class IncorrectAnswers(BaseModel):
@@ -22,3 +24,14 @@ class IncorrectAnswers(BaseModel):
     
     class Config:
         orm_mode = True
+
+
+class IncorrectAnswersCreate(BaseCreateSchema):
+    """Schema for creating incorrect answers for a question."""
+    incorrect_answers: List[str]
+    question_id: uuid.UUID
+
+
+class IncorrectAnswersUpdate(BaseUpdateSchema):
+    """Schema for updating incorrect answers for a question."""
+    incorrect_answers: Optional[List[str]] = None

@@ -1,12 +1,12 @@
 # backend/src/repositories/pack_creation_data_repository.py
 import uuid
-from typing import Optional # <-- Import Optional
+from typing import Optional
 from supabase_py_async import AsyncClient
 
-from ..models.pack_creation_data import PackCreationData
+from ..models.pack_creation_data import PackCreationData, PackCreationDataCreate, PackCreationDataUpdate
 from .base_repository_impl import BaseRepositoryImpl
 
-class PackCreationDataRepository(BaseRepositoryImpl[PackCreationData, PackCreationData, PackCreationData, uuid.UUID]):
+class PackCreationDataRepository(BaseRepositoryImpl[PackCreationData, PackCreationDataCreate, PackCreationDataUpdate, uuid.UUID]):
     """
     Repository for managing PackCreationData in Supabase.
     Contains metadata linked to a specific pack.

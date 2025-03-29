@@ -5,6 +5,8 @@ from enum import Enum
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field, root_validator
 
+from .base_schema import BaseCreateSchema, BaseUpdateSchema
+
 
 class DifficultyLevel(str, Enum):
     """Enum for difficulty levels of questions"""
@@ -47,3 +49,23 @@ class Question(BaseModel):
     
     class Config:
         orm_mode = True
+
+
+class QuestionCreate(BaseCreateSchema):
+    """Schema for creating a new question."""
+    question: str
+    answer: str
+    pack_id: uuid.UUID
+    difficulty_initial: DifficultyLevel
+    difficulty_current: Optional[DifficultyLevel] = None
+    
+    # Default values not required in creation schema
+    correct_answer_rate: float = 0.0
+
+
+class QuestionUpdate(BaseUpdateSchema):
+    """Schema for updating an existing question."""
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    difficulty_current: Optional[DifficultyLevel] = None
+    correct_answer_rate: Optional[float] = None
