@@ -1,19 +1,21 @@
+# backend/src/repositories/question_repository.py
 from typing import List, Dict, Any, Optional
 import json
 from models.question import Question
 from models.answer import Answer
 from models.complete_question import CompleteQuestion
-from repositories.base_repository import BaseRepository
+from repositories.base_repository_impl import BaseRepositoryImpl
 from repositories.category_repository import CategoryRepository
 from config.environment import Environment
 
-class QuestionRepository(BaseRepository[Question]):
+class QuestionRepository(BaseRepositoryImpl[Question]):
     """
     Repository for managing trivia questions in Supabase
     """
     def __init__(self, supabase_client, category_repository=None):
-        self.client = supabase_client
-        self.questions_table = "questions"
+        """Initialize with Supabase client and optional category repository"""
+        super().__init__(supabase_client, "questions", Question)
+        self.questions_table = "questions"  # For backward compatibility
         self.answers_table = "answers"
         # Store the category repository for lookups
         self.category_repository = category_repository
@@ -29,32 +31,6 @@ class QuestionRepository(BaseRepository[Question]):
             from repositories.category_repository import CategoryRepository
             self.category_repository = CategoryRepository(self.client)
         return self.category_repository
-    
-    async def create(self, question: Question) -> Question:
-        """
-        Create a single question
-        
-        Args:
-            question (Question): Question to create
-            
-        Returns:
-            Question: Created question with ID
-        """
-        # Ensure category_id is set if we only have category_name
-        if not question.category_id and question.category_name:
-            await self._ensure_category_id(question)
-            
-        response = (
-            self.client
-            .table(self.questions_table)
-            .insert(question.to_dict())
-            .execute()
-        )
-        
-        if response.data:
-            question.id = response.data[0]["id"]
-        
-        return question
     
     async def _ensure_category_id(self, question: Question) -> None:
         """
@@ -90,9 +66,26 @@ class QuestionRepository(BaseRepository[Question]):
                 default_category = await category_repo.get_or_create_default_category()
                 question.category_id = default_category.id
     
+    async def create(self, question: Question) -> Question:
+        """
+        Create a single question with category resolution
+        
+        Args:
+            question (Question): Question to create
+            
+        Returns:
+            Question: Created question with ID
+        """
+        # Ensure category_id is set if we only have category_name
+        if not question.category_id and question.category_name:
+            await self._ensure_category_id(question)
+            
+        # Call parent implementation for actual creation
+        return await super().create(question)
+    
     async def bulk_create(self, questions: List[Question]) -> List[Question]:
         """
-        Create multiple questions
+        Create multiple questions with category resolution
         
         Args:
             questions (List[Question]): Questions to create
@@ -104,86 +97,8 @@ class QuestionRepository(BaseRepository[Question]):
         for question in questions:
             await self._ensure_category_id(question)
             
-        question_dicts = [q.to_dict() for q in questions]
-        
-        response = (
-            self.client
-            .table(self.questions_table)
-            .insert(question_dicts)
-            .execute()
-        )
-        
-        # Set IDs on the original question objects
-        for idx, data in enumerate(response.data):
-            questions[idx].id = data["id"]
-        
-        return questions
-    
-    async def get_by_id(self, id: str) -> Optional[Question]:
-        """
-        Get question by ID
-        
-        Args:
-            id (str): Question ID
-            
-        Returns:
-            Optional[Question]: Question if found
-        """
-        response = (
-            self.client
-            .table(self.questions_table)
-            .select("*, categories(name)")  # Join with categories to get name
-            .eq("id", id)
-            .execute()
-        )
-        
-        if response.data:
-            question_data = response.data[0]
-            
-            # Extract category name from joined data if available
-            if "categories" in question_data and question_data["categories"]:
-                question_data["category_name"] = question_data["categories"]["name"]
-            
-            # Remove the joined object to avoid dataclass conflicts
-            if "categories" in question_data:
-                del question_data["categories"]
-                
-            return Question.from_dict(question_data)
-        
-        return None
-    
-    async def find(self, filter_params: Dict[str, Any], limit: int = 100) -> List[Question]:
-        """
-        Find questions matching criteria
-        
-        Args:
-            filter_params (Dict[str, Any]): Filter criteria
-            limit (int): Maximum results
-            
-        Returns:
-            List[Question]: Matching questions
-        """
-        query = self.client.table(self.questions_table).select("*, categories(name)")
-        
-        # Apply filters
-        for key, value in filter_params.items():
-            query = query.eq(key, value)
-        
-        response = query.limit(limit).execute()
-        
-        questions = []
-        for data in response.data:
-            # Extract category name from joined data if available
-            if "categories" in data and data["categories"]:
-                data["category_name"] = data["categories"]["name"]
-            
-            # Remove the joined object to avoid dataclass conflicts
-            if "categories" in data:
-                del data["categories"]
-                
-            questions.append(Question.from_dict(data))
-            
-        return questions
+        # Call parent implementation for actual bulk creation
+        return await super().bulk_create(questions)
     
     async def find_by_category(self, category_id: str, limit: int = 50) -> List[Question]:
         """
@@ -221,7 +136,7 @@ class QuestionRepository(BaseRepository[Question]):
     
     async def update(self, id: str, data: Dict[str, Any]) -> Optional[Question]:
         """
-        Update a question
+        Update a question with category resolution
         
         Args:
             id (str): Question ID
@@ -246,38 +161,8 @@ class QuestionRepository(BaseRepository[Question]):
                     # Keep the existing category_id if we can't update it
                     pass
         
-        response = (
-            self.client
-            .table(self.questions_table)
-            .update(data)
-            .eq("id", id)
-            .execute()
-        )
-        
-        if response.data:
-            return Question.from_dict(response.data[0])
-        
-        return None
-    
-    async def delete(self, id: str) -> bool:
-        """
-        Delete a question
-        
-        Args:
-            id (str): Question ID
-            
-        Returns:
-            bool: Success status
-        """
-        response = (
-            self.client
-            .table(self.questions_table)
-            .delete()
-            .eq("id", id)
-            .execute()
-        )
-        
-        return len(response.data) > 0
+        # Call parent implementation for actual update
+        return await super().update(id, data)
     
     async def save_answer(self, answer: Answer) -> Answer:
         """
