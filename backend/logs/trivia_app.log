@@ -399,3 +399,16 @@
 2025-03-28 18:13:27,461 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=2 "HTTP/2 200 OK"
 2025-03-28 18:13:27,569 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%2C474c6c85-225f-471b-b4c2-c6147c5847a1%29 "HTTP/2 200 OK"
 2025-03-28 18:13:27,570 - trivia_app - INFO - Response: GET /questions/game - Status: 200 - Time: 0.3086s
+2025-03-28 20:28:57,176 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 20:28:57,298 - trivia_app - INFO - Application startup
+2025-03-28 20:31:18,060 - trivia_app - INFO - Request: GET / from 192.168.86.182
+2025-03-28 20:31:18,061 - trivia_app - INFO - Response: GET / - Status: 200 - Time: 0.0011s
+2025-03-28 20:31:18,607 - trivia_app - INFO - Request: GET /docs from 192.168.86.182
+2025-03-28 20:31:18,608 - trivia_app - INFO - Response: GET /docs - Status: 200 - Time: 0.0005s
+2025-03-28 20:31:19,148 - trivia_app - INFO - Request: GET /categories/ from 192.168.86.182
+2025-03-28 20:31:19,482 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A "HTTP/2 200 OK"
+2025-03-28 20:31:19,498 - trivia_app - INFO - Response: GET /categories/ - Status: 200 - Time: 0.3496s
+2025-03-28 20:31:20,102 - trivia_app - INFO - Request: GET /questions/game from 192.168.86.182
+2025-03-28 20:31:20,308 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=2 "HTTP/2 200 OK"
+2025-03-28 20:31:20,418 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%2C474c6c85-225f-471b-b4c2-c6147c5847a1%29 "HTTP/2 200 OK"
+2025-03-28 20:31:20,419 - trivia_app - INFO - Response: GET /questions/game - Status: 200 - Time: 0.3168s
