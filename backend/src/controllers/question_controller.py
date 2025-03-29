@@ -217,7 +217,7 @@ class QuestionController:
         return CompleteQuestionResponse(
             id=question.question.id,
             content=question.content,
-            category=question.category,
+            category=question.category_name if hasattr(question, 'category_name') else question.category_id,
             correct_answer=question.correct_answer,
             incorrect_answers=question.incorrect_answers,
             difficulty=question.difficulty,

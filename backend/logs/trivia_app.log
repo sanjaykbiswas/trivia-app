@@ -334,3 +334,68 @@
 2025-03-28 16:41:57,090 - utils.supabase_actions - INFO - Temporary user created with ID: 03ec846e-e129-4c55-a697-2315f3170500
 2025-03-28 16:41:57,090 - services.user_service - INFO - Temporary user created with ID: 03ec846e-e129-4c55-a697-2315f3170500
 2025-03-28 16:41:57,092 - trivia_app - INFO - Response: POST /auth/temp-user - Status: 200 - Time: 0.2368s
+2025-03-28 17:26:29,711 - trivia_app - INFO - Request: GET / from 127.0.0.1
+2025-03-28 17:26:29,713 - trivia_app - INFO - Response: GET / - Status: 200 - Time: 0.0029s
+2025-03-28 17:26:29,864 - trivia_app - INFO - Request: GET /favicon.ico from 127.0.0.1
+2025-03-28 17:26:29,865 - trivia_app - INFO - Response: GET /favicon.ico - Status: 404 - Time: 0.0010s
+2025-03-28 17:26:51,135 - trivia_app - INFO - Request: GET /docs from 127.0.0.1
+2025-03-28 17:26:51,135 - trivia_app - INFO - Response: GET /docs - Status: 200 - Time: 0.0007s
+2025-03-28 17:26:51,875 - trivia_app - INFO - Request: GET /openapi.json from 127.0.0.1
+2025-03-28 17:26:51,894 - trivia_app - INFO - Response: GET /openapi.json - Status: 200 - Time: 0.0189s
+2025-03-28 17:57:18,069 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 17:57:18,181 - trivia_app - INFO - Application startup
+2025-03-28 17:58:28,705 - trivia_app - INFO - Request: GET / from 192.168.86.182
+2025-03-28 17:58:28,706 - trivia_app - INFO - Response: GET / - Status: 200 - Time: 0.0013s
+2025-03-28 17:58:28,742 - trivia_app - INFO - Request: GET /docs from 192.168.86.182
+2025-03-28 17:58:28,743 - trivia_app - INFO - Response: GET /docs - Status: 200 - Time: 0.0004s
+2025-03-28 17:58:28,778 - trivia_app - INFO - Request: GET /categories from 192.168.86.182
+2025-03-28 17:58:28,779 - trivia_app - INFO - Response: GET /categories - Status: 307 - Time: 0.0007s
+2025-03-28 17:58:28,786 - trivia_app - INFO - Request: GET /categories/ from 192.168.86.182
+2025-03-28 17:58:29,146 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A "HTTP/2 200 OK"
+2025-03-28 17:58:29,163 - trivia_app - INFO - Response: GET /categories/ - Status: 200 - Time: 0.3774s
+2025-03-28 17:58:29,215 - trivia_app - INFO - Request: GET /questions/game from 192.168.86.182
+2025-03-28 17:58:29,457 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=1 "HTTP/2 200 OK"
+2025-03-28 17:58:29,570 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%29 "HTTP/2 200 OK"
+2025-03-28 18:08:35,438 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 18:08:35,551 - trivia_app - INFO - Application startup
+2025-03-28 18:09:14,356 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 18:09:14,473 - trivia_app - INFO - Application startup
+2025-03-28 18:10:14,311 - trivia_app - INFO - Request: GET / from 192.168.86.182
+2025-03-28 18:10:14,312 - trivia_app - INFO - Response: GET / - Status: 200 - Time: 0.0008s
+2025-03-28 18:10:14,338 - trivia_app - INFO - Request: GET /docs from 192.168.86.182
+2025-03-28 18:10:14,339 - trivia_app - INFO - Response: GET /docs - Status: 200 - Time: 0.0005s
+2025-03-28 18:10:14,358 - trivia_app - INFO - Request: GET /categories from 192.168.86.182
+2025-03-28 18:10:14,358 - trivia_app - INFO - Response: GET /categories - Status: 307 - Time: 0.0003s
+2025-03-28 18:10:14,365 - trivia_app - INFO - Request: GET /categories/ from 192.168.86.182
+2025-03-28 18:10:14,677 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A "HTTP/2 200 OK"
+2025-03-28 18:10:14,688 - trivia_app - INFO - Response: GET /categories/ - Status: 200 - Time: 0.3230s
+2025-03-28 18:10:14,741 - trivia_app - INFO - Request: GET /questions/game from 192.168.86.182
+2025-03-28 18:10:14,916 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=1 "HTTP/2 200 OK"
+2025-03-28 18:10:15,014 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%29 "HTTP/2 200 OK"
+2025-03-28 18:10:15,017 - trivia_app - INFO - Response: GET /questions/game - Status: 200 - Time: 0.2760s
+2025-03-28 18:12:27,632 - trivia_app - INFO - Request: GET / from 192.168.86.182
+2025-03-28 18:12:27,634 - trivia_app - INFO - Response: GET / - Status: 200 - Time: 0.0020s
+2025-03-28 18:12:27,664 - trivia_app - INFO - Request: GET /docs from 192.168.86.182
+2025-03-28 18:12:27,664 - trivia_app - INFO - Response: GET /docs - Status: 200 - Time: 0.0002s
+2025-03-28 18:12:27,689 - trivia_app - INFO - Request: GET /categories from 192.168.86.182
+2025-03-28 18:12:27,689 - trivia_app - INFO - Response: GET /categories - Status: 307 - Time: 0.0007s
+2025-03-28 18:12:27,698 - trivia_app - INFO - Request: GET /categories/ from 192.168.86.182
+2025-03-28 18:12:27,954 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A "HTTP/2 200 OK"
+2025-03-28 18:12:27,958 - trivia_app - INFO - Response: GET /categories/ - Status: 200 - Time: 0.2593s
+2025-03-28 18:12:28,049 - trivia_app - INFO - Request: GET /questions/game from 192.168.86.182
+2025-03-28 18:12:28,276 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=1 "HTTP/2 200 OK"
+2025-03-28 18:12:28,346 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%29 "HTTP/2 200 OK"
+2025-03-28 18:12:28,349 - trivia_app - INFO - Response: GET /questions/game - Status: 200 - Time: 0.2998s
+2025-03-28 18:12:43,763 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 18:12:43,876 - trivia_app - INFO - Application startup
+2025-03-28 18:13:25,348 - trivia_app - INFO - Request: GET / from 192.168.86.182
+2025-03-28 18:13:25,349 - trivia_app - INFO - Response: GET / - Status: 200 - Time: 0.0009s
+2025-03-28 18:13:25,901 - trivia_app - INFO - Request: GET /docs from 192.168.86.182
+2025-03-28 18:13:25,902 - trivia_app - INFO - Response: GET /docs - Status: 200 - Time: 0.0003s
+2025-03-28 18:13:26,451 - trivia_app - INFO - Request: GET /categories/ from 192.168.86.182
+2025-03-28 18:13:26,644 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A "HTTP/2 200 OK"
+2025-03-28 18:13:26,646 - trivia_app - INFO - Response: GET /categories/ - Status: 200 - Time: 0.1950s
+2025-03-28 18:13:27,262 - trivia_app - INFO - Request: GET /questions/game from 192.168.86.182
+2025-03-28 18:13:27,461 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=2 "HTTP/2 200 OK"
+2025-03-28 18:13:27,569 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%2C474c6c85-225f-471b-b4c2-c6147c5847a1%29 "HTTP/2 200 OK"
+2025-03-28 18:13:27,570 - trivia_app - INFO - Response: GET /questions/game - Status: 200 - Time: 0.3086s

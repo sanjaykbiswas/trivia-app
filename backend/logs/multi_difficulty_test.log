@@ -1477,3 +1477,195 @@
 2025-03-28 15:47:41,537 - utils.question_generator.answer_generator - INFO - Successfully parsed 25 answers in batch 1
 2025-03-28 15:47:41,537 - utils.question_generator.answer_generator - INFO - Generated 25 answers for 25 questions
 2025-03-28 15:47:41,724 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22question_id%22%2C%22correct_answer%22%2C%22created_at%22%2C%22incorrect_answers%22 "HTTP/2 201 Created"
+2025-03-28 17:42:15,392 - multi_difficulty_test - INFO - Logging configured for multi_difficulty_test
+2025-03-28 17:42:28,695 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:28,807 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:28,879 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-28 17:42:28,880 - services.category_service - INFO - Created category 'Baseball' with ID: 26e12ea6-0a48-4299-9d49-69df0fa56d8b
+2025-03-28 17:42:28,880 - multi_difficulty_test - INFO - Created category 'Baseball' with ID: 26e12ea6-0a48-4299-9d49-69df0fa56d8b
+2025-03-28 17:42:34,057 - services.question_service - INFO - Pre-generating shared guidelines for category: 'Baseball'
+2025-03-28 17:42:34,057 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-28 17:42:36,643 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:36,651 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-28 17:42:36,651 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-28 17:42:40,667 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:40,670 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-28 17:42:40,876 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:40,877 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Baseball'
+2025-03-28 17:42:40,877 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Baseball' - 'Easy'
+2025-03-28 17:42:40,878 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:42:40,968 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:40,968 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Baseball'
+2025-03-28 17:42:40,968 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Baseball' - 'Medium'
+2025-03-28 17:42:40,969 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:42:41,055 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:41,056 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Baseball'
+2025-03-28 17:42:41,056 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Baseball' - 'Hard'
+2025-03-28 17:42:41,057 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:42:41,153 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:41,153 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Baseball'
+2025-03-28 17:42:41,154 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Baseball' - 'Expert'
+2025-03-28 17:42:41,154 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:42:41,246 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.Baseball "HTTP/2 200 OK"
+2025-03-28 17:42:41,246 - utils.question_generator.generator - INFO - Using cached category guidelines for 'Baseball'
+2025-03-28 17:42:41,246 - utils.question_generator.generator - INFO - Using cached difficulty context for 'Baseball' - 'Master'
+2025-03-28 17:42:41,246 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:42:43,967 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:43,972 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+    "Which MLB player was known as the 'Iron Horse'?",
+    "What year did Jackie Robinson ...
+2025-03-28 17:42:43,973 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:42:43,973 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:42:43,973 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:42:44,173 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:44,183 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which team won the first World Series in MLB history in 1903?",
+  "What is the term for...
+2025-03-28 17:42:44,193 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:44,200 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who was the first player to achieve 500 career home runs in MLB history?",
+  "Which MLB...
+2025-03-28 17:42:44,409 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:44,440 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who was the first player to win two MVP awards in Major League Baseball?",
+  "Which MLB...
+2025-03-28 17:42:44,871 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:42:44,871 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "What year was the first World Series played?",
+  "Which team broke the 'Curse of the Ba...
+2025-03-28 17:42:44,881 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:42:45,353 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:42:45,361 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:42:45,363 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:42:45,363 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:42:45,692 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:42:45,816 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:42:45,817 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:42:45,817 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:42:45,817 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:42:46,504 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:42:46,681 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:42:46,681 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:42:46,681 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:42:46,681 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:42:47,220 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:42:47,369 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:42:47,370 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:42:47,370 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:42:47,370 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:42:48,375 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:42:48,515 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:42:48,516 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-28 17:42:48,516 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-28 17:42:48,516 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-28 17:42:48,516 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-28 17:42:48,516 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-28 17:42:48,516 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-28 17:43:04,534 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:43:04,575 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-28 17:43:04,575 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-28 17:43:05,527 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:43:05,559 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-28 17:43:05,561 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-28 17:43:05,561 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-28 17:43:05,807 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22created_at%22%2C%22incorrect_answers%22%2C%22question_id%22 "HTTP/2 201 Created"
+2025-03-28 17:48:41,890 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:41,989 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:42,091 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories "HTTP/2 201 Created"
+2025-03-28 17:48:42,092 - services.category_service - INFO - Created category 'US Politics' with ID: 9c1e10c2-6d8f-4c0f-8c84-fefb6d0e344f
+2025-03-28 17:48:42,092 - multi_difficulty_test - INFO - Created category 'US Politics' with ID: 9c1e10c2-6d8f-4c0f-8c84-fefb6d0e344f
+2025-03-28 17:48:44,317 - services.question_service - INFO - Pre-generating shared guidelines for category: 'US Politics'
+2025-03-28 17:48:44,318 - utils.question_generator.category_helper - INFO - Calling openai model gpt-4o for category guidelines
+2025-03-28 17:48:47,367 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:47,369 - utils.question_generator.category_helper - INFO - Received response from openai
+2025-03-28 17:48:47,370 - utils.question_generator.difficulty_helper - INFO - Calling openai model gpt-4o for difficulty guidelines
+2025-03-28 17:48:50,822 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:50,823 - utils.question_generator.difficulty_helper - INFO - Received response from openai
+2025-03-28 17:48:50,970 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:50,971 - utils.question_generator.generator - INFO - Using cached category guidelines for 'US Politics'
+2025-03-28 17:48:50,971 - utils.question_generator.generator - INFO - Using cached difficulty context for 'US Politics' - 'Easy'
+2025-03-28 17:48:50,972 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:48:51,072 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:51,073 - utils.question_generator.generator - INFO - Using cached category guidelines for 'US Politics'
+2025-03-28 17:48:51,073 - utils.question_generator.generator - INFO - Using cached difficulty context for 'US Politics' - 'Medium'
+2025-03-28 17:48:51,075 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:48:51,171 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:51,172 - utils.question_generator.generator - INFO - Using cached category guidelines for 'US Politics'
+2025-03-28 17:48:51,172 - utils.question_generator.generator - INFO - Using cached difficulty context for 'US Politics' - 'Hard'
+2025-03-28 17:48:51,172 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:48:51,258 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:51,258 - utils.question_generator.generator - INFO - Using cached category guidelines for 'US Politics'
+2025-03-28 17:48:51,258 - utils.question_generator.generator - INFO - Using cached difficulty context for 'US Politics' - 'Expert'
+2025-03-28 17:48:51,258 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:48:51,360 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/categories?select=%2A&name=eq.US+Politics "HTTP/2 200 OK"
+2025-03-28 17:48:51,361 - utils.question_generator.generator - INFO - Using cached category guidelines for 'US Politics'
+2025-03-28 17:48:51,362 - utils.question_generator.generator - INFO - Using cached difficulty context for 'US Politics' - 'Master'
+2025-03-28 17:48:51,362 - utils.question_generator.generator - INFO - Using model: gpt-4o from provider: openai
+2025-03-28 17:48:53,514 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:53,514 - utils.question_generator.generator - INFO - Raw LLM Response: [
+    "What document is the supreme law of the United States?",
+    "Who was the first President of ...
+2025-03-28 17:48:53,515 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:48:53,515 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:48:53,515 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:48:53,918 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:53,919 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which US Constitutional amendment abolished slavery?",
+  "What is the minimum age to se...
+2025-03-28 17:48:54,092 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:48:54,288 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:48:54,288 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:48:54,288 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:48:54,288 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:48:54,353 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:54,354 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:54,355 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Who was the first president to live in the White House?",
+  "What political theory emph...
+2025-03-28 17:48:54,363 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which amendment abolished slavery in the United States?",
+  "What is the minimum age re...
+2025-03-28 17:48:54,447 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:48:54,449 - utils.question_generator.generator - INFO - Raw LLM Response: ```json
+[
+  "Which amendment granted women the right to vote in the United States?",
+  "What landmar...
+2025-03-28 17:48:55,967 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:48:56,140 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:48:56,141 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:48:56,141 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:48:56,141 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:48:56,888 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:48:57,061 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:48:57,062 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:48:57,062 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:48:57,062 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:48:57,401 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:48:57,551 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:48:57,552 - utils.question_generator.generator - INFO - Successfully parsed 20 questions out of 20 requested
+2025-03-28 17:48:57,552 - utils.question_generator.deduplicator - INFO - Getting embeddings for 20 texts
+2025-03-28 17:48:57,552 - utils.question_generator.deduplicator - INFO - Processing batch 1 of 1
+2025-03-28 17:48:58,015 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+2025-03-28 17:48:58,135 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?columns=%22category_id%22%2C%22difficulty%22%2C%22modified_difficulty%22%2C%22content%22%2C%22created_at%22 "HTTP/2 201 Created"
+2025-03-28 17:48:58,135 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 1/2 (50 questions)
+2025-03-28 17:48:58,135 - utils.question_generator.answer_generator - INFO - Creating task for answer batch 2/2 (50 questions)
+2025-03-28 17:48:58,135 - utils.question_generator.answer_generator - INFO - Processing answer batch 1/2 (50 questions)
+2025-03-28 17:48:58,135 - utils.question_generator.answer_generator - INFO - Processing answer batch 2/2 (50 questions)
+2025-03-28 17:48:58,136 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-28 17:48:58,139 - utils.question_generator.answer_generator - INFO - Calling openai model gpt-4o for answer generation
+2025-03-28 17:49:13,475 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:49:13,476 - httpx - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-03-28 17:49:13,479 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-28 17:49:13,481 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 2
+2025-03-28 17:49:13,495 - utils.question_generator.answer_generator - INFO - Received response from openai
+2025-03-28 17:49:13,496 - utils.question_generator.answer_generator - INFO - Successfully parsed 50 answers in batch 1
+2025-03-28 17:49:13,496 - utils.question_generator.answer_generator - INFO - Generated 100 answers for 100 questions
+2025-03-28 17:49:13,698 - httpx - INFO - HTTP Request: POST https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?columns=%22correct_answer%22%2C%22created_at%22%2C%22incorrect_answers%22%2C%22question_id%22 "HTTP/2 201 Created"

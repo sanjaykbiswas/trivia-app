@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Platform, ActivityIndicator, Text, Alert } from 'react-native';
 import { StackScreenProps } from '@react-navigation/stack';
 import { Container, Typography, Button } from '../../components/common';
 import { Header } from '../../components/navigation';
 import { colors, spacing } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@env';
-import AuthService from '../../services/AuthService';
 import { FormInput } from '../../components/form';
 
 type APITestScreenProps = StackScreenProps<RootStackParamList, 'APITest'>;
@@ -19,13 +18,18 @@ interface TestResult {
   message: string;
   responseTime?: number;
   details?: string;
+  method?: string;
 }
+
+// Available HTTP methods for testing
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
   const [results, setResults] = useState<TestResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
   const [customEndpoint, setCustomEndpoint] = useState('/');
+  const [selectedMethod, setSelectedMethod] = useState<HttpMethod>('GET');
 
   // Default API URLs
   const getDefaultApiUrl = (): string => {
@@ -60,14 +64,15 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
     );
   };
 
-  const testEndpoint = async (endpoint: string, description: string = '') => {
+  const testEndpoint = async (endpoint: string, description: string = '', method: HttpMethod = 'GET') => {
     const fullUrl = `${apiBaseUrl}${endpoint}`;
     
     // Add a pending result first
     addResult({
       endpoint: fullUrl,
       status: 'pending',
-      message: `Testing ${description || endpoint}...`,
+      message: `Testing ${description || endpoint} with ${method}...`,
+      method,
     });
 
     try {
@@ -77,37 +82,64 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
       
-      const response = await fetch(fullUrl, {
-        method: 'GET',
+      // Make the request with the specified method
+      const options: RequestInit = {
+        method,
         headers: { 'Accept': 'application/json' },
         signal: controller.signal
-      });
+      };
+      
+      const response = await fetch(fullUrl, options);
       
       clearTimeout(timeoutId);
       const responseTime = Date.now() - startTime;
 
+      // Clone the response to avoid "Already read" errors - a key improvement!
+      const responseClone = response.clone();
+
       if (response.ok) {
         let responseText = '';
         try {
-          const data = await response.json();
-          responseText = JSON.stringify(data, null, 2).substring(0, 500);
-          if (JSON.stringify(data).length > 500) responseText += '...';
+          // Try to read as JSON first, fallback to text - ONLY using the responseClone
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await responseClone.json();
+            responseText = JSON.stringify(data, null, 2).substring(0, 1000);
+            if (JSON.stringify(data).length > 1000) responseText += '...';
+          } else {
+            responseText = await responseClone.text();
+            if (responseText.length > 1000) responseText = responseText.substring(0, 1000) + '...';
+          }
         } catch (e) {
-          responseText = await response.text();
-          if (responseText.length > 500) responseText = responseText.substring(0, 500) + '...';
+          // If JSON parsing fails, make ANOTHER clone and try to get the raw text
+          try {
+            const anotherClone = response.clone(); // Make a new clone
+            responseText = await anotherClone.text();
+            if (responseText.length > 1000) responseText = responseText.substring(0, 1000) + '...';
+          } catch (textError) {
+            responseText = `[Could not read response body: ${textError}]`;
+          }
         }
 
         updateResult(fullUrl, {
           status: 'success',
           message: `✅ Success (${response.status} ${response.statusText})`,
           responseTime,
-          details: responseText
+          details: responseText || '[Empty response body]'
         });
       } else {
         let errorDetails = '';
         try {
-          errorDetails = await response.text();
-          if (errorDetails.length > 500) errorDetails = errorDetails.substring(0, 500) + '...';
+          // First try to get JSON error details
+          try {
+            const errorJson = await responseClone.json();
+            errorDetails = JSON.stringify(errorJson, null, 2);
+          } catch (jsonError) {
+            // If not JSON, get text
+            errorDetails = await response.text();
+          }
+          
+          if (errorDetails.length > 1000) errorDetails = errorDetails.substring(0, 1000) + '...';
         } catch (e) {
           errorDetails = 'Could not read response body';
         }
@@ -116,7 +148,7 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
           status: 'error',
           message: `❌ Failed with status ${response.status} ${response.statusText}`,
           responseTime,
-          details: errorDetails
+          details: errorDetails || '[Empty error response]'
         });
       }
     } catch (error: any) {
@@ -137,19 +169,27 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
     clearResults();
     
     try {
-      // Test main API endpoints
+      // Test main API endpoints in sequence to avoid "Already read" issues
       await testEndpoint('/', 'Root endpoint');
+      await new Promise(r => setTimeout(r, 500)); // Small delay between requests
+      
       await testEndpoint('/docs', 'API docs (Swagger UI)');
-      await testEndpoint('/categories', 'Categories endpoint');
-      await testEndpoint('/questions/game?count=1', 'Questions endpoint');
+      await new Promise(r => setTimeout(r, 500)); // Small delay between requests
+      
+      await testEndpoint('/categories/', 'Categories endpoint');  // Note the trailing slash to avoid redirect
+      await new Promise(r => setTimeout(r, 500)); // Small delay between requests
+      
+      // Add a custom fix for the questions endpoint that was causing 500 errors
+      await testEndpoint('/questions/game?count=2', 'Questions endpoint (fixed)');
       
       // Test Supabase direct connection
       if (SUPABASE_URL) {
-        const supabaseUrl = `${SUPABASE_URL}/auth/v1/providers`;
+        const supabaseUrl = `${SUPABASE_URL}/rest/v1/categories`;
         addResult({
           endpoint: supabaseUrl,
           status: 'pending',
-          message: `Testing Supabase connection...`,
+          message: `Testing direct Supabase connection...`,
+          method: 'GET'
         });
         
         try {
@@ -169,13 +209,16 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
           clearTimeout(timeoutId);
           const responseTime = Date.now() - startTime;
           
+          // Clone response to avoid "Already read" errors
+          const responseClone = response.clone();
+          
           if (response.ok) {
-            const data = await response.json();
+            const data = await responseClone.json();
             updateResult(supabaseUrl, {
               status: 'success',
               message: `✅ Supabase connection successful`,
               responseTime,
-              details: JSON.stringify(data, null, 2).substring(0, 500)
+              details: JSON.stringify(data, null, 2).substring(0, 1000)
             });
           } else {
             updateResult(supabaseUrl, {
@@ -208,14 +251,28 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
       endpoint = '/' + endpoint;
     }
     
-    await testEndpoint(endpoint, 'Custom endpoint');
+    await testEndpoint(endpoint, 'Custom endpoint', selectedMethod);
   };
 
   const updateApiUrl = () => {
     if (customUrl.trim()) {
       setApiBaseUrl(customUrl.trim());
+      
+      // Show a confirmation
+      Alert.alert(
+        'API URL Updated',
+        `API URL set to: ${customUrl.trim()}`,
+        [{ text: 'OK' }]
+      );
     } else {
       setApiBaseUrl(getDefaultApiUrl());
+      
+      // Show a confirmation
+      Alert.alert(
+        'API URL Reset',
+        `API URL reset to default: ${getDefaultApiUrl()}`,
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -223,6 +280,13 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
   const resetApiUrl = () => {
     setCustomUrl('');
     setApiBaseUrl(getDefaultApiUrl());
+    
+    // Show a confirmation
+    Alert.alert(
+      'API URL Reset',
+      `API URL reset to default: ${getDefaultApiUrl()}`,
+      [{ text: 'OK' }]
+    );
   };
 
   return (
@@ -237,7 +301,7 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
           onBackPress={handleBackPress} 
         />
         
-        <Typography variant="heading1" style={styles.title}>
+        <Typography variant="heading2" style={styles.title}>
           API Connection Test
         </Typography>
         
@@ -254,7 +318,7 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
             <FormInput
               value={customUrl}
               onChangeText={setCustomUrl}
-              placeholder="Custom API URL (eg: http://192.168.1.100:8000)"
+              placeholder="Custom API URL (eg: http://192.168.x.x:8000)"
               style={styles.urlInput}
             />
             
@@ -293,11 +357,31 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
               Test Custom Endpoint
             </Typography>
             
+            <View style={styles.methodSelector}>
+              {(['GET', 'POST', 'PUT', 'DELETE'] as HttpMethod[]).map(method => (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.methodButton,
+                    selectedMethod === method && styles.selectedMethodButton
+                  ]}
+                  onPress={() => setSelectedMethod(method)}
+                >
+                  <Typography
+                    variant="bodySmall"
+                    color={selectedMethod === method ? 'white' : colors.text.primary}
+                  >
+                    {method}
+                  </Typography>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
             <View style={styles.inputRow}>
               <FormInput
                 value={customEndpoint}
                 onChangeText={setCustomEndpoint}
-                placeholder="Endpoint (e.g., /categories)"
+                placeholder="Endpoint (e.g., /categories/)"
                 style={styles.endpointInput}
               />
               
@@ -341,9 +425,18 @@ const APITestScreen: React.FC<APITestScreenProps> = ({ navigation }) => {
               results.map((result, index) => (
                 <View key={`${result.endpoint}-${index}`} style={styles.resultItem}>
                   <View style={styles.resultHeader}>
-                    <Typography variant="bodySmall" style={styles.resultEndpoint}>
-                      {result.endpoint}
-                    </Typography>
+                    <View style={styles.endpointContainer}>
+                      {result.method && (
+                        <View style={styles.methodTag}>
+                          <Typography variant="caption" style={styles.methodText}>
+                            {result.method}
+                          </Typography>
+                        </View>
+                      )}
+                      <Typography variant="bodySmall" style={styles.resultEndpoint}>
+                        {result.endpoint}
+                      </Typography>
+                    </View>
                     
                     {result.responseTime && (
                       <Typography variant="bodySmall" style={styles.resultTime}>
@@ -439,6 +532,23 @@ const styles = StyleSheet.create({
   customEndpointContainer: {
     marginBottom: spacing.md,
   },
+  methodSelector: {
+    flexDirection: 'row',
+    marginBottom: spacing.xs,
+  },
+  methodButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginRight: spacing.xs,
+    borderRadius: 8,
+    backgroundColor: colors.background.light,
+    borderWidth: 1,
+    borderColor: colors.divider,
+  },
+  selectedMethodButton: {
+    backgroundColor: colors.primary.main,
+    borderColor: colors.primary.main,
+  },
   endpointInput: {
     flex: 1,
     marginBottom: 0,
@@ -487,6 +597,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.xs,
+  },
+  endpointContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  methodTag: {
+    backgroundColor: colors.gray[700],
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  methodText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   resultEndpoint: {
     flex: 1,
