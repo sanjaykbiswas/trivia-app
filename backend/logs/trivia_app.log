@@ -412,3 +412,25 @@
 2025-03-28 20:31:20,308 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/questions?select=%2A%2Ccategories%28name%29&order=created_at&limit=2 "HTTP/2 200 OK"
 2025-03-28 20:31:20,418 - httpx - INFO - HTTP Request: GET https://iyczqnusoonbljippssh.supabase.co/rest/v1/answers?select=%2A&question_id=in.%283130f3f0-8f7c-4843-9e33-926ff7a6d2ee%2C474c6c85-225f-471b-b4c2-c6147c5847a1%29 "HTTP/2 200 OK"
 2025-03-28 20:31:20,419 - trivia_app - INFO - Response: GET /questions/game - Status: 200 - Time: 0.3168s
+2025-03-28 23:15:30,977 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-28 23:15:31,101 - trivia_app - INFO - Application startup
+2025-03-29 09:33:05,736 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:33:05,864 - trivia_app - INFO - Application startup
+2025-03-29 09:34:03,014 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:34:03,184 - trivia_app - INFO - Application startup
+2025-03-29 09:34:31,502 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:34:31,630 - trivia_app - INFO - Application startup
+2025-03-29 09:35:00,693 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:35:00,827 - trivia_app - INFO - Application startup
+2025-03-29 09:35:23,049 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:35:23,162 - trivia_app - INFO - Application startup
+2025-03-29 09:35:41,886 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:35:41,990 - trivia_app - INFO - Application startup
+2025-03-29 09:44:48,925 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:44:49,048 - trivia_app - INFO - Application startup
+2025-03-29 09:45:47,994 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:45:48,110 - trivia_app - INFO - Application startup
+2025-03-29 09:47:40,583 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:47:40,693 - trivia_app - INFO - Application startup
+2025-03-29 09:48:43,878 - trivia_app - INFO - Logging configured for trivia_app
+2025-03-29 09:48:43,989 - trivia_app - INFO - Application startup
