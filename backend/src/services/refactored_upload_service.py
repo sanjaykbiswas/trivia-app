@@ -1,10 +1,11 @@
+# backend/src/services/refactored_upload_service.py
 from typing import List, Dict, Any, Optional
 import logging
 from models.question import Question
 from models.answer import Answer
 from models.complete_question import CompleteQuestion
 from services.service_base import ServiceBase
-from utils.supabase_actions import SupabaseActions
+from repositories.upload_repository import UploadRepository
 from utils.error_handling import async_handle_errors
 from utils.category_utils import CategoryUtils
 
@@ -13,20 +14,24 @@ logger = logging.getLogger(__name__)
 
 class RefactoredUploadService(ServiceBase):
     """
-    Refactored service for handling uploads to the Supabase database
+    Refactored service for handling uploads to the database
     
     This service orchestrates the upload of trivia questions and answers
     """
-    def __init__(self, supabase_client, category_repository=None):
+    def __init__(
+        self, 
+        upload_repository: UploadRepository,
+        category_repository = None
+    ):
         """
-        Initialize the upload service
+        Initialize the upload service with repositories
         
         Args:
-            supabase_client: Initialized Supabase client
-            category_repository (optional): Repository for category operations
+            upload_repository (UploadRepository): Repository for upload operations
+            category_repository: Repository for category operations
         """
         super().__init__(None, category_repository)
-        self.supabase_actions = SupabaseActions(supabase_client)
+        self.upload_repository = upload_repository
         self.category_utils = CategoryUtils()
     
     @async_handle_errors
@@ -82,8 +87,8 @@ class RefactoredUploadService(ServiceBase):
             incorrect_answers=incorrect_answers
         )
         
-        # Save both
-        result = await self.supabase_actions.save_question_and_answer(question, answer)
+        # Save both using upload repository
+        result = await self.upload_repository.save_question_and_answer(question, answer)
         
         # Return as CompleteQuestion
         return CompleteQuestion(
@@ -165,8 +170,8 @@ class RefactoredUploadService(ServiceBase):
             )
             answers.append(answer)
         
-        # Bulk save
-        results = await self.supabase_actions.bulk_save_questions_and_answers(questions, answers)
+        # Bulk save using upload repository
+        results = await self.upload_repository.bulk_save_questions_and_answers(questions, answers)
         
         # Convert to CompleteQuestion objects
         complete_questions = []
@@ -179,17 +184,3 @@ class RefactoredUploadService(ServiceBase):
             )
         
         return complete_questions
-    
-    @async_handle_errors
-    async def register_user(self, user_id: str, username: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Register a new user or ensure existing user
-        
-        Args:
-            user_id (str): User ID
-            username (Optional[str]): Username (can be null)
-            
-        Returns:
-            Dict[str, Any]: User data
-        """
-        return await self.supabase_actions.ensure_user_exists(user_id, username)

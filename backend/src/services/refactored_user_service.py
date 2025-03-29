@@ -1,8 +1,9 @@
+# backend/src/services/refactored_user_service.py
 from typing import Dict, Any, Optional
 import logging
 from models.user import User, AuthProvider
 from services.service_base import ServiceBase
-from utils.supabase_actions import SupabaseActions
+from repositories.user_repository import UserRepository
 from utils.error_handling import async_handle_errors
 
 # Configure logger
@@ -14,16 +15,15 @@ class RefactoredUserService(ServiceBase):
     
     This service handles user creation, authentication, and profile management
     """
-    def __init__(self, supabase_client):
+    def __init__(self, user_repository: UserRepository):
         """
-        Initialize user service with Supabase client
+        Initialize user service with repository
         
         Args:
-            supabase_client: Initialized Supabase client
+            user_repository (UserRepository): Repository for user operations
         """
-        # Initialize with None as repository since we're using SupabaseActions directly
-        super().__init__(None)
-        self.supabase_actions = SupabaseActions(supabase_client)
+        # Initialize with the user repository
+        super().__init__(user_repository)
     
     @async_handle_errors
     async def create_temporary_user(self, username: str) -> User:
@@ -38,11 +38,11 @@ class RefactoredUserService(ServiceBase):
         """
         logger.info(f"Creating temporary user with username: {username}")
         
-        # Use the SupabaseActions to create the temporary user
-        user_data = await self.supabase_actions.create_temporary_user(username)
+        # Cast repository to UserRepository to access specific methods
+        user_repo = self.repository
         
-        # Convert to User object
-        user = User.from_dict(user_data)
+        # Create temporary user using repository
+        user = await user_repo.create_temporary_user(username)
         
         logger.info(f"Temporary user created with ID: {user.id}")
         return user
@@ -78,17 +78,17 @@ class RefactoredUserService(ServiceBase):
             provider = AuthProvider.NONE
             logger.warning(f"Invalid auth provider: {auth_provider}, using NONE")
         
-        # Use the SupabaseActions to link the user identity
-        user_data = await self.supabase_actions.link_user_identity(
+        # Cast repository to UserRepository to access specific methods
+        user_repo = self.repository
+        
+        # Link user identity using repository
+        user = await user_repo.link_user_identity(
             temp_user_id=temp_user_id,
             auth_id=auth_id,
             auth_provider=provider.value,
             email=email,
             avatar_url=avatar_url
         )
-        
-        # Convert to User object
-        user = User.from_dict(user_data)
         
         logger.info(f"User {temp_user_id} linked to auth identity {auth_id}")
         return user
@@ -104,16 +104,11 @@ class RefactoredUserService(ServiceBase):
         Returns:
             Optional[User]: User if found
         """
-        try:
-            # Use the SupabaseActions to ensure the user exists
-            user_data = await self.supabase_actions.ensure_user_exists(user_id)
-            
-            if user_data:
-                return User.from_dict(user_data)
-            return None
-        except Exception as e:
-            logger.error(f"Error getting user by ID: {e}")
-            return None
+        # Cast repository to UserRepository to access specific methods
+        user_repo = self.repository
+        
+        # Ensure user exists using repository
+        return await user_repo.ensure_user_exists(user_id)
     
     @async_handle_errors
     async def find_user_by_auth(self, auth_id: str, auth_provider: str) -> Optional[User]:
@@ -127,9 +122,8 @@ class RefactoredUserService(ServiceBase):
         Returns:
             Optional[User]: User if found
         """
-        # Use the SupabaseActions to find the user
-        user_data = await self.supabase_actions.find_user_by_auth(auth_id, auth_provider)
+        # Cast repository to UserRepository to access specific methods
+        user_repo = self.repository
         
-        if user_data:
-            return User.from_dict(user_data)
-        return None
+        # Find user by auth using repository
+        return await user_repo.get_by_auth(auth_id, auth_provider)

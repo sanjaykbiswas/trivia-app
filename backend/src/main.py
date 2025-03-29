@@ -1,3 +1,4 @@
+# backend/src/main.py
 from fastapi import FastAPI, Depends, Request
 import supabase
 import logging
@@ -14,6 +15,8 @@ from config.environment import Environment
 from config.llm_config import LLMConfigFactory
 from repositories.question_repository import QuestionRepository
 from repositories.category_repository import CategoryRepository
+from repositories.user_repository import UserRepository
+from repositories.upload_repository import UploadRepository
 from utils.question_generator.generator import QuestionGenerator
 from utils.question_generator.answer_generator import AnswerGenerator
 from utils.question_generator.deduplicator import Deduplicator
@@ -22,6 +25,8 @@ from services.question_service import QuestionService
 from services.upload_service import UploadService
 from services.user_service import UserService
 from services.category_service import CategoryService
+from services.refactored_user_service import RefactoredUserService
+from services.refactored_upload_service import RefactoredUploadService
 from controllers.auth_controller import AuthController
 from controllers.question_controller import QuestionController, MultiDifficultyRequest, MultiDifficultyResponse
 from controllers.upload_controller import UploadController
@@ -89,6 +94,14 @@ def create_category_repository():
     """Create category repository"""
     return CategoryRepository(create_supabase_client())
 
+def create_user_repository():
+    """Create user repository"""
+    return UserRepository(create_supabase_client())
+
+def create_upload_repository():
+    """Create upload repository"""
+    return UploadRepository(create_supabase_client())
+
 def create_question_generator():
     """Create question generator using the default provider from environment"""
     config = LLMConfigFactory.create_default()
@@ -107,6 +120,8 @@ def create_deduplicator():
 supabase_client = create_supabase_client()
 question_repository = create_question_repository()
 category_repository = create_category_repository()
+user_repository = create_user_repository()
+upload_repository = create_upload_repository()
 question_generator = create_question_generator()
 answer_generator = create_answer_generator()
 deduplicator = create_deduplicator()
@@ -121,6 +136,10 @@ question_service = QuestionService(
     deduplicator=deduplicator
 )
 category_service = CategoryService(category_repository)
+
+# Create refactored service instances
+refactored_user_service = RefactoredUserService(user_repository)
+refactored_upload_service = RefactoredUploadService(upload_repository, category_repository)
 
 # Create controller instances
 upload_controller = UploadController(upload_service)
