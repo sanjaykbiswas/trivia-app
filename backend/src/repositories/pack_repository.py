@@ -13,17 +13,15 @@ class PackRepository(BaseRepositoryImpl[Pack, Pack, Pack, uuid.UUID]):
     def __init__(self, db: AsyncClient):
         super().__init__(model=Pack, db=db, table_name="packs") # Table name: "packs"
 
-    # --- Custom Pack-specific methods ---
-
-    async def get_by_category_id(self, category_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[Pack]:
-        """Retrieve packs belonging to a specific category (PackGroup)."""
-        # Supabase array contains query: cs.{column_name}
+    async def get_by_pack_group_id(self, pack_group_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[Pack]:
+        """Retrieve packs associated with a specific PackGroup ID (checks list)."""
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .cs("category_id", [str(category_id)]) # Check if category_id array contains the UUID
+            .cs("pack_group_id", [str(pack_group_id)])
             .offset(skip)
             .limit(limit)
+            .order("created_at", desc=True)
         )
         response = await self._execute_query(query)
         return [self.model.parse_obj(item) for item in response.data]
@@ -36,6 +34,7 @@ class PackRepository(BaseRepositoryImpl[Pack, Pack, Pack, uuid.UUID]):
             .eq("creator_type", creator_type.value)
             .offset(skip)
             .limit(limit)
+            .order("created_at", desc=True)
         )
         response = await self._execute_query(query)
         return [self.model.parse_obj(item) for item in response.data]
@@ -45,7 +44,7 @@ class PackRepository(BaseRepositoryImpl[Pack, Pack, Pack, uuid.UUID]):
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .ilike("name", f"%{name_query}%") # Case-insensitive LIKE
+            .ilike("name", f"%{name_query}%")
             .offset(skip)
             .limit(limit)
         )
