@@ -1,4 +1,4 @@
-# backend/create_pack_topics.py
+# backend/test_pack_topic_creation.py
 import asyncio
 import uuid
 import sys
@@ -14,7 +14,8 @@ from src.repositories.pack_repository import PackRepository
 from src.repositories.pack_creation_data_repository import PackCreationDataRepository
 from src.utils.question_generation.pack_topic_creation import PackTopicCreation
 from src.utils.llm.llm_service import LLMService
-from src.models.pack import Pack, PackCreate, CreatorType
+from src.models.pack import Pack, CreatorType
+from src.utils.question_generation.pack_management import get_or_create_pack
 
 
 async def create_sample_pack_and_topics():
@@ -37,46 +38,58 @@ async def create_sample_pack_and_topics():
             llm_service=llm_service
         )
         
-        # Create a sample pack
+        # Define pack information
         pack_name = "Ancient Greece History"
         pack_description = "A fascinating journey through ancient Greek history, mythology, and culture."
         
-        print(f"Creating pack: {pack_name}")
-        pack_data = PackCreate(
-            name=pack_name,
-            description=pack_description,
-            price=0.0,  # Free pack
-            creator_type=CreatorType.SYSTEM,
+        print(f"Getting or creating pack: {pack_name}")
+        
+        # Use the get_or_create_pack utility
+        pack, is_new = await get_or_create_pack(
+            pack_repo=pack_repo,
+            pack_name=pack_name,
+            pack_description=pack_description,
+            price=0.0,
+            creator_type=CreatorType.SYSTEM
         )
         
-        new_pack = await pack_repo.create(obj_in=pack_data)
-        print(f"Pack created with ID: {new_pack.id}")
+        if is_new:
+            print(f"Created new pack with ID: {pack.id}")
+            
+            # Generate topics for the new pack
+            print("Generating topics with LLM...")
+            topics = await topic_creator.create_pack_topics(
+                creation_name=pack_name,
+                creation_description=pack_description,
+                num_topics=5
+            )
+            
+            print("Generated topics:")
+            for i, topic in enumerate(topics, 1):
+                print(f"  {i}. {topic}")
+            
+            # Store the topics in the database
+            print("Storing topics in database...")
+            await topic_creator.store_pack_topics(
+                pack_id=pack.id,
+                topics=topics,
+                creation_name=pack_name,
+                creation_description=pack_description
+            )
+        else:
+            print(f"Retrieved existing pack with ID: {pack.id}")
+            
+            # Get existing topics
+            topics = await topic_creator.get_existing_pack_topics(pack.id)
+            
+            print("Existing topics:")
+            for i, topic in enumerate(topics, 1):
+                print(f"  {i}. {topic}")
         
-        # Generate topics for the pack
-        print("Generating topics with LLM...")
-        topics = await topic_creator.create_pack_topics(
-            creation_name=pack_name,
-            creation_description=pack_description,
-            num_topics=5
-        )
+        print("Successfully processed pack and topics!")
         
-        print("Generated topics:")
-        for i, topic in enumerate(topics, 1):
-            print(f"  {i}. {topic}")
-        
-        # Store the topics in the database
-        print("Storing topics in database...")
-        await topic_creator.store_pack_topics(
-            pack_id=new_pack.id,
-            topics=topics,
-            creation_name=pack_name,
-            creation_description=pack_description
-        )
-        
-        print("Successfully created pack and topics!")
-        
-        # Return the created pack ID for reference
-        return new_pack.id
+        # Return the pack ID for reference
+        return pack.id
         
     except Exception as e:
         print(f"Error: {e}")
