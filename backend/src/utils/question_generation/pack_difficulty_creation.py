@@ -207,6 +207,131 @@ Return ONLY these formatted descriptions with no additional text.
         else:
             return []
     
+    def parse_difficulty_descriptions(self, combined_descriptions: List[str]) -> Dict[str, Dict[str, str]]:
+        """
+        Parse combined difficulty descriptions into a structured dictionary.
+        
+        Args:
+            combined_descriptions: List of combined descriptions in format "Level; Base Description; Custom Description"
+            
+        Returns:
+            Dictionary with difficulty levels as keys, each containing a dictionary with 'base' and 'custom' keys
+        """
+        parsed_descriptions = {}
+        
+        for description in combined_descriptions:
+            parts = description.split(";")
+            if len(parts) >= 3:
+                level = parts[0].strip()
+                base_desc = parts[1].strip()
+                custom_desc = parts[2].strip()
+                
+                parsed_descriptions[level] = {
+                    'base': base_desc,
+                    'custom': custom_desc
+                }
+                
+        return parsed_descriptions
+    
+    async def update_specific_difficulty_descriptions(
+        self,
+        pack_id: uuid.UUID,
+        difficulty_updates: Dict[str, str]
+    ) -> List[str]:
+        """
+        Update specific difficulty descriptions without replacing all of them.
+        
+        Args:
+            pack_id: UUID of the pack
+            difficulty_updates: Dictionary mapping difficulty levels to their new custom descriptions
+                               (e.g., {"Hard": "New hard description", "Expert": "New expert description"})
+            
+        Returns:
+            Updated list of combined difficulty descriptions
+            
+        Raises:
+            ValueError: If no existing difficulty descriptions are found for the pack
+        """
+        # Get existing descriptions
+        existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
+        
+        if not existing_descriptions:
+            raise ValueError(f"No existing difficulty descriptions found for pack_id {pack_id}")
+        
+        # Parse existing descriptions
+        parsed_descriptions = self.parse_difficulty_descriptions(existing_descriptions)
+        
+        # Update only the specified difficulty levels
+        for level, new_custom_desc in difficulty_updates.items():
+            if level in parsed_descriptions:
+                parsed_descriptions[level]['custom'] = new_custom_desc
+            else:
+                # If level doesn't exist yet, create it with default base description
+                base_desc = self.base_descriptions.get(level, "")
+                parsed_descriptions[level] = {
+                    'base': base_desc,
+                    'custom': new_custom_desc
+                }
+        
+        # Reconstruct combined descriptions
+        updated_descriptions = []
+        for level, descriptions in parsed_descriptions.items():
+            combined = f"{level}; {descriptions['base']}; {descriptions['custom']}"
+            updated_descriptions.append(combined)
+        
+        # Store updated descriptions
+        await self.store_difficulty_descriptions(pack_id, updated_descriptions)
+        
+        return updated_descriptions
+    
+    async def generate_specific_difficulty_descriptions(
+        self,
+        pack_id: uuid.UUID,
+        creation_name: str,
+        pack_topics: List[str],
+        difficulty_levels: List[str]
+    ) -> List[str]:
+        """
+        Generate descriptions for specific difficulty levels and update them while preserving others.
+        
+        Args:
+            pack_id: UUID of the pack
+            creation_name: Name of the trivia pack
+            pack_topics: List of topics in the pack
+            difficulty_levels: List of difficulty levels to update (e.g., ["Hard", "Expert"])
+            
+        Returns:
+            Updated list of combined difficulty descriptions
+            
+        Raises:
+            ValueError: If no existing difficulty descriptions are found for the pack
+        """
+        # Get existing descriptions first
+        existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
+        
+        if not existing_descriptions:
+            # If no existing descriptions, generate all of them
+            return await self.generate_and_store_difficulty_descriptions(
+                pack_id=pack_id,
+                creation_name=creation_name,
+                pack_topics=pack_topics
+            )
+        
+        # Generate all difficulty descriptions (temporary)
+        all_descriptions = await self.generate_difficulty_descriptions(
+            creation_name=creation_name,
+            pack_topics=pack_topics
+        )
+        
+        # Extract only the requested difficulty levels
+        updates = {level: all_descriptions.get(level, "") for level in difficulty_levels if level in all_descriptions}
+        
+        # Update only the specified levels
+        return await self.update_specific_difficulty_descriptions(
+            pack_id=pack_id,
+            difficulty_updates=updates
+        )
+        
     async def generate_and_store_difficulty_descriptions(self, pack_id: uuid.UUID, creation_name: str, pack_topics: List[str]) -> List[str]:
         """
         Generate, combine, and store difficulty descriptions for a pack in one operation.
