@@ -135,6 +135,7 @@ Return ONLY these formatted descriptions with no additional text.
     async def store_difficulty_descriptions(self, pack_id: uuid.UUID, combined_descriptions: List[str]) -> None:
         """
         Store combined difficulty descriptions in the pack_creation_data table.
+        If difficulty descriptions already exist for this pack, they will be overwritten.
         
         Args:
             pack_id: UUID of the pack
@@ -209,6 +210,7 @@ Return ONLY these formatted descriptions with no additional text.
     async def generate_and_store_difficulty_descriptions(self, pack_id: uuid.UUID, creation_name: str, pack_topics: List[str]) -> List[str]:
         """
         Generate, combine, and store difficulty descriptions for a pack in one operation.
+        This will overwrite any existing difficulty descriptions.
         
         Args:
             pack_id: UUID of the pack
@@ -234,3 +236,36 @@ Return ONLY these formatted descriptions with no additional text.
         )
         
         return combined_descriptions
+    
+    async def generate_and_handle_existing_difficulty_descriptions(
+        self, 
+        pack_id: uuid.UUID, 
+        creation_name: str, 
+        pack_topics: List[str],
+        force_regenerate: bool = False
+    ) -> List[str]:
+        """
+        Handles the generation of difficulty descriptions while respecting existing ones.
+        
+        Args:
+            pack_id: UUID of the pack
+            creation_name: Name of the trivia pack
+            pack_topics: List of topics in the pack
+            force_regenerate: If True, will regenerate descriptions even if they exist
+            
+        Returns:
+            List of combined difficulty descriptions
+        """
+        # Check if difficulty descriptions already exist
+        existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
+        
+        # If descriptions exist and we don't want to regenerate, return them
+        if existing_descriptions and not force_regenerate:
+            return existing_descriptions
+        
+        # Otherwise, generate new descriptions
+        return await self.generate_and_store_difficulty_descriptions(
+            pack_id=pack_id,
+            creation_name=creation_name,
+            pack_topics=pack_topics
+        )
