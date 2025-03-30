@@ -69,6 +69,7 @@ async def create_sample_pack_and_topics():
         await topic_creator.store_pack_topics(
             pack_id=new_pack.id,
             topics=topics,
+            creation_name=pack_name,
             creation_description=pack_description
         )
         

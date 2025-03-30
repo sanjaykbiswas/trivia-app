@@ -110,6 +110,7 @@ Return ONLY the bullet list, with no additional text before or after.
         return prompt
     
     async def store_pack_topics(self, pack_id: uuid.UUID, topics: List[str], 
+                              creation_name: str,
                               creation_description: Optional[str] = None) -> None:
         """
         Store topics in the pack_creation_data table.
@@ -117,6 +118,7 @@ Return ONLY the bullet list, with no additional text before or after.
         Args:
             pack_id: UUID of the pack
             topics: List of topics to store
+            creation_name: Name of the pack/creator
             creation_description: Optional description to store
         """
         # Check if there's already data for this pack
@@ -134,6 +136,7 @@ Return ONLY the bullet list, with no additional text before or after.
             new_data = PackCreationDataCreate(
                 pack_id=pack_id,
                 pack_topics=topics,
+                creation_name=creation_name,  # Required field
                 creation_description=creation_description,
                 custom_difficulty_description=[]  # Empty list for now
             )
@@ -205,7 +208,12 @@ Return ONLY the bullet list, with no additional text before or after.
                 all_topics.append(topic)
         
         # Store the updated list
-        await self.store_pack_topics(pack_id, all_topics, creation_description)
+        await self.store_pack_topics(
+            pack_id=pack_id,
+            topics=all_topics,
+            creation_name=creation_name,  # Added required parameter
+            creation_description=creation_description
+        )
         
         return all_topics
     
