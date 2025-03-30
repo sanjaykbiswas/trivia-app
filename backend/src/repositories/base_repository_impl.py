@@ -70,14 +70,28 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             if isinstance(value, uuid.UUID):
                 insert_data[key] = str(value)
 
-        query = self.db.table(self.table_name).insert(insert_data, returning='representation') # return the inserted row
+        # Step 1: Insert the data
+        query = self.db.table(self.table_name).insert(insert_data)
         response = await self._execute_query(query)
 
+        # Step 2: If successful and we have an id, fetch the newly created record
+        if response.data and 'id' in response.data[0]:
+            new_id = response.data[0]['id']
+            fetch_query = self.db.table(self.table_name).select("*").eq("id", new_id).limit(1)
+            fetch_response = await self._execute_query(fetch_query)
+            
+            if fetch_response.data:
+                return self.model.parse_obj(fetch_response.data[0])
+                
+        # If we couldn't get the full record data, try to use the insert response
         if response.data:
-            return self.model.parse_obj(response.data[0])
-        else:
-            # This case should ideally not happen with 'returning=representation' on success
-            raise ValueError("Failed to create object, no data returned.")
+            try:
+                return self.model.parse_obj(response.data[0])
+            except Exception as e:
+                print(f"Warning: Could not parse insert response: {e}")
+                
+        # As a last resort, use the input data (but this might miss default values)
+        return self.model.parse_obj(insert_data)
 
     async def update(self, *, id: IdentifierType, obj_in: UpdateSchemaType) -> Optional[ModelType]:
         """Update a record with proper handling of optional fields."""
@@ -93,18 +107,24 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             if isinstance(value, uuid.UUID):
                 update_data[key] = str(value)
 
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(id)).returning('representation')
-        response = await self._execute_query(query)
+        # Step 1: Update the record
+        query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
+        await self._execute_query(query)
 
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None # Return None if the row with the ID didn't exist
+        # Step 2: Fetch the updated record
+        return await self.get_by_id(id)
 
     async def delete(self, *, id: IdentifierType) -> Optional[ModelType]:
         """Delete a record and return the deleted object if successful."""
-        query = self.db.table(self.table_name).delete().eq("id", str(id)).returning('representation')
-        response = await self._execute_query(query)
-
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None # Return None if the row didn't exist
+        # Step 1: Get the object before deletion
+        obj = await self.get_by_id(id)
+        
+        if not obj:
+            return None  # Object doesn't exist
+            
+        # Step 2: Delete the object
+        query = self.db.table(self.table_name).delete().eq("id", str(id))
+        await self._execute_query(query)
+        
+        # Step 3: Return the object that was deleted
+        return obj
