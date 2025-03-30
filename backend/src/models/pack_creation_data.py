@@ -17,7 +17,7 @@ class PackCreationData(BaseModel):
         is_pow: Whether this is a "proof of work" pack
         pow_analysis: Optional analysis of the proof of work
         creation_description: Optional description of the creation process
-        pack_breadth: List of topics in the pack
+        pack_topics: List of topics in the pack
         custom_difficulty_description: List of custom difficulty descriptions
         is_temporal: Whether this pack is time-based or has temporal relevance
         created_at: When this record was created
@@ -27,7 +27,7 @@ class PackCreationData(BaseModel):
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
     creation_description: Optional[str] = None
-    pack_breadth: List[str]
+    pack_topics: List[str]
     custom_difficulty_description: List[str]
     is_temporal: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -42,7 +42,7 @@ class PackCreationDataCreate(BaseCreateSchema):
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
     creation_description: Optional[str] = None
-    pack_breadth: List[str]
+    pack_topics: List[str]
     custom_difficulty_description: List[str]
     is_temporal: bool = False
 
@@ -52,6 +52,6 @@ class PackCreationDataUpdate(BaseUpdateSchema):
     is_pow: Optional[bool] = None
     pow_analysis: Optional[str] = None
     creation_description: Optional[str] = None
-    pack_breadth: Optional[List[str]] = None
+    pack_topics: Optional[List[str]] = None
     custom_difficulty_description: Optional[List[str]] = None
     is_temporal: Optional[bool] = None

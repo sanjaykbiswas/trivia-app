@@ -25,7 +25,7 @@ class Question(BaseModel):
         question: The actual trivia question text
         answer: The correct answer to the question
         pack_id: Reference to the pack this question belongs to
-        pack_breadth_item: Topic or subject area of the question
+        pack_topics_item: Topic or subject area of the question
         difficulty_initial: The original difficulty rating when created (now optional)
         difficulty_current: The current difficulty rating (optional)
         correct_answer_rate: Percentage of correct answers given by users
@@ -35,7 +35,7 @@ class Question(BaseModel):
     question: str
     answer: str
     pack_id: uuid.UUID
-    pack_breadth_item: Optional[str] = None
+    pack_topics_item: Optional[str] = None
     difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
     correct_answer_rate: float = 0.0
@@ -61,7 +61,7 @@ class QuestionCreate(BaseCreateSchema):
     question: str
     answer: str
     pack_id: uuid.UUID
-    pack_breadth_item: Optional[str] = None
+    pack_topics_item: Optional[str] = None
     difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
     
@@ -73,7 +73,7 @@ class QuestionUpdate(BaseUpdateSchema):
     """Schema for updating an existing question."""
     question: Optional[str] = None
     answer: Optional[str] = None
-    pack_breadth_item: Optional[str] = None
+    pack_topics_item: Optional[str] = None
     difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
     correct_answer_rate: Optional[float] = None
