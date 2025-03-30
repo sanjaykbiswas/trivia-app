@@ -1,4 +1,4 @@
-# backend/src/config/supabase_client.py
+# backend/src/config/supabase_client.py (Updated Version)
 from supabase import create_client, Client
 import httpx
 from .config import SupabaseConfig
@@ -12,18 +12,10 @@ async def init_supabase_client() -> Client:
     """
     config = SupabaseConfig()
     
-    # Create an httpx AsyncClient to enable async operations
-    async_client = httpx.AsyncClient()
-    
-    # Create the Supabase client with async support
+    # Create the Supabase client - simplified for compatibility
     supabase = create_client(
         config.get_supabase_url(),
-        config.get_supabase_key(),
-        options={
-            "http_client": async_client,
-            "auto_refresh_token": True,
-            "persist_session": True
-        }
+        config.get_supabase_key()
     )
     
     return supabase
@@ -36,5 +28,6 @@ async def close_supabase_client(client: Client):
     Args:
         client: The Supabase client to close
     """
-    if hasattr(client, "http_client") and client.http_client:
-        await client.http_client.aclose()
+    # Newer versions of the library manage their own client lifecycle
+    # So this is now a no-op for compatibility
+    pass
