@@ -2,6 +2,7 @@
 import uuid
 from typing import Optional, Tuple
 from ...repositories.pack_repository import PackRepository
+from ..document_processing.processors import normalize_text
 
 class PackIntroduction:
     """
@@ -30,7 +31,8 @@ class PackIntroduction:
                 - UUID of the existing pack (if found, otherwise None)
         """
         # Convert to lowercase as specified in requirements
-        normalized_name = creation_name.lower()
+        # Use normalize_text from document_processing.processors
+        normalized_name = normalize_text(creation_name, lowercase=True)
         
         try:
             # Use the search_by_name method from the repository
@@ -38,7 +40,7 @@ class PackIntroduction:
             
             # Check for exact matches (case-insensitive)
             for pack in packs:
-                if pack.name.lower() == normalized_name:
+                if normalize_text(pack.name, lowercase=True) == normalized_name:
                     return True, pack.id
             
             # If we get here, no exact match was found

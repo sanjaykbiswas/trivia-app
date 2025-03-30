@@ -1,6 +1,7 @@
 # backend/src/utils/llm/llm_service.py
 from typing import Optional, Dict, Any
 from ...config.config import LLMConfig
+from ..document_processing.processors import clean_text, normalize_text
 
 class LLMService:
     """
@@ -20,7 +21,8 @@ class LLMService:
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
     
-    async def generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000) -> str:
+    async def generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
+                              clean_prompt: bool = False) -> str:
         """
         Generate content using the configured LLM provider.
         
@@ -28,10 +30,15 @@ class LLMService:
             prompt: The prompt to send to the LLM
             temperature: Controls randomness (0-1), higher = more random
             max_tokens: Maximum number of tokens to generate
+            clean_prompt: Whether to clean and normalize the prompt text
             
         Returns:
             String containing the raw LLM response
         """
+        # Clean prompt if requested - using utility from document_processing
+        if clean_prompt:
+            prompt = clean_text(prompt, remove_extra_whitespace=True)
+        
         # Call appropriate method based on provider
         if self.provider == "openai":
             return self._generate_with_openai(prompt, temperature, max_tokens)
@@ -80,3 +87,25 @@ class LLMService:
             }
         )
         return response.text
+    
+    async def process_llm_response(self, response: str, normalize: bool = True, 
+                                 remove_extra_whitespace: bool = True) -> str:
+        """
+        Process an LLM response using document processing utilities.
+        
+        Args:
+            response: Raw LLM response text
+            normalize: Whether to normalize the text
+            remove_extra_whitespace: Whether to remove extra whitespace
+            
+        Returns:
+            Processed response text
+        """
+        # Clean the text first
+        processed_text = clean_text(response, remove_extra_whitespace=remove_extra_whitespace)
+        
+        # Normalize if requested
+        if normalize:
+            processed_text = normalize_text(processed_text, lowercase=False)
+            
+        return processed_text

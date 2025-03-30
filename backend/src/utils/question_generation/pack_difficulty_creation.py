@@ -5,6 +5,8 @@ from typing import List, Dict, Optional
 from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
+from ..document_processing.processors import clean_text, normalize_text, split_into_chunks
+from ..llm.llm_parsing_utils import extract_key_value_pairs
 
 class PackDifficultyCreation:
     """
@@ -44,14 +46,26 @@ class PackDifficultyCreation:
         Returns:
             Dictionary with difficulty levels as keys and custom descriptions as values
         """
+        # Clean and normalize inputs
+        creation_name = normalize_text(creation_name, lowercase=False)
+        cleaned_topics = [clean_text(topic) for topic in pack_topics]
+        
         # Build prompt for difficulty description generation
-        prompt = self._build_difficulty_prompt(creation_name, pack_topics)
+        prompt = self._build_difficulty_prompt(creation_name, cleaned_topics)
         
         # Generate descriptions using LLM
         raw_response = await self.llm_service.generate_content(prompt)
+        processed_response = await self.llm_service.process_llm_response(raw_response)
         
         # Parse the response into a dictionary of difficulty levels and descriptions
-        difficulty_descriptions = self._parse_difficulty_descriptions(raw_response)
+        # Using the new extract_key_value_pairs utility
+        difficulty_descriptions = extract_key_value_pairs(processed_response)
+        
+        # Ensure all expected difficulty levels are included
+        expected_difficulties = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
+        for difficulty in expected_difficulties:
+            if difficulty not in difficulty_descriptions:
+                difficulty_descriptions[difficulty] = ""
         
         return difficulty_descriptions
     
@@ -66,7 +80,13 @@ class PackDifficultyCreation:
         Returns:
             Formatted prompt string
         """
+        # Use split_into_chunks if the topics text might be too long
         topics_text = "\n".join([f"- {topic}" for topic in pack_topics])
+        
+        # Only use chunking if the topics text is very long
+        if len(topics_text) > 2000:
+            chunks = split_into_chunks(topics_text, chunk_size=1500, respect_sentences=True)
+            topics_text = chunks[0] + "\n(and additional topics...)"
         
         prompt = f"""Generate specific difficulty level descriptions for a trivia pack named "{creation_name}" 
 with the following topics:
@@ -92,44 +112,6 @@ Mixed: [custom description for mixed difficulty]
 Return ONLY these formatted descriptions with no additional text.
 """
         return prompt
-    
-    def _parse_difficulty_descriptions(self, llm_response: str) -> Dict[str, str]:
-        """
-        Parse the LLM response into a dictionary of difficulty levels and descriptions.
-        
-        Args:
-            llm_response: Raw response string from LLM
-            
-        Returns:
-            Dictionary with difficulty levels as keys and descriptions as values
-        """
-        difficulty_descriptions = {}
-        
-        # Define the difficulty levels we expect
-        expected_difficulties = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
-        
-        # Split the response by lines
-        lines = llm_response.strip().split('\n')
-        
-        for line in lines:
-            # Skip empty lines
-            if not line.strip():
-                continue
-                
-            # Try to extract the difficulty level and description
-            for difficulty in expected_difficulties:
-                if line.lower().startswith(f"{difficulty.lower()}:"):
-                    # Extract the description part (after the colon)
-                    description = line[len(f"{difficulty}:"):].strip()
-                    difficulty_descriptions[difficulty] = description
-                    break
-        
-        # Add any missing difficulties with empty strings
-        for difficulty in expected_difficulties:
-            if difficulty not in difficulty_descriptions:
-                difficulty_descriptions[difficulty] = ""
-        
-        return difficulty_descriptions
     
     def create_combined_difficulty_descriptions(self, custom_descriptions: Dict[str, str]) -> List[str]:
         """

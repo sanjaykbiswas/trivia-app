@@ -1,10 +1,11 @@
 # backend/src/utils/question_generation/pack_topic_creation.py
 import uuid
-import re
 from typing import List, Optional
 from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
+from ..document_processing.processors import clean_text, normalize_text
+from ..llm.llm_parsing_utils import extract_bullet_list
 
 class PackTopicCreation:
     """
@@ -38,6 +39,11 @@ class PackTopicCreation:
         Returns:
             List of generated topics
         """
+        # Clean and normalize inputs using document_processing utilities
+        creation_name = normalize_text(creation_name, lowercase=False)
+        if creation_description:
+            creation_description = clean_text(creation_description)
+        
         # Generate the prompt for topic creation
         prompt = self._build_topic_generation_prompt(
             creation_name=creation_name,
@@ -48,8 +54,11 @@ class PackTopicCreation:
         # Generate topics using LLM
         raw_response = await self.llm_service.generate_content(prompt)
         
-        # Parse the response into a clean list of topics
-        topics = self._parse_topic_list(raw_response)
+        # Process the LLM response
+        processed_response = await self.llm_service.process_llm_response(raw_response)
+        
+        # Parse the response into a clean list of topics using the new parsing utility
+        topics = extract_bullet_list(processed_response)
         
         # Ensure we have the requested number of topics
         if len(topics) < num_topics:
@@ -64,9 +73,10 @@ class PackTopicCreation:
             )
             
             raw_response = await self.llm_service.generate_content(additional_prompt)
+            processed_response = await self.llm_service.process_llm_response(raw_response)
             
             # Parse additional topics and combine
-            additional_topics = self._parse_topic_list(raw_response)
+            additional_topics = extract_bullet_list(processed_response)
             topics.extend(additional_topics)
             
             # Ensure we don't exceed the requested number
@@ -198,8 +208,8 @@ Return ONLY the bullet list, with no additional text before or after.
         # Generate additional topics
         raw_response = await self.llm_service.generate_content(additional_prompt)
         
-        # Parse new topics
-        new_topics = self._parse_topic_list(raw_response)
+        # Parse new topics using the new parsing utility
+        new_topics = extract_bullet_list(raw_response)
         
         # Combine with existing, avoiding duplicates
         all_topics = existing_topics.copy()
@@ -216,27 +226,3 @@ Return ONLY the bullet list, with no additional text before or after.
         )
         
         return all_topics
-    
-    def _parse_topic_list(self, llm_response: str) -> List[str]:
-        """
-        Parse a bullet list from LLM into a clean Python list.
-        
-        Args:
-            llm_response: Raw response string from LLM
-            
-        Returns:
-            Cleaned list of topic strings
-        """
-        # Find all bullet points with various bullet characters
-        bullet_pattern = r'(?:^|\n)\s*(?:•|\*|-|–|—|\d+\.)\s*(.+?)(?=$|\n)'
-        matches = re.findall(bullet_pattern, llm_response, re.MULTILINE)
-        
-        # Clean up each topic
-        topics = []
-        for match in matches:
-            # Strip whitespace and remove any quotes
-            cleaned = match.strip().strip('"\'')
-            if cleaned:  # Only add non-empty topics
-                topics.append(cleaned)
-                
-        return topics
