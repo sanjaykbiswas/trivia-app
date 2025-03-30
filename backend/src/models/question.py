@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field, root_validator, model_validator
 
 from .base_schema import BaseCreateSchema, BaseUpdateSchema
 
@@ -41,19 +41,22 @@ class Question(BaseModel):
     correct_answer_rate: float = 0.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
-    @root_validator(pre=True)
-    def set_default_difficulty_current(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    # Updated from root_validator to model_validator for Pydantic v2
+    @model_validator(mode='before')
+    @classmethod
+    def set_default_difficulty_current(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Default difficulty_current to difficulty_initial if not provided,
         but only when difficulty_initial exists
         """
-        if 'difficulty_current' not in values or values['difficulty_current'] is None:
-            if 'difficulty_initial' in values and values['difficulty_initial'] is not None:
-                values['difficulty_current'] = values['difficulty_initial']
-        return values
+        if isinstance(data, dict):
+            if 'difficulty_current' not in data or data['difficulty_current'] is None:
+                if 'difficulty_initial' in data and data['difficulty_initial'] is not None:
+                    data['difficulty_current'] = data['difficulty_initial']
+        return data
     
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode = True
 
 
 class QuestionCreate(BaseCreateSchema):

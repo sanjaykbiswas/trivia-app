@@ -23,7 +23,7 @@ class IncorrectAnswers(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     class Config:
-        orm_mode = True
+        from_attributes = True  # Updated from orm_mode = True
 
 
 class IncorrectAnswersCreate(BaseCreateSchema):
