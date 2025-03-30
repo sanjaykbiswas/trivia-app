@@ -1,7 +1,7 @@
 # backend/src/utils/question_generation/pack_difficulty_creation.py
 import uuid
 import re
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
@@ -57,15 +57,44 @@ class PackDifficultyCreation:
         raw_response = await self.llm_service.generate_content(prompt)
         processed_response = await self.llm_service.process_llm_response(raw_response)
         
-        # Parse the response into a dictionary of difficulty levels and descriptions
-        # Using the new extract_key_value_pairs utility
-        difficulty_descriptions = extract_key_value_pairs(processed_response)
+        # Parse the response - using improved parsing logic
+        difficulty_descriptions = self._parse_difficulty_response(processed_response)
         
         # Ensure all expected difficulty levels are included
         expected_difficulties = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
         for difficulty in expected_difficulties:
             if difficulty not in difficulty_descriptions:
                 difficulty_descriptions[difficulty] = ""
+        
+        return difficulty_descriptions
+    
+    def _parse_difficulty_response(self, response_text: str) -> Dict[str, str]:
+        """
+        Parse the LLM response into a dictionary of difficulty levels and descriptions.
+        
+        This is an improved parser that handles complex multiline descriptions better
+        than the generic key-value extraction.
+        
+        Args:
+            response_text: Processed response from LLM
+            
+        Returns:
+            Dictionary mapping difficulty levels to their descriptions
+        """
+        difficulty_descriptions = {}
+        
+        # Expected difficulty levels
+        difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
+        
+        # Split the response by difficulty level indicators
+        # Look for patterns like "Easy:", "Medium:", etc. at the beginning of lines
+        pattern = r'(?:^|\n)(' + '|'.join(difficulty_levels) + r'):\s*(.*?)(?=\n(?:' + '|'.join(difficulty_levels) + r'):|$)'
+        matches = re.findall(pattern, response_text, re.DOTALL)
+        
+        for level, description in matches:
+            # Clean up the description
+            cleaned_desc = description.strip()
+            difficulty_descriptions[level] = cleaned_desc
         
         return difficulty_descriptions
     
