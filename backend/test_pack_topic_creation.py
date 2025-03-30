@@ -1,7 +1,12 @@
 # backend/test_pack_topic_creation.py
 import uuid
 import pytest
+import sys
+import os
 from unittest.mock import MagicMock, AsyncMock, patch
+
+# Ensure the package is importable
+sys.path.insert(0, os.path.abspath("."))
 
 from src.utils.question_generation.pack_topic_creation import PackTopicCreation
 from src.repositories.pack_creation_data_repository import PackCreationDataRepository
@@ -261,3 +266,9 @@ async def test_add_additional_topics(pack_topic_creation, mock_repository, mock_
     assert len(all_topics) == 5  # 2 existing + 3 new
     assert "Existing topic 1" in all_topics
     assert "New topic 3" in all_topics
+
+
+if __name__ == "__main__":
+    import pytest
+    import sys
+    sys.exit(pytest.main(["-xvs", __file__]))
