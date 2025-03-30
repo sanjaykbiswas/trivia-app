@@ -67,7 +67,7 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
     # Override base methods to handle enum serialization
     async def create(self, *, obj_in: QuestionCreate) -> Question:
         """Create a new question with proper enum handling."""
-        insert_data = obj_in.dict(exclude_unset=False, by_alias=False)
+        insert_data = obj_in.dict(exclude_unset=False, exclude_none=True, by_alias=False)
         insert_data = self._serialize_enum_values(insert_data)
         
         query = self.db.table(self.table_name).insert(insert_data, returning='representation')

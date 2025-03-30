@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field
 
 from .base_schema import BaseCreateSchema, BaseUpdateSchema
 
@@ -25,8 +25,8 @@ class Question(BaseModel):
         question: The actual trivia question text
         answer: The correct answer to the question
         pack_id: Reference to the pack this question belongs to
-        difficulty_initial: The original difficulty rating when created
-        difficulty_current: The current difficulty rating (may change over time)
+        difficulty_initial: The original difficulty rating when created (now optional)
+        difficulty_current: The current difficulty rating (optional)
         correct_answer_rate: Percentage of correct answers given by users
         created_at: When this question was created
     """
@@ -34,16 +34,19 @@ class Question(BaseModel):
     question: str
     answer: str
     pack_id: uuid.UUID
-    difficulty_initial: DifficultyLevel
+    difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
     correct_answer_rate: float = 0.0
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     @root_validator(pre=True)
     def set_default_difficulty_current(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        """Default difficulty_current to difficulty_initial if not provided"""
+        """
+        Default difficulty_current to difficulty_initial if not provided,
+        but only when difficulty_initial exists
+        """
         if 'difficulty_current' not in values or values['difficulty_current'] is None:
-            if 'difficulty_initial' in values:
+            if 'difficulty_initial' in values and values['difficulty_initial'] is not None:
                 values['difficulty_current'] = values['difficulty_initial']
         return values
     
@@ -56,7 +59,7 @@ class QuestionCreate(BaseCreateSchema):
     question: str
     answer: str
     pack_id: uuid.UUID
-    difficulty_initial: DifficultyLevel
+    difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
     
     # Default values not required in creation schema
@@ -67,5 +70,6 @@ class QuestionUpdate(BaseUpdateSchema):
     """Schema for updating an existing question."""
     question: Optional[str] = None
     answer: Optional[str] = None
+    difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
     correct_answer_rate: Optional[float] = None

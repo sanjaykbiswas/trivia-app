@@ -19,6 +19,7 @@ class PackCreationData(BaseModel):
         creation_description: Optional description of the creation process
         pack_breadth: Description of the breadth of topics in the pack
         custom_difficulty_description: List of custom difficulty descriptions
+        is_temporal: Whether this pack is time-based or has temporal relevance
         created_at: When this record was created
     """
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
@@ -28,6 +29,7 @@ class PackCreationData(BaseModel):
     creation_description: Optional[str] = None
     pack_breadth: str
     custom_difficulty_description: List[str]
+    is_temporal: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
     class Config:
@@ -42,6 +44,7 @@ class PackCreationDataCreate(BaseCreateSchema):
     creation_description: Optional[str] = None
     pack_breadth: str
     custom_difficulty_description: List[str]
+    is_temporal: bool = False
 
 
 class PackCreationDataUpdate(BaseUpdateSchema):
@@ -51,3 +54,4 @@ class PackCreationDataUpdate(BaseUpdateSchema):
     creation_description: Optional[str] = None
     pack_breadth: Optional[str] = None
     custom_difficulty_description: Optional[List[str]] = None
+    is_temporal: Optional[bool] = None
