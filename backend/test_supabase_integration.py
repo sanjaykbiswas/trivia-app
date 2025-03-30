@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'
 
 # Import configuration and Supabase client
 from config.config import SupabaseConfig
-from supabase_py_async import create_client
+from config.supabase_client import init_supabase_client, close_supabase_client
 
 # Import models
 from models.pack import Pack, PackCreate, PackUpdate, CreatorType
@@ -43,18 +43,8 @@ class TestSupabaseIntegration:
         """Set up Supabase connection and repositories."""
         print("Setting up Supabase connection...")
         
-        # Load configuration
-        supabase_config = SupabaseConfig()
-        url = supabase_config.get_supabase_url()
-        key = supabase_config.get_supabase_key()
-        
-        if not url or not key:
-            print("ERROR: Supabase URL or key not found in environment variables.")
-            print("Make sure to set SUPABASE_URL and SUPABASE_KEY in your .env file.")
-            sys.exit(1)
-        
-        # Initialize Supabase client
-        self.supabase = await create_client(url, key)
+        # Initialize Supabase client using the init_supabase_client function
+        self.supabase = await init_supabase_client()
         
         # Initialize repositories
         self.pack_repo = PackRepository(self.supabase)
@@ -243,6 +233,9 @@ class TestSupabaseIntegration:
                 
             except Exception as e:
                 print(f"Error deleting {id} from {table}: {str(e)}")
+        
+        # Close the Supabase client
+        await close_supabase_client(self.supabase)
         
         print("Cleanup complete")
     
