@@ -25,7 +25,7 @@ class PackCreationData(BaseModel):
     """
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     pack_id: uuid.UUID
-    creation_name: Optional[str] = None
+    creation_name: str  # Changed from Optional[str] = None to str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
     creation_description: Optional[str] = None
@@ -41,7 +41,7 @@ class PackCreationData(BaseModel):
 class PackCreationDataCreate(BaseCreateSchema):
     """Schema for creating new pack creation metadata."""
     pack_id: uuid.UUID
-    creation_name: Optional[str] = None
+    creation_name: str  # Changed from Optional[str] = None to str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
     creation_description: Optional[str] = None
@@ -52,7 +52,7 @@ class PackCreationDataCreate(BaseCreateSchema):
 
 class PackCreationDataUpdate(BaseUpdateSchema):
     """Schema for updating existing pack creation metadata."""
-    creation_name: Optional[str] = None
+    creation_name: Optional[str] = None  # Keep as Optional in update schema
     is_pow: Optional[bool] = None
     pow_analysis: Optional[str] = None
     creation_description: Optional[str] = None

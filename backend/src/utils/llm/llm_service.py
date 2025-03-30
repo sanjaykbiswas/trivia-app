@@ -34,17 +34,17 @@ class LLMService:
         """
         # Call appropriate method based on provider
         if self.provider == "openai":
-            return await self._generate_with_openai(prompt, temperature, max_tokens)
+            return self._generate_with_openai(prompt, temperature, max_tokens)
         elif self.provider == "anthropic":
-            return await self._generate_with_anthropic(prompt, temperature, max_tokens)
+            return self._generate_with_anthropic(prompt, temperature, max_tokens)
         elif self.provider == "gemini":
-            return await self._generate_with_gemini(prompt, temperature, max_tokens)
+            return self._generate_with_gemini(prompt, temperature, max_tokens)
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
     
-    async def _generate_with_openai(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def _generate_with_openai(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate content using OpenAI API."""
-        response = await self.client.chat.completions.create(
+        response = self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates high-quality trivia content."},
@@ -55,9 +55,9 @@ class LLMService:
         )
         return response.choices[0].message.content
     
-    async def _generate_with_anthropic(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def _generate_with_anthropic(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate content using Anthropic API."""
-        message = await self.client.messages.create(
+        message = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -68,11 +68,11 @@ class LLMService:
         )
         return message.content[0].text
     
-    async def _generate_with_gemini(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def _generate_with_gemini(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate content using Google's Gemini API."""
         genai = self.client
         model = genai.GenerativeModel(self.model)
-        response = await model.generate_content_async(
+        response = model.generate_content(  # Using synchronous version instead of generate_content_async
             prompt,
             generation_config={
                 "temperature": temperature,
