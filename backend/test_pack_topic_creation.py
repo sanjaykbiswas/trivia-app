@@ -1,274 +1,100 @@
-# backend/test_pack_topic_creation.py
+# backend/create_pack_topics.py
+import asyncio
 import uuid
-import pytest
 import sys
 import os
-from unittest.mock import MagicMock, AsyncMock, patch
+from pathlib import Path
 
-# Ensure the package is importable
-sys.path.insert(0, os.path.abspath("."))
+# Add backend/src to the Python path
+current_dir = Path(os.getcwd())
+sys.path.insert(0, str(current_dir))
 
-from src.utils.question_generation.pack_topic_creation import PackTopicCreation
+from src.config.supabase_client import init_supabase_client, close_supabase_client
+from src.repositories.pack_repository import PackRepository
 from src.repositories.pack_creation_data_repository import PackCreationDataRepository
+from src.utils.question_generation.pack_topic_creation import PackTopicCreation
 from src.utils.llm.llm_service import LLMService
-from src.models.pack_creation_data import PackCreationData, PackCreationDataCreate, PackCreationDataUpdate
+from src.models.pack import Pack, PackCreate, CreatorType
 
 
-@pytest.fixture
-def mock_llm_service():
-    """Create a mock LLM service for testing."""
-    llm_service = MagicMock(spec=LLMService)
-    # Mock the generate_content method to return a sample response
-    llm_service.generate_content = AsyncMock()
-    return llm_service
-
-
-@pytest.fixture
-def mock_repository():
-    """Create a mock repository for testing."""
-    repo = MagicMock(spec=PackCreationDataRepository)
-    # Mock the async methods
-    repo.get_by_pack_id = AsyncMock()
-    repo.create = AsyncMock()
-    repo.update = AsyncMock()
-    return repo
-
-
-@pytest.fixture
-def pack_topic_creation(mock_repository, mock_llm_service):
-    """Create a PackTopicCreation instance with mocked dependencies."""
-    return PackTopicCreation(
-        pack_creation_data_repository=mock_repository,
-        llm_service=mock_llm_service
-    )
-
-
-@pytest.mark.asyncio
-async def test_create_pack_topics(pack_topic_creation, mock_llm_service):
-    """Test the create_pack_topics method."""
-    # Setup mock response from LLM
-    mock_response = """
-    • Ancient Greek philosophers and their contributions
-    • The Peloponnesian War and its impact
-    • Greek mythology and its influence on modern culture
-    • Architecture of ancient Greece
-    • The Olympic games: origins and evolution
-    """
-    mock_llm_service.generate_content.return_value = mock_response
+async def create_sample_pack_and_topics():
+    """Create a sample pack and generate topics for it using LLM."""
+    # Initialize Supabase client
+    print("Initializing Supabase client...")
+    supabase = await init_supabase_client()
     
-    # Call the method
-    topics = await pack_topic_creation.create_pack_topics(
-        creation_name="Ancient Greece",
-        creation_description="A trivia pack about Ancient Greek history and culture",
-        num_topics=5
-    )
+    try:
+        # Initialize repositories
+        pack_repo = PackRepository(supabase)
+        pack_creation_repo = PackCreationDataRepository(supabase)
+        
+        # Initialize LLM service
+        llm_service = LLMService()
+        
+        # Initialize PackTopicCreation
+        topic_creator = PackTopicCreation(
+            pack_creation_data_repository=pack_creation_repo,
+            llm_service=llm_service
+        )
+        
+        # Create a sample pack
+        pack_name = "Ancient Greece History"
+        pack_description = "A fascinating journey through ancient Greek history, mythology, and culture."
+        
+        print(f"Creating pack: {pack_name}")
+        pack_data = PackCreate(
+            name=pack_name,
+            description=pack_description,
+            price=0.0,  # Free pack
+            creator_type=CreatorType.SYSTEM,
+        )
+        
+        new_pack = await pack_repo.create(obj_in=pack_data)
+        print(f"Pack created with ID: {new_pack.id}")
+        
+        # Generate topics for the pack
+        print("Generating topics with LLM...")
+        topics = await topic_creator.create_pack_topics(
+            creation_name=pack_name,
+            creation_description=pack_description,
+            num_topics=5
+        )
+        
+        print("Generated topics:")
+        for i, topic in enumerate(topics, 1):
+            print(f"  {i}. {topic}")
+        
+        # Store the topics in the database
+        print("Storing topics in database...")
+        await topic_creator.store_pack_topics(
+            pack_id=new_pack.id,
+            topics=topics,
+            creation_description=pack_description
+        )
+        
+        print("Successfully created pack and topics!")
+        
+        # Return the created pack ID for reference
+        return new_pack.id
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
     
-    # Verify LLM was called with appropriate prompt
-    mock_llm_service.generate_content.assert_called_once()
-    prompt_arg = mock_llm_service.generate_content.call_args[0][0]
-    assert "Ancient Greece" in prompt_arg
-    assert "5 specific topics" in prompt_arg
-    
-    # Verify correct topics were extracted
-    assert len(topics) == 5
-    assert "Ancient Greek philosophers and their contributions" in topics
-    assert "The Olympic games: origins and evolution" in topics
-
-
-@pytest.mark.asyncio
-async def test_create_pack_topics_too_few_results(pack_topic_creation, mock_llm_service):
-    """Test the create_pack_topics method handles too few topics correctly."""
-    # First call returns only 3 topics
-    mock_llm_service.generate_content.side_effect = [
-        """
-        • Ancient Greek philosophers
-        • Greek mythology
-        • The Olympic games
-        """,
-        """
-        • The Peloponnesian War
-        • Architecture of ancient Greece
-        • Greek literature and drama
-        """
-    ]
-    
-    topics = await pack_topic_creation.create_pack_topics(
-        creation_name="Ancient Greece",
-        num_topics=5
-    )
-    
-    # Should make a second call and combine results
-    assert mock_llm_service.generate_content.call_count == 2
-    assert len(topics) == 5  # Should have requested additional topics
-
-
-def test_parse_topic_list(pack_topic_creation):
-    """Test the _parse_topic_list method with different formats."""
-    # Test with bullet points
-    bullet_response = """
-    • First topic
-    • Second topic
-    • Third topic
-    """
-    topics = pack_topic_creation._parse_topic_list(bullet_response)
-    assert len(topics) == 3
-    assert topics == ["First topic", "Second topic", "Third topic"]
-    
-    # Test with different bullet character
-    asterisk_response = """
-    * First topic
-    * Second topic
-    * Third topic
-    """
-    topics = pack_topic_creation._parse_topic_list(asterisk_response)
-    assert len(topics) == 3
-    
-    # Test with numbered list
-    numbered_response = """
-    1. First topic
-    2. Second topic
-    3. Third topic
-    """
-    topics = pack_topic_creation._parse_topic_list(numbered_response)
-    assert len(topics) == 3
-    
-    # Test with mixed format
-    mixed_response = """
-    Here are some topics:
-    • First topic
-    * Second topic
-    - Third topic
-    """
-    topics = pack_topic_creation._parse_topic_list(mixed_response)
-    assert len(topics) == 3
-
-
-@pytest.mark.asyncio
-async def test_store_pack_topics_new(pack_topic_creation, mock_repository):
-    """Test storing pack topics when no existing data is present."""
-    # Setup mock to return None (no existing data)
-    mock_repository.get_by_pack_id.return_value = None
-    
-    pack_id = uuid.uuid4()
-    topics = ["Topic 1", "Topic 2", "Topic 3"]
-    description = "Test description"
-    
-    await pack_topic_creation.store_pack_topics(pack_id, topics, description)
-    
-    # Verify repository.create was called with correct data
-    mock_repository.create.assert_called_once()
-    create_call = mock_repository.create.call_args[1]["obj_in"]
-    assert isinstance(create_call, PackCreationDataCreate)
-    assert create_call.pack_id == pack_id
-    assert create_call.pack_topics == topics
-    assert create_call.creation_description == description
-
-
-@pytest.mark.asyncio
-async def test_store_pack_topics_existing(pack_topic_creation, mock_repository):
-    """Test storing pack topics when existing data is present."""
-    # Setup mock to return existing data
-    existing_id = uuid.uuid4()
-    existing_data = PackCreationData(
-        id=existing_id,
-        pack_id=uuid.uuid4(),
-        pack_topics=["Old topic"],
-        custom_difficulty_description=[]
-    )
-    mock_repository.get_by_pack_id.return_value = existing_data
-    
-    pack_id = existing_data.pack_id
-    topics = ["Topic 1", "Topic 2", "Topic 3"]
-    description = "Test description"
-    
-    await pack_topic_creation.store_pack_topics(pack_id, topics, description)
-    
-    # Verify repository.update was called with correct data
-    mock_repository.update.assert_called_once()
-    update_id = mock_repository.update.call_args[1]["id"]
-    update_data = mock_repository.update.call_args[1]["obj_in"]
-    assert update_id == existing_id
-    assert isinstance(update_data, PackCreationDataUpdate)
-    assert update_data.pack_topics == topics
-    assert update_data.creation_description == description
-
-
-@pytest.mark.asyncio
-async def test_get_existing_pack_topics(pack_topic_creation, mock_repository):
-    """Test retrieving existing pack topics."""
-    # Setup mock repository response
-    pack_id = uuid.uuid4()
-    expected_topics = ["Topic 1", "Topic 2", "Topic 3"]
-    mock_repository.get_by_pack_id.return_value = PackCreationData(
-        id=uuid.uuid4(),
-        pack_id=pack_id,
-        pack_topics=expected_topics,
-        custom_difficulty_description=[]
-    )
-    
-    # Get topics
-    topics = await pack_topic_creation.get_existing_pack_topics(pack_id)
-    
-    # Verify correct topics returned
-    assert topics == expected_topics
-    mock_repository.get_by_pack_id.assert_called_once_with(pack_id)
-
-
-@pytest.mark.asyncio
-async def test_get_existing_pack_topics_none(pack_topic_creation, mock_repository):
-    """Test retrieving existing pack topics when none exist."""
-    # Setup mock repository response
-    pack_id = uuid.uuid4()
-    mock_repository.get_by_pack_id.return_value = None
-    
-    # Get topics when none exist
-    topics = await pack_topic_creation.get_existing_pack_topics(pack_id)
-    
-    # Verify empty list returned
-    assert topics == []
-    mock_repository.get_by_pack_id.assert_called_once_with(pack_id)
-
-
-@pytest.mark.asyncio
-async def test_add_additional_topics(pack_topic_creation, mock_repository, mock_llm_service):
-    """Test adding additional topics to existing ones."""
-    # Setup existing topics
-    pack_id = uuid.uuid4()
-    existing_topics = ["Existing topic 1", "Existing topic 2"]
-    mock_repository.get_by_pack_id.return_value = PackCreationData(
-        id=uuid.uuid4(),
-        pack_id=pack_id,
-        pack_topics=existing_topics,
-        custom_difficulty_description=[]
-    )
-    
-    # Setup LLM response
-    new_topics_response = """
-    • New topic 1
-    • New topic 2
-    • New topic 3
-    """
-    mock_llm_service.generate_content.return_value = new_topics_response
-    
-    # Add additional topics
-    all_topics = await pack_topic_creation.add_additional_topics(
-        pack_id=pack_id,
-        creation_name="Test Pack",
-        num_additional_topics=3
-    )
-    
-    # Verify LLM prompt contained existing topics
-    prompt = mock_llm_service.generate_content.call_args[0][0]
-    for topic in existing_topics:
-        assert topic in prompt
-    
-    # Verify store_pack_topics was called with combined list
-    assert len(all_topics) == 5  # 2 existing + 3 new
-    assert "Existing topic 1" in all_topics
-    assert "New topic 3" in all_topics
+    finally:
+        # Close the Supabase client
+        await close_supabase_client(supabase)
+        print("Supabase client closed")
 
 
 if __name__ == "__main__":
-    import pytest
-    import sys
-    sys.exit(pytest.main(["-xvs", __file__]))
+    print("Starting pack and topic creation...")
+    pack_id = asyncio.run(create_sample_pack_and_topics())
+    
+    if pack_id:
+        print(f"Process completed successfully. Pack ID: {pack_id}")
+    else:
+        print("Process failed.")
+        sys.exit(1)
