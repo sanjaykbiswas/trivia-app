@@ -1,7 +1,7 @@
 # backend/src/repositories/user_repository.py
 import uuid
 from typing import Optional, List
-from supabase import Client  # Updated import
+from supabase import AsyncClient
 
 from ..models.user import User, UserCreate, UserUpdate
 from .base_repository_impl import BaseRepositoryImpl
@@ -11,7 +11,7 @@ class UserRepository(BaseRepositoryImpl[User, UserCreate, UserUpdate, uuid.UUID]
     Repository for managing User data in Supabase.
     Inherits generic CRUD operations from BaseRepositoryImpl.
     """
-    def __init__(self, db: Client):  # Updated type annotation
+    def __init__(self, db: AsyncClient):
         super().__init__(model=User, db=db, table_name="users") # Table name: "users"
 
     # --- Custom User-specific methods can be added here ---

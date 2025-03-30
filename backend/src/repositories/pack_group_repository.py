@@ -1,7 +1,7 @@
 # backend/src/repositories/pack_group_repository.py
 import uuid
 from typing import Optional
-from supabase import Client  # Updated import
+from supabase import AsyncClient
 
 from ..models.pack_group import PackGroup, PackGroupCreate, PackGroupUpdate
 from .base_repository_impl import BaseRepositoryImpl
@@ -10,7 +10,7 @@ class PackGroupRepository(BaseRepositoryImpl[PackGroup, PackGroupCreate, PackGro
     """
     Repository for managing PackGroup data in Supabase.
     """
-    def __init__(self, db: Client):  # Updated type annotation
+    def __init__(self, db: AsyncClient):
         super().__init__(model=PackGroup, db=db, table_name="pack_groups") # Table name: "pack_groups"
 
     # --- Custom PackGroup-specific methods (if any) ---

@@ -1,33 +1,30 @@
-# backend/src/config/supabase_client.py (Updated Version)
-from supabase import create_client, Client
-import httpx
+# backend/src/config/supabase_client.py
+from supabase import AsyncClient, acreate_client
 from .config import SupabaseConfig
 
-async def init_supabase_client() -> Client:
+async def init_supabase_client() -> AsyncClient:
     """
     Initialize an async Supabase client.
     
     Returns:
-        An initialized Supabase client with async support
+        An initialized asynchronous Supabase client
     """
     config = SupabaseConfig()
     
-    # Create the Supabase client - simplified for compatibility
-    supabase = create_client(
+    # Create the async Supabase client
+    supabase = await acreate_client(
         config.get_supabase_url(),
         config.get_supabase_key()
     )
     
     return supabase
 
-# Function to close the async client when done
-async def close_supabase_client(client: Client):
+async def close_supabase_client(client: AsyncClient):
     """
-    Close the async HTTP client used by Supabase client.
+    Close the async Supabase client when done.
     
     Args:
-        client: The Supabase client to close
+        client: The AsyncClient to close
     """
-    # Newer versions of the library manage their own client lifecycle
-    # So this is now a no-op for compatibility
-    pass
+    if client and hasattr(client, 'session') and client.session:
+        await client.session.aclose()

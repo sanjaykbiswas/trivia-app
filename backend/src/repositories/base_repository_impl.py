@@ -2,7 +2,7 @@
 import uuid
 from typing import List, Optional, Type, Dict, Any, Union, TypeVar
 from pydantic import BaseModel
-from supabase import Client  # Updated import
+from supabase import AsyncClient
 from postgrest import APIResponse
 
 from .base_repository import BaseRepository, ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType
@@ -15,13 +15,13 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
     defined in BaseRepository, interacting with a Supabase table.
     """
 
-    def __init__(self, *, model: Type[ModelType], db: Client, table_name: str):  # Updated type annotation
+    def __init__(self, *, model: Type[ModelType], db: AsyncClient, table_name: str):
         """
         Initialize the repository.
 
         Args:
             model: The Pydantic model type for this repository.
-            db: An instance of the Supabase client.
+            db: An instance of the Supabase AsyncClient.
             table_name: The name of the Supabase table this repository manages.
         """
         self.model = model
@@ -31,7 +31,7 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
     async def _execute_query(self, query) -> APIResponse:
         """Helper to execute supabase query and handle potential errors."""
         try:
-            response = await query.execute()  # Already supports async
+            response = await query.execute()
             # Basic check if Supabase returned data or an error structure
             if hasattr(response, 'error') and response.error:
                  raise ValueError(f"Supabase query failed: {response.error}")

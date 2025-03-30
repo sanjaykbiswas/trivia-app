@@ -1,7 +1,7 @@
 # backend/src/repositories/incorrect_answers_repository.py
 import uuid
 from typing import Optional, List
-from supabase import Client  # Updated import
+from supabase import AsyncClient
 
 from ..models.incorrect_answers import IncorrectAnswers, IncorrectAnswersCreate, IncorrectAnswersUpdate
 from .base_repository_impl import BaseRepositoryImpl
@@ -10,7 +10,7 @@ class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectA
     """
     Repository for managing IncorrectAnswers data in Supabase.
     """
-    def __init__(self, db: Client):  # Updated type annotation
+    def __init__(self, db: AsyncClient):
         super().__init__(model=IncorrectAnswers, db=db, table_name="incorrect_answers") # Table name: "incorrect_answers"
 
     # --- Custom IncorrectAnswers-specific methods ---

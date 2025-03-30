@@ -1,7 +1,7 @@
 # backend/src/repositories/pack_creation_data_repository.py
 import uuid
 from typing import Optional
-from supabase import Client  # Updated import
+from supabase import AsyncClient
 
 from ..models.pack_creation_data import PackCreationData, PackCreationDataCreate, PackCreationDataUpdate
 from .base_repository_impl import BaseRepositoryImpl
@@ -11,7 +11,7 @@ class PackCreationDataRepository(BaseRepositoryImpl[PackCreationData, PackCreati
     Repository for managing PackCreationData in Supabase.
     Contains metadata linked to a specific pack.
     """
-    def __init__(self, db: Client):  # Updated type annotation
+    def __init__(self, db: AsyncClient):
         super().__init__(model=PackCreationData, db=db, table_name="pack_creation_data") # Table name: "pack_creation_data"
 
     # --- Custom PackCreationData-specific method ---

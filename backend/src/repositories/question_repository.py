@@ -1,7 +1,7 @@
 # backend/src/repositories/question_repository.py
 import uuid
 from typing import List, Optional, Dict, Any
-from supabase import Client  # Updated import
+from supabase import AsyncClient
 
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
 from .base_repository_impl import BaseRepositoryImpl
@@ -11,7 +11,7 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
     """
     Repository for managing Question data in Supabase.
     """
-    def __init__(self, db: Client):  # Updated type annotation
+    def __init__(self, db: AsyncClient):
         super().__init__(model=Question, db=db, table_name="questions") # Table name: "questions"
 
     # Helper method to ensure enum values are properly serialized
