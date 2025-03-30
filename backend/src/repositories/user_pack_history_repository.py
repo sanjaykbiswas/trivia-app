@@ -1,7 +1,7 @@
 # backend/src/repositories/user_pack_history_repository.py
 import uuid
 from typing import List, Optional
-from supabase_py_async import AsyncClient
+from supabase import Client  # Updated import
 from datetime import datetime
 
 from ..models.user_pack_history import UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate
@@ -11,7 +11,7 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
     """
     Repository for managing UserPackHistory data in Supabase.
     """
-    def __init__(self, db: AsyncClient):
+    def __init__(self, db: Client):  # Updated type annotation
         super().__init__(model=UserPackHistory, db=db, table_name="user_pack_history") # Table name: "user_pack_history"
 
     # --- Custom UserPackHistory-specific methods ---

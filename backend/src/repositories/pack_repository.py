@@ -1,7 +1,7 @@
 # backend/src/repositories/pack_repository.py
 import uuid
 from typing import List, Optional, Dict, Any
-from supabase_py_async import AsyncClient
+from supabase import Client  # Updated import
 
 from ..models.pack import Pack, PackCreate, PackUpdate, CreatorType
 from .base_repository_impl import BaseRepositoryImpl
@@ -10,7 +10,7 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
     """
     Repository for managing Pack data in Supabase.
     """
-    def __init__(self, db: AsyncClient):
+    def __init__(self, db: Client):  # Updated type annotation
         super().__init__(model=Pack, db=db, table_name="packs") # Table name: "packs"
 
     # Helper method to ensure enum values are properly serialized

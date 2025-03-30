@@ -1,7 +1,7 @@
 # backend/src/repositories/user_question_history_repository.py
 import uuid
 from typing import List, Optional
-from supabase_py_async import AsyncClient
+from supabase import Client  # Updated import
 
 from ..models.user_question_history import UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate
 from .base_repository_impl import BaseRepositoryImpl
@@ -10,7 +10,7 @@ class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, User
     """
     Repository for managing UserQuestionHistory data in Supabase.
     """
-    def __init__(self, db: AsyncClient):
+    def __init__(self, db: Client):  # Updated type annotation
         super().__init__(model=UserQuestionHistory, db=db, table_name="user_question_history") # Table name: "user_question_history"
 
     # --- Custom UserQuestionHistory-specific methods ---
