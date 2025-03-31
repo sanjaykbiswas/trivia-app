@@ -54,8 +54,8 @@ class CustomInstructionsCreator:
             return processed_response
         except Exception as e:
             logger.error(f"Error generating custom instructions: {str(e)}")
-            # Return placeholder text if generation fails
-            return f"Generate questions about {pack_topic} with a mix of easy, medium, and hard difficulty levels."
+            # Return an empty string if generation fails
+            return ""
     
     def _build_instructions_prompt(self, 
                                  pack_topic: str, 
@@ -88,14 +88,14 @@ class CustomInstructionsCreator:
         # Build the prompt
         prompt = f"""Generate custom instructions for creating trivia questions about {pack_topic}.
 
-These instructions will guide how future trivia questions are generated.
+Based on the the topic: {pack_topic} and the following question examples, come up with customized instructions to give an LLM to create additional questions.
 
 {examples_text}
 
 Your instructions should cover:
 1. The style and tone of questions (e.g., straightforward, playful, challenging)
 2. The level of specificity expected in questions and answers
-3. Any particular aspects of {pack_topic} to focus on
+3. Any nuanced aspects of {pack_topic} to focus on
 4. Any formats or structures that work well for questions about this topic
 5. Any potential pitfalls or areas to avoid
 
