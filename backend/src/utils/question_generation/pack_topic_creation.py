@@ -1,11 +1,15 @@
 # backend/src/utils/question_generation/pack_topic_creation.py
 import uuid
+import logging
 from typing import List, Optional
 from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
 from ..document_processing.processors import clean_text, normalize_text
-from ..llm.llm_parsing_utils import extract_bullet_list
+from ..llm.llm_parsing_utils import parse_json_from_llm
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 class PackTopicCreation:
     """
@@ -51,36 +55,31 @@ class PackTopicCreation:
             num_topics=num_topics
         )
         
-        # Generate topics using LLM
+        # Generate topics using LLM - single call
         raw_response = await self.llm_service.generate_content(prompt)
         
-        # Process the LLM response
-        processed_response = await self.llm_service.process_llm_response(raw_response)
+        # Parse the raw response directly into JSON
+        default_topics = []  # Default in case parsing fails
+        topics_data = parse_json_from_llm(raw_response, default_topics)
         
-        # Parse the response into a clean list of topics using the new parsing utility
-        topics = extract_bullet_list(processed_response)
+        # Validate the result is a list of strings
+        if isinstance(topics_data, list):
+            # Convert any non-string items to strings
+            topics = [str(item) for item in topics_data if item]
+        else:
+            topics = default_topics
         
-        # Ensure we have the requested number of topics
-        if len(topics) < num_topics:
-            # If not enough topics, try again with more requested to compensate
-            additional_needed = num_topics - len(topics)
-            
-            # Create a new prompt asking for additional topics
-            additional_prompt = self._build_topic_generation_prompt(
-                creation_name=creation_name,
-                creation_description=creation_description,
-                num_topics=additional_needed + 2  # Ask for a couple extra as buffer
-            )
-            
-            raw_response = await self.llm_service.generate_content(additional_prompt)
-            processed_response = await self.llm_service.process_llm_response(raw_response)
-            
-            # Parse additional topics and combine
-            additional_topics = extract_bullet_list(processed_response)
-            topics.extend(additional_topics)
-            
-            # Ensure we don't exceed the requested number
+        # Ensure we have the requested number of topics (truncate if we have too many)
+        if len(topics) > num_topics:
             topics = topics[:num_topics]
+            
+        # Check if we got fewer topics than requested and output a warning
+        if len(topics) < num_topics:
+            logger.warning(
+                f"Requested {num_topics} topics for '{creation_name}', but only received {len(topics)}. "
+                f"Continuing with the available topics."
+            )
+            print(f"Warning: Requested {num_topics} topics but only got {len(topics)}")
         
         return topics
     
@@ -88,7 +87,7 @@ class PackTopicCreation:
                                       creation_description: Optional[str] = None,
                                       num_topics: int = 5) -> str:
         """
-        Build the prompt for topic generation.
+        Build the prompt for topic creation.
         
         Args:
             creation_name: Name of the trivia pack
@@ -105,17 +104,24 @@ class PackTopicCreation:
 The topics should:
 - Be specific enough to generate interesting trivia questions
 - Cover different aspects related to {creation_name}
-- Be presented as a simple bullet list (one topic per bullet)
-- Not have any extra text, just the bullet list
 
-For example, if the pack name was "World Geography":
-- Mountain ranges across continents
-- Island nations and archipelagos
-- Capital cities of the world
-- Major rivers and watersheds
-- Desert ecosystems
+IMPORTANT: Return the topics as a valid JSON array of strings in this exact format:
+[
+  "Topic 1",
+  "Topic 2",
+  "Topic 3"
+]
 
-Return ONLY the bullet list, with no additional text before or after.
+For example, if the pack name was "World Geography", the response should be:
+[
+  "Mountain ranges across continents",
+  "Island nations and archipelagos",
+  "Capital cities of the world",
+  "Major rivers and watersheds",
+  "Desert ecosystems"
+]
+
+DO NOT include any additional text, explanations, or markdown - ONLY return the JSON array.
 """
         return prompt
     
@@ -199,17 +205,37 @@ Please provide topics DIFFERENT from these existing topics:
 The topics should:
 - Be specific enough to generate interesting trivia questions
 - Cover different aspects related to {creation_name}
-- Be presented as a simple bullet list (one topic per bullet)
-- Not have any extra text, just the bullet list
 
-Return ONLY the bullet list, with no additional text before or after.
+IMPORTANT: Return the topics as a valid JSON array of strings in this exact format:
+[
+  "New Topic 1",
+  "New Topic 2",
+  "New Topic 3"
+]
+
+DO NOT include any additional text, explanations, or markdown - ONLY return the JSON array.
 """
         
-        # Generate additional topics
+        # Generate additional topics - single call
         raw_response = await self.llm_service.generate_content(additional_prompt)
         
-        # Parse new topics using the new parsing utility
-        new_topics = extract_bullet_list(raw_response)
+        # Parse the raw response directly into JSON
+        default_topics = []
+        new_topics_data = parse_json_from_llm(raw_response, default_topics)
+        
+        # Validate the result is a list of strings
+        if isinstance(new_topics_data, list):
+            new_topics = [str(item) for item in new_topics_data if item]
+        else:
+            new_topics = default_topics
+            
+        # Check if we got fewer topics than requested and output a warning
+        if len(new_topics) < num_additional_topics:
+            logger.warning(
+                f"Requested {num_additional_topics} additional topics for '{creation_name}', "
+                f"but only received {len(new_topics)}. Continuing with available topics."
+            )
+            print(f"Warning: Requested {num_additional_topics} additional topics but only got {len(new_topics)}")
         
         # Combine with existing, avoiding duplicates
         all_topics = existing_topics.copy()
@@ -221,7 +247,7 @@ Return ONLY the bullet list, with no additional text before or after.
         await self.store_pack_topics(
             pack_id=pack_id,
             topics=all_topics,
-            creation_name=creation_name,  # Added required parameter
+            creation_name=creation_name,
             creation_description=creation_description
         )
         
