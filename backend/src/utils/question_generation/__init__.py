@@ -13,6 +13,7 @@ from .pack_difficulty_creation import PackDifficultyCreation
 from .pack_management import get_or_create_pack
 from .text_utils import clean_trivia_text, chunk_trivia_content
 from .seed_question_processor import SeedQuestionProcessor
+from .question_generator import QuestionGenerator
 
 __all__ = [
     "PackIntroduction",
@@ -22,4 +23,5 @@ __all__ = [
     "clean_trivia_text", 
     "chunk_trivia_content",
     "SeedQuestionProcessor",
+    "QuestionGenerator",
 ]
