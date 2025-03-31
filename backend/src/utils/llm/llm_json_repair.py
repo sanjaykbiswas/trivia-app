@@ -58,7 +58,7 @@ class LLMJsonRepair:
             raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.2,  # Lower temperature for more deterministic output
-                max_tokens=1500   # Ensure enough tokens for the repaired JSON
+                max_tokens=3000   # Ensure enough tokens for the repaired JSON
             )
             
             # Process and validate the response
@@ -143,15 +143,15 @@ class LLMJsonRepair:
         # Base prompt template
         base_prompt = f"""You are a JSON repair expert. I have a malformed or incomplete JSON that needs to be fixed.
 
-The JSON is supposed to be a valid JSON {json_type}. Fix all structural issues, syntax errors, and incomplete elements.
-Don't add or remove content unless necessary to make the JSON valid. Keep all existing data, however if dealing with truncated data - you can remove the truncated part.
+The JSON is supposed to be a valid JSON {json_type}. Fix all structural issues, syntax errors, and incomplete elements while maintaing as much existing data as possible.  
+If dealing with truncated data, it is fine to remove the object related to the truncated part.
 
 Here is the malformed JSON:
 ```
 {malformed_json}
 ```
 
-Please provide ONLY the corrected JSON with no explanation or markdown formatting. Don't use ```json or ``` tags.
+Provide ONLY the correctly formatted JSON with no explanations or markdown formatting. Do not use ```json or ``` tags.
 """
         
         # Add specific instructions based on JSON type
@@ -195,7 +195,7 @@ Return ONLY the fixed JSON with no explanation or markdown. Return it exactly as
             raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.1,
-                max_tokens=1500
+                max_tokens=3000
             )
             
             return self._extract_json_from_response(raw_response)

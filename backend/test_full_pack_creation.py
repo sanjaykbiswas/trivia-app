@@ -30,7 +30,7 @@ from src.models.question import DifficultyLevel
 # Patch LLMService to print more descriptive raw responses
 original_generate_content = LLMService.generate_content
 
-def patched_generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
+def patched_generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 3000, 
                           clean_prompt: bool = False) -> str:
     """Patched version of generate_content that prints the raw response with context"""
     # Get the calling function or module if possible
@@ -134,7 +134,7 @@ try:
             raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.2,  # Lower temperature for more deterministic output
-                max_tokens=1500   # Ensure enough tokens for the repaired JSON
+                max_tokens=3000   # Ensure enough tokens for the repaired JSON
             )
             
             print("\n=== JSON REPAIR LLM RESPONSE ===")
@@ -189,7 +189,7 @@ try:
             raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.1,
-                max_tokens=1500
+                max_tokens=3000
             )
             
             print("\n=== FALLBACK JSON REPAIR LLM RESPONSE ===")
