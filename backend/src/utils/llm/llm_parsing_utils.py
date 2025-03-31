@@ -9,9 +9,11 @@ from LLM outputs and convert between various formats.
 import json
 import re
 import logging
+import asyncio
 from typing import List, Dict, Any, Optional, Union, Tuple
 
 from ..document_processing.processors import clean_text, normalize_text
+from .llm_json_repair import repair_and_parse
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -630,14 +632,49 @@ class LLMParsingUtils:
         
         return sections
 
+
 # Helper functions for common parsing operations
+
 def extract_bullet_list(text: str) -> List[str]:
     """Helper function to extract bullet list from text."""
     return LLMParsingUtils.extract_bullet_list(text)
 
-def parse_json_from_llm(text: str, default_value: Any = None) -> Any:
-    """Helper function to parse JSON from LLM output."""
-    return LLMParsingUtils.parse_json_with_fallbacks(text, default_value)
+async def parse_json_from_llm(text: str, default_value: Any = None) -> Any:
+    """
+    Parse JSON from LLM output with automatic LLM-based repair if needed.
+    
+    This function tries traditional parsing methods first and falls back to
+    LLM-based repair if those methods fail.
+    
+    Args:
+        text: JSON text from LLM to parse
+        default_value: Default value to return if parsing fails
+            
+    Returns:
+        Parsed JSON object or default_value if parsing fails
+    """
+    # First try traditional rule-based parsing approaches
+    try:
+        # Use the existing fallback chain in parse_json_with_fallbacks
+        parsed_result = LLMParsingUtils.parse_json_with_fallbacks(text, None)
+        if parsed_result is not None:
+            return parsed_result
+    except Exception as e:
+        logger.debug(f"Traditional JSON parsing failed: {str(e)}")
+    
+    # If we get here, traditional parsing failed, try LLM repair
+    logger.info("Attempting to repair malformed JSON with LLM")
+    try:
+        # Use the LLM repair method as fallback
+        repaired_result = await repair_and_parse(text, default_value)
+        if repaired_result is not None:
+            logger.info("Successfully repaired and parsed JSON with LLM")
+        else:
+            logger.warning("LLM repair failed to fix JSON")
+        return repaired_result
+    except Exception as e:
+        logger.error(f"Error during LLM JSON repair: {str(e)}")
+        return default_value
 
 def format_as_bullet_list(items: List[str]) -> str:
     """Helper function to format items as bullet list."""
@@ -650,3 +687,29 @@ def extract_key_value_pairs(text: str) -> Dict[str, str]:
 def detect_and_parse_format(text: str) -> Union[List, Dict, str]:
     """Helper function to detect and parse based on format."""
     return LLMParsingUtils.parse_based_on_format(text)
+
+# Function for backward compatibility with synchronous code
+def parse_json_from_llm_sync(text: str, default_value: Any = None) -> Any:
+    """
+    Synchronous version of parse_json_from_llm for backward compatibility.
+    Uses only rule-based approaches without LLM repair.
+    
+    Args:
+        text: JSON text from LLM to parse
+        default_value: Default value to return if parsing fails
+            
+    Returns:
+        Parsed JSON object or default_value if parsing fails
+    """
+    return LLMParsingUtils.parse_json_with_fallbacks(text, default_value)
+
+
+__all__ = [
+    "LLMParsingUtils",
+    "extract_bullet_list",
+    "parse_json_from_llm",
+    "parse_json_from_llm_sync",
+    "format_as_bullet_list",
+    "extract_key_value_pairs",
+    "detect_and_parse_format",
+]

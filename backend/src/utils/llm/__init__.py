@@ -16,6 +16,11 @@ from .llm_parsing_utils import (
     extract_key_value_pairs,
     detect_and_parse_format
 )
+from .llm_json_repair import (
+    LLMJsonRepair,
+    repair_json,
+    repair_and_parse
+)
 
 __all__ = [
     "LLMService",
@@ -25,4 +30,7 @@ __all__ = [
     "format_as_bullet_list",
     "extract_key_value_pairs",
     "detect_and_parse_format",
+    "LLMJsonRepair",
+    "repair_json",
+    "repair_and_parse",
 ]
