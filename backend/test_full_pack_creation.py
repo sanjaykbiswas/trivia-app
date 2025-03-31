@@ -1,4 +1,4 @@
-# test_full_pack_creation.py
+# backend/test_full_pack_creation.py
 import asyncio
 import sys
 import os
@@ -37,7 +37,7 @@ def patched_generate_content(self, prompt: str, temperature: float = 0.7, max_to
     response = original_generate_content(self, prompt, temperature, max_tokens, clean_prompt)
     
     print("\n=== Raw LLM Response ===")
-    print(response[:1000] + "..." if len(response) > 1000 else response)
+    print(response)  # Print the complete response without truncation
     print("========================\n")
     
     return response
@@ -71,6 +71,16 @@ async def patched_parse_json_from_llm(text: str, default_value: Any = None) -> A
         if result is not default_value:
             print("\n=== LLM JSON REPAIR SUCCEEDED ===")
             print("Successfully repaired and parsed JSON with LLM")
+            
+            # Add this section to display the repaired JSON
+            print("\n=== REPAIRED JSON FROM LLM ===")
+            try:
+                from src.utils.llm.llm_json_repair import LLMJsonRepair
+                llm_repair = LLMJsonRepair()
+                repaired_json = await llm_repair.repair_json(text)
+                print(repaired_json)  # Print the full repaired JSON without truncation
+            except Exception as e:
+                print(f"Error displaying repaired JSON: {str(e)}")
             print("==================================\n")
         else:
             print("\n=== LLM JSON REPAIR FAILED ===")
