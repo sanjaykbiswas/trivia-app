@@ -1,6 +1,8 @@
 # backend/src/config/supabase_client.py
 from supabase import AsyncClient, acreate_client
 from .config import SupabaseConfig
+# Import to ensure the JSON patching is applied
+from ..repositories.base_repository_impl import patch_json_module
 
 async def init_supabase_client() -> AsyncClient:
     """

@@ -1,12 +1,35 @@
 # backend/src/repositories/base_repository_impl.py
 import uuid
+import json
 from typing import List, Optional, Type, Dict, Any, Union, TypeVar
 from pydantic import BaseModel
 from supabase import AsyncClient
 from postgrest import APIResponse
+from enum import Enum
 
 from .base_repository import BaseRepository, ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType
 from ..utils import ensure_uuid
+
+# Global JSON serialization function that leverages existing logic
+def serialize_for_json(obj):
+    """Global serializer function for JSON encoding"""
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    if isinstance(obj, Enum):
+        return obj.value
+    # Let the default serializer handle anything else
+    raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
+
+# Patch the JSON module to handle UUIDs and Enums
+def patch_json_module():
+    """
+    Patch the json module to handle UUID and Enum objects.
+    This affects all json.dumps() calls throughout the application.
+    """
+    json._default_encoder.default = serialize_for_json
+
+# Apply the patch immediately when this module is imported
+patch_json_module()
 
 class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType]):
     """
