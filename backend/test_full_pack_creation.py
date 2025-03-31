@@ -27,13 +27,14 @@ from src.utils.llm.llm_json_repair import repair_json, repair_and_parse
 from src.models.pack import CreatorType
 from src.models.question import DifficultyLevel
 
-# Patch LLMService to print raw responses
+# Patch LLMService to print raw responses (CHANGED: removed async)
 original_generate_content = LLMService.generate_content
 
-async def patched_generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
+def patched_generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
                           clean_prompt: bool = False) -> str:
     """Patched version of generate_content that prints the raw response"""
-    response = await original_generate_content(self, prompt, temperature, max_tokens, clean_prompt)
+    # Call the original synchronous method (CHANGED: removed await)
+    response = original_generate_content(self, prompt, temperature, max_tokens, clean_prompt)
     
     print("\n=== Raw LLM Response ===")
     print(response[:1000] + "..." if len(response) > 1000 else response)

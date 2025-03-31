@@ -55,7 +55,7 @@ class LLMJsonRepair:
         
         try:
             # Use LLM to generate a fixed version
-            raw_response = await self.llm_service.generate_content(
+            raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.2,  # Lower temperature for more deterministic output
                 max_tokens=1500   # Ensure enough tokens for the repaired JSON
@@ -192,7 +192,7 @@ Return ONLY the fixed JSON with no explanation or markdown. Return it exactly as
         
         try:
             # Use LLM to generate a fixed version with lower temperature for precision
-            raw_response = await self.llm_service.generate_content(
+            raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.1,
                 max_tokens=1500

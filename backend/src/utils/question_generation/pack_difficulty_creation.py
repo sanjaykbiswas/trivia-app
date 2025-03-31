@@ -46,9 +46,9 @@ class PackDifficultyCreation:
         # Build prompt for difficulty description generation
         prompt = self._build_difficulty_prompt(creation_name, cleaned_topics)
         
-        # Generate descriptions using LLM
-        raw_response = await self.llm_service.generate_content(prompt)
-        processed_response = await self.llm_service.process_llm_response(raw_response)
+        # Generate descriptions using LLM (CHANGED: removed await)
+        raw_response = self.llm_service.generate_content(prompt)
+        processed_response = self.llm_service.process_llm_response(raw_response)
         
         # Parse the response
         difficulty_descriptions = self._parse_difficulty_response(processed_response)

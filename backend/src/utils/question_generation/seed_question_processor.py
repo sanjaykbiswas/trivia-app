@@ -129,12 +129,12 @@ class SeedQuestionProcessor:
         # Create prompt for LLM
         prompt = self._build_extraction_prompt(cleaned_text)
         
-        # Generate JSON using LLM
-        raw_response = await self.llm_service.generate_content(prompt)
-        processed_response = await self.llm_service.process_llm_response(raw_response)
+        # Generate JSON using LLM (CHANGED: removed await)
+        raw_response = self.llm_service.generate_content(prompt)
+        processed_response = self.llm_service.process_llm_response(raw_response)
         
         # Parse the JSON response
-        result = await self._parse_json_response(processed_response)  # Changed to await
+        result = await self._parse_json_response(processed_response)  # Kept await since this calls parse_json_from_llm
         
         return result
     
@@ -169,7 +169,7 @@ IMPORTANT:
 """
         return prompt
     
-    async def _parse_json_response(self, response: str) -> Dict[str, str]:  # Changed to async
+    async def _parse_json_response(self, response: str) -> Dict[str, str]:  # Kept as async
         """
         Parse the JSON response from LLM.
         
@@ -180,8 +180,8 @@ IMPORTANT:
             Dictionary of question-answer pairs
         """
         try:
-            # Use the existing LLM parsing utility from the codebase
-            result = await parse_json_from_llm(response, {})  # Added await
+            # Use the existing LLM parsing utility from the codebase (KEPT: await since parse_json_from_llm is async)
+            result = await parse_json_from_llm(response, {})
             
             # Ensure all keys and values are strings
             if isinstance(result, dict):

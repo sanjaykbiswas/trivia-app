@@ -86,8 +86,8 @@ class QuestionGenerator:
             print("==================================\n")
         
         try:
-            # Generate questions using LLM
-            raw_response = await self.llm_service.generate_content(
+            # Generate questions using LLM (CHANGED: removed await)
+            raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.7,  # Slightly higher temperature for creativity
                 max_tokens=2000   # Ensure enough tokens for multiple questions
@@ -241,7 +241,7 @@ Please use these as a guide for style and format, but create completely new ques
 """
         return ""
     
-    async def _process_question_response(  # Changed to async
+    async def _process_question_response(  # Kept as async because it calls parse_json_from_llm
         self,
         response: str,
         pack_id: str,
@@ -268,8 +268,8 @@ Please use these as a guide for style and format, but create completely new ques
             logger.warning(f"Invalid difficulty level '{difficulty_str}', defaulting to MEDIUM")
             difficulty = DifficultyLevel.MEDIUM
         
-        # Parse the JSON response
-        questions_data = await parse_json_from_llm(response, [])  # Added await
+        # Parse the JSON response (KEPT: await since parse_json_from_llm is async)
+        questions_data = await parse_json_from_llm(response, [])
         
         if self.debug_enabled:
             print("\n=== Parsed JSON from LLM ===")

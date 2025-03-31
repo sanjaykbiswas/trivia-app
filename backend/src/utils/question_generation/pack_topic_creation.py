@@ -44,12 +44,12 @@ class PackTopicCreation:
             num_topics=num_topics
         )
         
-        # Generate topics using LLM - single call
-        raw_response = await self.llm_service.generate_content(prompt)
+        # Generate topics using LLM - single call (CHANGED: removed await)
+        raw_response = self.llm_service.generate_content(prompt)
         
-        # Parse the raw response directly into JSON
+        # Parse the raw response directly into JSON (CHANGED: removed await)
         default_topics = []  # Default in case parsing fails
-        topics_data = await parse_json_from_llm(raw_response, default_topics)  # Added await
+        topics_data = await parse_json_from_llm(raw_response, default_topics)  # Keep await as parse_json_from_llm is async
         
         # Validate the result is a list of strings
         if isinstance(topics_data, list):
@@ -144,12 +144,12 @@ IMPORTANT: Return the topics as a valid JSON array of strings in this exact form
 DO NOT include any additional text, explanations, or markdown - ONLY return the JSON array.
 """
         
-        # Generate additional topics - single call
-        raw_response = await self.llm_service.generate_content(additional_prompt)
+        # Generate additional topics - single call (CHANGED: removed await)
+        raw_response = self.llm_service.generate_content(additional_prompt)
         
-        # Parse the raw response directly into JSON
+        # Parse the raw response directly into JSON (CHANGED: kept await for parse_json_from_llm)
         default_topics = []
-        new_topics_data = await parse_json_from_llm(raw_response, default_topics)  # Added await
+        new_topics_data = await parse_json_from_llm(raw_response, default_topics)
         
         # Validate the result is a list of strings
         if isinstance(new_topics_data, list):
