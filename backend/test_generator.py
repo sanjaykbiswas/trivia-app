@@ -154,25 +154,53 @@ def process_seed_questions(pack_id: str, seed_questions_file: str) -> Dict[str, 
         print(f"{Colors.FAIL}Error processing seed questions file: {str(e)}{Colors.ENDC}")
         return {}
 
+def generate_custom_instructions(pack_id: str, topic: str) -> Optional[str]:
+    """Generate custom instructions for question generation using the LLM."""
+    data = {
+        "pack_topic": topic
+    }
+    
+    print(f"{Colors.HEADER}Generating custom instructions for topic '{topic}'{Colors.ENDC}")
+    response = requests.post(f"{BASE_URL}/packs/{pack_id}/questions/custom-instructions/generate", json=data)
+    
+    if response.status_code == 200:
+        result = response.json()
+        custom_instructions = result.get("custom_instructions")
+        print(f"{Colors.GREEN}Successfully generated custom instructions:{Colors.ENDC}")
+        print(f"{Colors.CYAN}{custom_instructions}{Colors.ENDC}")
+        return custom_instructions
+    else:
+        print(f"{Colors.FAIL}Failed to generate custom instructions: {response.status_code}{Colors.ENDC}")
+        try:
+            error_data = response.json()
+            print_json(error_data)
+        except:
+            print(response.text)
+        return None
+
+def load_custom_instructions(custom_instructions_file: str) -> Optional[str]:
+    """Load custom instructions from a file."""
+    if not custom_instructions_file:
+        return None
+        
+    try:
+        with open(custom_instructions_file, 'r') as f:
+            custom_instructions = f.read()
+        print(f"{Colors.CYAN}Using custom instructions from file:{Colors.ENDC}\n{custom_instructions}")
+        return custom_instructions
+    except Exception as e:
+        print(f"{Colors.FAIL}Error reading custom instructions file: {str(e)}{Colors.ENDC}")
+        return None
+
 def generate_questions(
     pack_id: str, 
     topic: str, 
     difficulty: str = "medium", 
     num_questions: int = 5,
-    custom_instructions_file: str = None,
+    custom_instructions: Optional[str] = None,
     debug_mode: bool = False
 ) -> List[Dict[str, Any]]:
     """Generate questions for a pack with custom instructions."""
-    # Load custom instructions if provided
-    custom_instructions = None
-    if custom_instructions_file:
-        try:
-            with open(custom_instructions_file, 'r') as f:
-                custom_instructions = f.read()
-            print(f"{Colors.CYAN}Using custom instructions:{Colors.ENDC}\n{custom_instructions}")
-        except Exception as e:
-            print(f"{Colors.FAIL}Error reading custom instructions file: {str(e)}{Colors.ENDC}")
-    
     # Prepare request data
     data = {
         "pack_topic": topic,
@@ -219,11 +247,24 @@ def display_questions(questions: List[Dict[str, Any]]) -> None:
         print(f"{Colors.CYAN}Topic: {q.get('pack_topics_item', 'N/A')}{Colors.ENDC}")
         print(f"{Colors.CYAN}Difficulty: {q.get('difficulty_current', 'N/A')}{Colors.ENDC}")
 
+def save_to_file(content: str, filename: str) -> bool:
+    """Save content to a file."""
+    try:
+        with open(filename, 'w') as f:
+            f.write(content)
+        print(f"{Colors.GREEN}Successfully saved to {filename}{Colors.ENDC}")
+        return True
+    except Exception as e:
+        print(f"{Colors.FAIL}Error saving to file: {str(e)}{Colors.ENDC}")
+        return False
+
 def run_generator(
     pack_name: str,
     custom_topic: str,
     seed_questions_file: str = None,
     custom_instructions_file: str = None,
+    auto_generate_instructions: bool = False,
+    save_generated_instructions: Optional[str] = None,
     difficulty: str = "medium",
     num_questions: int = 5,
     debug_mode: bool = False
@@ -248,13 +289,26 @@ def run_generator(
     if seed_questions_file:
         seed_questions = process_seed_questions(pack_id, seed_questions_file)
     
+    # Handle custom instructions: generate or load from file
+    custom_instructions = None
+    
+    if auto_generate_instructions:
+        print(f"{Colors.HEADER}Auto-generating custom instructions based on seed questions{Colors.ENDC}")
+        custom_instructions = generate_custom_instructions(pack_id, custom_topic)
+        
+        # Save generated instructions if requested
+        if custom_instructions and save_generated_instructions:
+            save_to_file(custom_instructions, save_generated_instructions)
+    elif custom_instructions_file:
+        custom_instructions = load_custom_instructions(custom_instructions_file)
+    
     # Generate questions with the custom topic
     questions = generate_questions(
         pack_id=pack_id,
         topic=custom_topic,
         difficulty=difficulty,
         num_questions=num_questions,
-        custom_instructions_file=custom_instructions_file,
+        custom_instructions=custom_instructions,
         debug_mode=debug_mode
     )
     
@@ -267,6 +321,7 @@ def run_generator(
     print(f"Pack Name: {pack_name}")
     print(f"Custom Topic: {custom_topic}")
     print(f"Seed Questions: {len(seed_questions)}")
+    print(f"Used Custom Instructions: {'Yes' if custom_instructions else 'No'}")
     print(f"Generated Questions: {len(questions)}")
     print(f"\nYou can use this pack ID for future testing: {pack_id}")
 
@@ -276,6 +331,10 @@ def main():
     parser.add_argument("--topic", "-t", required=True, help="Custom topic to use for questions")
     parser.add_argument("--seed-questions", "-s", help="Path to a file containing seed questions")
     parser.add_argument("--custom-instructions", "-i", help="Path to a file containing custom instructions")
+    parser.add_argument("--auto-generate-instructions", "-a", action="store_true", 
+                        help="Auto-generate custom instructions from seed questions")
+    parser.add_argument("--save-generated-instructions", "-g", 
+                        help="Save auto-generated instructions to this file")
     parser.add_argument("--difficulty", "-d", choices=["easy", "medium", "hard", "expert", "mixed"], 
                       default="medium", help="Difficulty level for questions")
     parser.add_argument("--num-questions", "-n", type=int, default=5, help="Number of questions to generate")
@@ -283,12 +342,17 @@ def main():
     
     args = parser.parse_args()
     
+    # Check for conflicts
+    if args.custom_instructions and args.auto_generate_instructions:
+        print(f"{Colors.WARNING}Both custom instructions file and auto-generate flag provided. "
+              f"Auto-generation will take precedence.{Colors.ENDC}")
+    
     # Check if files exist
     if args.seed_questions and not os.path.exists(args.seed_questions):
         print(f"{Colors.FAIL}Seed questions file not found: {args.seed_questions}{Colors.ENDC}")
         return
     
-    if args.custom_instructions and not os.path.exists(args.custom_instructions):
+    if args.custom_instructions and not os.path.exists(args.custom_instructions) and not args.auto_generate_instructions:
         print(f"{Colors.FAIL}Custom instructions file not found: {args.custom_instructions}{Colors.ENDC}")
         return
     
@@ -297,6 +361,8 @@ def main():
         custom_topic=args.topic,
         seed_questions_file=args.seed_questions,
         custom_instructions_file=args.custom_instructions,
+        auto_generate_instructions=args.auto_generate_instructions,
+        save_generated_instructions=args.save_generated_instructions,
         difficulty=args.difficulty,
         num_questions=args.num_questions,
         debug_mode=args.debug

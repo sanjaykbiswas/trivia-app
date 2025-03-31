@@ -11,6 +11,7 @@ from .pack_difficulty_creation import PackDifficultyCreation
 from .text_utils import clean_trivia_text, chunk_trivia_content
 from .seed_question_processor import SeedQuestionProcessor
 from .question_generator import QuestionGenerator
+from .custom_instructions_creator import CustomInstructionsCreator
 
 __all__ = [
     "PackTopicCreation",
@@ -19,4 +20,5 @@ __all__ = [
     "chunk_trivia_content",
     "SeedQuestionProcessor",
     "QuestionGenerator",
+    "CustomInstructionsCreator",
 ]
