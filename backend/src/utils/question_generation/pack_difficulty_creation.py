@@ -1,29 +1,22 @@
 # backend/src/utils/question_generation/pack_difficulty_creation.py
-import uuid
 import re
 from typing import List, Dict, Optional, Any
-from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
-from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
 from ..document_processing.processors import clean_text, normalize_text, split_into_chunks
-from ...utils import ensure_uuid
 
 class PackDifficultyCreation:
     """
-    Handles the creation and management of difficulty descriptions for trivia packs.
+    Utility for generating difficulty descriptions for trivia packs.
+    Focuses on LLM interactions for difficulty description creation.
     """
     
-    def __init__(self, 
-                 pack_creation_data_repository: PackCreationDataRepository, 
-                 llm_service: Optional[LLMService] = None):
+    def __init__(self, llm_service: Optional[LLMService] = None):
         """
-        Initialize with required repositories and services.
+        Initialize with required services.
         
         Args:
-            pack_creation_data_repository: Repository for pack creation data operations
             llm_service: Service for LLM interactions. If None, creates a new instance.
         """
-        self.pack_creation_repository = pack_creation_data_repository
         self.llm_service = llm_service or LLMService()
         
         # Default base descriptions for each difficulty level
@@ -205,32 +198,6 @@ DO NOT include any other difficulty names within a difficulty description.
         
         return difficulty_json
     
-    async def store_difficulty_descriptions(self, pack_id: uuid.UUID, difficulty_json: Dict[str, Dict[str, str]]) -> None:
-        """
-        Store difficulty descriptions in the pack_creation_data table.
-        
-        Args:
-            pack_id: UUID of the pack
-            difficulty_json: Nested dictionary of difficulty descriptions
-        """
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
-        
-        # Check if there's already data for this pack
-        existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
-        
-        if existing_data:
-            # Update existing record with the dictionary directly
-            update_data = PackCreationDataUpdate(
-                custom_difficulty_description=difficulty_json
-            )
-            await self.pack_creation_repository.update(id=existing_data.id, obj_in=update_data)
-        else:
-            # For this scenario, we expect pack_creation_data to already exist
-            # (created in the topic creation phase), but just in case:
-            print(f"Warning: No existing pack creation data found for pack_id {pack_id}")
-            # We would need additional information to create a new record
-    
     def format_descriptions_for_prompt(self, difficulty_json: Dict[str, Dict[str, str]], difficulties: Optional[List[str]] = None) -> str:
         """
         Format the difficulty descriptions for use in future prompts.
@@ -260,32 +227,6 @@ DO NOT include any other difficulty names within a difficulty description.
         # Join with newlines
         return "\n".join(formatted_descriptions)
     
-    async def get_existing_difficulty_descriptions(self, pack_id: uuid.UUID) -> Dict[str, Dict[str, str]]:
-        """
-        Retrieve existing difficulty descriptions for a pack.
-        
-        Args:
-            pack_id: UUID of the pack
-            
-        Returns:
-            Nested dictionary of difficulty descriptions
-        """
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
-        
-        creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
-        
-        if creation_data and hasattr(creation_data, 'custom_difficulty_description'):
-            # Get the stored data
-            stored_data = creation_data.custom_difficulty_description
-            
-            # Check if we have valid dictionary data
-            if isinstance(stored_data, dict) and stored_data:
-                return stored_data
-        
-        # Return default structure if no data found or not in expected format
-        return self._get_default_difficulty_structure()
-    
     def _get_default_difficulty_structure(self) -> Dict[str, Dict[str, str]]:
         """
         Get the default difficulty structure with empty custom descriptions.
@@ -294,158 +235,3 @@ DO NOT include any other difficulty names within a difficulty description.
             Default nested dictionary with base descriptions
         """
         return {level: {"base": base_desc, "custom": ""} for level, base_desc in self.base_descriptions.items()}
-    
-    async def update_specific_difficulty_descriptions(
-        self,
-        pack_id: uuid.UUID,
-        difficulty_updates: Dict[str, str]
-    ) -> Dict[str, Dict[str, str]]:
-        """
-        Update specific difficulty descriptions without replacing all of them.
-        
-        Args:
-            pack_id: UUID of the pack
-            difficulty_updates: Dictionary mapping difficulty levels to their new custom descriptions
-                               (e.g., {"Hard": "New hard description", "Expert": "New expert description"})
-            
-        Returns:
-            Updated nested dictionary of difficulty descriptions
-        """
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
-        
-        # Get existing descriptions
-        existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
-        
-        # Update only the specified difficulty levels
-        for level, new_custom_desc in difficulty_updates.items():
-            if level in existing_descriptions:
-                existing_descriptions[level]["custom"] = new_custom_desc
-            else:
-                # If level doesn't exist yet, create it with default base description
-                base_desc = self.base_descriptions.get(level, "")
-                existing_descriptions[level] = {
-                    "base": base_desc,
-                    "custom": new_custom_desc
-                }
-        
-        # Store updated descriptions
-        await self.store_difficulty_descriptions(pack_id, existing_descriptions)
-        
-        return existing_descriptions
-    
-    async def generate_specific_difficulty_descriptions(
-        self,
-        pack_id: uuid.UUID,
-        creation_name: str,
-        pack_topics: List[str],
-        difficulty_levels: List[str]
-    ) -> Dict[str, Dict[str, str]]:
-        """
-        Generate descriptions for specific difficulty levels and update them while preserving others.
-        
-        Args:
-            pack_id: UUID of the pack
-            creation_name: Name of the trivia pack
-            pack_topics: List of topics in the pack
-            difficulty_levels: List of difficulty levels to update (e.g., ["Hard", "Expert"])
-            
-        Returns:
-            Updated nested dictionary of difficulty descriptions
-        """
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
-        
-        # Get existing descriptions first
-        existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
-        
-        # Generate all difficulty descriptions (temporary)
-        all_descriptions = await self.generate_difficulty_descriptions(
-            creation_name=creation_name,
-            pack_topics=pack_topics
-        )
-        
-        # Extract only the requested difficulty levels
-        updates = {level: all_descriptions.get(level, "") for level in difficulty_levels if level in all_descriptions}
-        
-        # Update only the specified levels
-        return await self.update_specific_difficulty_descriptions(
-            pack_id=pack_id,
-            difficulty_updates=updates
-        )
-        
-    async def generate_and_store_difficulty_descriptions(self, pack_id: uuid.UUID, creation_name: str, pack_topics: List[str]) -> Dict[str, Dict[str, str]]:
-        """
-        Generate and store difficulty descriptions for a pack in JSON format.
-        This will overwrite any existing difficulty descriptions.
-        
-        Args:
-            pack_id: UUID of the pack
-            creation_name: Name of the trivia pack
-            pack_topics: List of topics in the pack
-            
-        Returns:
-            Nested dictionary of difficulty descriptions
-        """
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
-        
-        # Generate custom descriptions
-        custom_descriptions = await self.generate_difficulty_descriptions(
-            creation_name=creation_name,
-            pack_topics=pack_topics
-        )
-        
-        # Convert to JSON structure
-        difficulty_json = self.create_difficulty_json(custom_descriptions)
-        
-        # Store in database
-        await self.store_difficulty_descriptions(
-            pack_id=pack_id,
-            difficulty_json=difficulty_json
-        )
-        
-        return difficulty_json
-    
-    async def generate_and_handle_existing_difficulty_descriptions(
-        self, 
-        pack_id: uuid.UUID, 
-        creation_name: str, 
-        pack_topics: List[str],
-        force_regenerate: bool = False
-    ) -> Dict[str, Dict[str, str]]:
-        """
-        Handles the generation of difficulty descriptions while respecting existing ones.
-        
-        Args:
-            pack_id: UUID of the pack
-            creation_name: Name of the trivia pack
-            pack_topics: List of topics in the pack
-            force_regenerate: If True, will regenerate descriptions even if they exist
-            
-        Returns:
-            Nested dictionary of difficulty descriptions
-        """
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
-        
-        # Check if difficulty descriptions already exist
-        existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
-        
-        # Check if we have any custom descriptions
-        has_custom_descriptions = False
-        for level_data in existing_descriptions.values():
-            if level_data.get("custom", ""):
-                has_custom_descriptions = True
-                break
-        
-        # If descriptions exist and we don't want to regenerate, return them
-        if has_custom_descriptions and not force_regenerate:
-            return existing_descriptions
-        
-        # Otherwise, generate new descriptions
-        return await self.generate_and_store_difficulty_descriptions(
-            pack_id=pack_id,
-            creation_name=creation_name,
-            pack_topics=pack_topics
-        )

@@ -1,21 +1,17 @@
 # backend/src/utils/question_generation/seed_question_processor.py
 """
 Utility for processing seed questions from various input formats (CSV, text)
-and converting them to standardized JSON output for storage in Supabase.
+and converting them to standardized JSON output.
 """
 
 import json
 import csv
 import io
 import re
-from typing import Dict, List, Union, Optional
-import uuid
+from typing import Dict, Optional
 import logging
 from ...utils.llm.llm_service import LLMService
 from ...utils.document_processing.processors import clean_text
-from ...repositories.pack_creation_data_repository import PackCreationDataRepository
-from ...models.pack_creation_data import PackCreationDataUpdate
-from ...utils import ensure_uuid
 from ...utils.llm.llm_parsing_utils import parse_json_from_llm
 
 # Configure logger
@@ -24,19 +20,16 @@ logger = logging.getLogger(__name__)
 class SeedQuestionProcessor:
     """
     Processes seed questions from various input formats and
-    converts them to standardized JSON for storage.
+    converts them to standardized JSON.
     """
     
-    def __init__(self, pack_creation_repository: Optional[PackCreationDataRepository] = None, 
-                 llm_service: Optional[LLMService] = None):
+    def __init__(self, llm_service: Optional[LLMService] = None):
         """
-        Initialize with optional repositories and services.
+        Initialize with LLM service.
         
         Args:
-            pack_creation_repository: Repository for pack creation data operations
             llm_service: Service for LLM interactions. If None, creates a new instance.
         """
-        self.pack_creation_repository = pack_creation_repository
         self.llm_service = llm_service or LLMService()
     
     async def process_csv_content(self, csv_content: str, 
@@ -240,40 +233,3 @@ IMPORTANT:
         
         # If not CSV or CSV processing failed, use LLM to extract Q&A pairs
         return await self.process_text_content(input_content)
-    
-    async def store_seed_questions(self, pack_id: uuid.UUID, seed_questions: Dict[str, str]) -> bool:
-        """
-        Store seed questions in the pack_creation_data table.
-        
-        Args:
-            pack_id: UUID of the pack
-            seed_questions: Dictionary of question-answer pairs
-            
-        Returns:
-            Success flag
-        """
-        if not self.pack_creation_repository:
-            logger.error("Pack creation repository not provided. Cannot store seed questions.")
-            return False
-        
-        try:
-            # Ensure pack_id is a proper UUID object
-            pack_id = ensure_uuid(pack_id)
-            
-            # Check if there's already data for this pack
-            existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
-            
-            if existing_data:
-                # Update existing record
-                update_data = PackCreationDataUpdate(
-                    seed_questions=seed_questions
-                )
-                await self.pack_creation_repository.update(id=existing_data.id, obj_in=update_data)
-                return True
-            else:
-                logger.warning(f"No existing pack creation data found for pack_id {pack_id}")
-                return False
-                
-        except Exception as e:
-            logger.error(f"Error storing seed questions: {str(e)}")
-            return False
