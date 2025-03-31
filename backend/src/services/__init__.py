@@ -11,10 +11,12 @@ from .pack_service import PackService
 from .topic_service import TopicService
 from .difficulty_service import DifficultyService
 from .seed_question_service import SeedQuestionService
+from .question_service import QuestionService
 
 __all__ = [
     "PackService",
     "TopicService",
     "DifficultyService",
     "SeedQuestionService",
+    "QuestionService",
 ]
