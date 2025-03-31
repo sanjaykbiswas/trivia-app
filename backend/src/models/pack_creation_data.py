@@ -17,9 +17,9 @@ class PackCreationData(BaseModel):
         creation_name: Name of the creator or creation source
         is_pow: Whether this is a "proof of work" pack
         pow_analysis: Optional analysis of the proof of work
-        pack_topics: List of topics in the pack (optional, defaults to empty list)
-        seed_questions: Optional list of seed questions for pack creation
+        pack_topics: List of topics in the pack
         custom_difficulty_description: JSON structure containing difficulty descriptions
+        seed_questions: Dictionary of seed questions and answers (question: answer format)
         is_temporal: Whether this pack is time-based or has temporal relevance
         created_at: When this record was created
     """
@@ -28,9 +28,9 @@ class PackCreationData(BaseModel):
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
-    pack_topics: List[str] = Field(default_factory=list)
-    seed_questions: Optional[List[str]] = None
+    pack_topics: List[str]
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
+    seed_questions: Dict[str, str] = Field(default_factory=dict)
     is_temporal: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -44,9 +44,9 @@ class PackCreationDataCreate(BaseCreateSchema):
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
-    pack_topics: List[str] = Field(default_factory=list)
-    seed_questions: Optional[List[str]] = None
+    pack_topics: List[str]
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
+    seed_questions: Dict[str, str] = Field(default_factory=dict)
     is_temporal: bool = False
 
 
@@ -56,6 +56,6 @@ class PackCreationDataUpdate(BaseUpdateSchema):
     is_pow: Optional[bool] = None
     pow_analysis: Optional[str] = None
     pack_topics: Optional[List[str]] = None
-    seed_questions: Optional[List[str]] = None
     custom_difficulty_description: Optional[Dict[str, Any]] = None
+    seed_questions: Optional[Dict[str, str]] = None
     is_temporal: Optional[bool] = None
