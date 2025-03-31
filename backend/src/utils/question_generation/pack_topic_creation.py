@@ -154,7 +154,7 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
                 pack_topics=topics,
                 creation_name=creation_name,  # Required field
                 creation_description=creation_description,
-                custom_difficulty_description=[]  # Empty list for now
+                custom_difficulty_description={}  # Empty dictionary for now
             )
             await self.pack_creation_repository.create(obj_in=new_data)
     
