@@ -36,6 +36,7 @@ class QuestionGenerator:
         difficulty: Union[str, DifficultyLevel],
         difficulty_descriptions: Dict[str, Dict[str, str]],
         seed_questions: Dict[str, str] = None,
+        custom_instructions: Optional[str] = None,
         num_questions: int = 5
     ) -> List[Dict[str, Any]]:
         """
@@ -48,6 +49,7 @@ class QuestionGenerator:
             difficulty: Difficulty level for the questions
             difficulty_descriptions: Dictionary with difficulty descriptions
             seed_questions: Optional dictionary of example questions and answers
+            custom_instructions: Optional custom instructions for question generation
             num_questions: Number of questions to generate
             
         Returns:
@@ -66,6 +68,7 @@ class QuestionGenerator:
             difficulty=difficulty_str,
             difficulty_descriptions=difficulty_descriptions,
             seed_questions=seed_questions,
+            custom_instructions=custom_instructions,
             num_questions=num_questions
         )
         
@@ -93,6 +96,7 @@ class QuestionGenerator:
         difficulty: str,
         difficulty_descriptions: Dict[str, Dict[str, str]],
         seed_questions: Dict[str, str] = None,
+        custom_instructions: Optional[str] = None,
         num_questions: int = 5
     ) -> str:
         """
@@ -104,6 +108,7 @@ class QuestionGenerator:
             difficulty: Difficulty level string
             difficulty_descriptions: Dictionary with difficulty descriptions
             seed_questions: Optional dictionary of example questions and answers
+            custom_instructions: Optional custom instructions for LLM question generation
             num_questions: Number of questions to generate
             
         Returns:
@@ -133,7 +138,14 @@ Each question should:
 2. Have a single correct answer that is factually accurate
 3. Be specific to the topic of {pack_topic}
 4. Be at the appropriate {difficulty} difficulty level
+"""
 
+        # Add custom instructions if provided
+        if custom_instructions:
+            prompt += f"\nAdditional instructions for question generation:\n{custom_instructions}\n"
+
+        # Add examples and format instructions
+        prompt += f"""
 {examples_text}
 
 Return ONLY a valid JSON array of question objects with the following format:

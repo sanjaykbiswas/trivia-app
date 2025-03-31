@@ -20,6 +20,7 @@ class PackCreationData(BaseModel):
         pack_topics: List of topics in the pack
         custom_difficulty_description: JSON structure containing difficulty descriptions
         seed_questions: Dictionary of seed questions and answers (question: answer format)
+        custom_question_instructions: Optional custom instructions for LLM question generation
         is_temporal: Whether this pack is time-based or has temporal relevance
         created_at: When this record was created
     """
@@ -31,6 +32,7 @@ class PackCreationData(BaseModel):
     pack_topics: List[str]
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
     seed_questions: Dict[str, str] = Field(default_factory=dict)
+    custom_question_instructions: Optional[str] = None
     is_temporal: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -47,6 +49,7 @@ class PackCreationDataCreate(BaseCreateSchema):
     pack_topics: List[str]
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
     seed_questions: Dict[str, str] = Field(default_factory=dict)
+    custom_question_instructions: Optional[str] = None
     is_temporal: bool = False
 
 
@@ -58,4 +61,5 @@ class PackCreationDataUpdate(BaseUpdateSchema):
     pack_topics: Optional[List[str]] = None
     custom_difficulty_description: Optional[Dict[str, Any]] = None
     seed_questions: Optional[Dict[str, str]] = None
+    custom_question_instructions: Optional[str] = None
     is_temporal: Optional[bool] = None
