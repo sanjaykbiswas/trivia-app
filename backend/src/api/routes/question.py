@@ -6,7 +6,8 @@ import logging
 from ..dependencies import get_question_service, get_seed_question_service, get_difficulty_service, get_pack_service
 from ..schemas import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
-    QuestionResponse, QuestionsResponse, SeedQuestionsResponse
+    QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
+    CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse
 )
 from ...services.question_service import QuestionService
 from ...services.seed_question_service import SeedQuestionService
@@ -390,4 +391,183 @@ async def get_seed_questions(
         raise HTTPException(
             status_code=500,
             detail=f"Error retrieving seed questions: {str(e)}"
+        )
+
+# New custom instructions endpoints
+@router.post("/custom-instructions/generate", response_model=CustomInstructionsResponse)
+async def generate_custom_instructions(
+    pack_id: str = Path(..., description="ID of the pack"),
+    request: CustomInstructionsGenerateRequest = Body(...),
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
+):
+    """
+    Generate custom instructions for question generation.
+    
+    Args:
+        pack_id: ID of the pack
+        request: Request data for custom instructions generation
+        seed_question_service: Seed question service dependency
+        
+    Returns:
+        Generated custom instructions
+    """
+    # Ensure pack_id is a valid UUID string
+    pack_id = ensure_uuid(pack_id)
+    
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
+    try:
+        # Generate custom instructions
+        custom_instructions = await seed_question_service.generate_custom_instructions(
+            pack_id=pack_id,
+            pack_topic=request.pack_topic
+        )
+        
+        if custom_instructions is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate or store custom instructions"
+            )
+        
+        return CustomInstructionsResponse(custom_instructions=custom_instructions)
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error generating custom instructions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error generating custom instructions: {str(e)}"
+        )
+
+@router.post("/custom-instructions/input", response_model=CustomInstructionsResponse)
+async def input_custom_instructions(
+    pack_id: str = Path(..., description="ID of the pack"),
+    request: CustomInstructionsInputRequest = Body(...),
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
+):
+    """
+    Input custom instructions for question generation.
+    
+    Args:
+        pack_id: ID of the pack
+        request: Request data with manually provided custom instructions
+        seed_question_service: Seed question service dependency
+        
+    Returns:
+        Processed and stored custom instructions
+    """
+    # Ensure pack_id is a valid UUID string
+    pack_id = ensure_uuid(pack_id)
+    
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
+    try:
+        # Process and store manual instructions
+        success = await seed_question_service.process_and_store_manual_instructions(
+            pack_id=pack_id,
+            instructions=request.instructions
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to process or store custom instructions"
+            )
+        
+        # Retrieve the stored instructions
+        custom_instructions = await seed_question_service.get_custom_instructions(pack_id)
+        
+        return CustomInstructionsResponse(custom_instructions=custom_instructions)
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"Error processing custom instructions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing custom instructions: {str(e)}"
+        )
+
+@router.get("/custom-instructions", response_model=CustomInstructionsResponse)
+async def get_custom_instructions(
+    pack_id: str = Path(..., description="ID of the pack"),
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
+):
+    """
+    Get existing custom instructions for a pack.
+    
+    Args:
+        pack_id: ID of the pack
+        seed_question_service: Seed question service dependency
+        
+    Returns:
+        Stored custom instructions
+    """
+    # Ensure pack_id is a valid UUID string
+    pack_id = ensure_uuid(pack_id)
+    
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
+    try:
+        # Get custom instructions
+        custom_instructions = await seed_question_service.get_custom_instructions(pack_id)
+        
+        return CustomInstructionsResponse(custom_instructions=custom_instructions)
+    
+    except Exception as e:
+        logger.error(f"Error retrieving custom instructions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error retrieving custom instructions: {str(e)}"
         )

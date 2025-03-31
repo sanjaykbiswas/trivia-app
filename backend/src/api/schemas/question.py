@@ -45,3 +45,16 @@ class SeedQuestionsResponse(BaseModel):
     """Response schema for seed questions."""
     count: int
     seed_questions: Dict[str, str]
+
+# New schemas for custom instructions
+class CustomInstructionsGenerateRequest(BaseModel):
+    """Request schema for generating custom instructions."""
+    pack_topic: str = Field(..., description="Topic to base custom instructions on")
+
+class CustomInstructionsInputRequest(BaseModel):
+    """Request schema for manually inputting custom instructions."""
+    instructions: str = Field(..., description="Manually provided custom instructions")
+
+class CustomInstructionsResponse(BaseModel):
+    """Response schema for custom instructions."""
+    custom_instructions: Optional[str] = Field(None, description="Custom instructions for question generation")

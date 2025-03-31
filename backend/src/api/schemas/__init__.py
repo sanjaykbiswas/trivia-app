@@ -11,7 +11,8 @@ from .topic import TopicGenerateRequest, TopicAddRequest, TopicResponse
 from .difficulty import DifficultyDescription, DifficultyGenerateRequest, DifficultyUpdateRequest, DifficultyResponse
 from .question import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
-    QuestionResponse, QuestionsResponse, SeedQuestionsResponse
+    QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
+    CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse
 )
 
 __all__ = [
@@ -38,4 +39,7 @@ __all__ = [
     "QuestionResponse",
     "QuestionsResponse",
     "SeedQuestionsResponse",
+    "CustomInstructionsGenerateRequest",
+    "CustomInstructionsInputRequest", 
+    "CustomInstructionsResponse",
 ]
