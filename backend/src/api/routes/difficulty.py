@@ -1,5 +1,5 @@
 # backend/src/api/routes/difficulty.py
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Body
 import logging
 
 from ..dependencies import get_difficulty_service, get_topic_service
@@ -16,7 +16,7 @@ router = APIRouter()
 @router.post("/", response_model=DifficultyResponse)
 async def generate_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
-    difficulty_request: DifficultyGenerateRequest = None,
+    difficulty_request: DifficultyGenerateRequest = Body(None),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
     topic_service: TopicService = Depends(get_topic_service)
 ):
@@ -107,7 +107,7 @@ async def get_difficulties(
 @router.patch("/", response_model=DifficultyResponse)
 async def update_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
-    difficulty_request: DifficultyUpdateRequest,
+    difficulty_request: DifficultyUpdateRequest = Body(...),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
     topic_service: TopicService = Depends(get_topic_service)
 ):

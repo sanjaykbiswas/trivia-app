@@ -1,5 +1,5 @@
 # backend/src/api/routes/question.py
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Body
 from typing import Optional, List
 import logging
 
@@ -22,7 +22,7 @@ router = APIRouter()
 @router.post("/", response_model=QuestionsResponse)
 async def generate_questions(
     pack_id: str = Path(..., description="ID of the pack"),
-    question_request: QuestionGenerateRequest,
+    question_request: QuestionGenerateRequest = Body(...),
     question_service: QuestionService = Depends(get_question_service),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
     seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
@@ -128,7 +128,7 @@ async def get_questions(
 @router.post("/seed", response_model=SeedQuestionsResponse)
 async def store_seed_questions(
     pack_id: str = Path(..., description="ID of the pack"),
-    seed_request: SeedQuestionRequest,
+    seed_request: SeedQuestionRequest = Body(...),
     seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
 ):
     """
@@ -173,7 +173,7 @@ async def store_seed_questions(
 @router.post("/seed/extract", response_model=SeedQuestionsResponse)
 async def extract_seed_questions(
     pack_id: str = Path(..., description="ID of the pack"),
-    text_request: SeedQuestionTextRequest,
+    text_request: SeedQuestionTextRequest = Body(...),
     seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
 ):
     """
