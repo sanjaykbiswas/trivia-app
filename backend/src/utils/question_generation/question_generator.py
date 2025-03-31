@@ -101,7 +101,7 @@ class QuestionGenerator:
                 print("========================\n")
             
             # Process the response
-            processed_questions = self._process_question_response(
+            processed_questions = await self._process_question_response(
                 response=raw_response,
                 pack_id=pack_id,
                 pack_topic=pack_topic,
@@ -241,7 +241,7 @@ Please use these as a guide for style and format, but create completely new ques
 """
         return ""
     
-    def _process_question_response(
+    async def _process_question_response(  # Changed to async
         self,
         response: str,
         pack_id: str,
@@ -269,7 +269,7 @@ Please use these as a guide for style and format, but create completely new ques
             difficulty = DifficultyLevel.MEDIUM
         
         # Parse the JSON response
-        questions_data = parse_json_from_llm(response, [])
+        questions_data = await parse_json_from_llm(response, [])  # Added await
         
         if self.debug_enabled:
             print("\n=== Parsed JSON from LLM ===")

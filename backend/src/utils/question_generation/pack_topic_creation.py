@@ -49,7 +49,7 @@ class PackTopicCreation:
         
         # Parse the raw response directly into JSON
         default_topics = []  # Default in case parsing fails
-        topics_data = parse_json_from_llm(raw_response, default_topics)
+        topics_data = await parse_json_from_llm(raw_response, default_topics)  # Added await
         
         # Validate the result is a list of strings
         if isinstance(topics_data, list):
@@ -149,7 +149,7 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         
         # Parse the raw response directly into JSON
         default_topics = []
-        new_topics_data = parse_json_from_llm(raw_response, default_topics)
+        new_topics_data = await parse_json_from_llm(raw_response, default_topics)  # Added await
         
         # Validate the result is a list of strings
         if isinstance(new_topics_data, list):

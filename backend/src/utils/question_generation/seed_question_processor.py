@@ -134,7 +134,7 @@ class SeedQuestionProcessor:
         processed_response = await self.llm_service.process_llm_response(raw_response)
         
         # Parse the JSON response
-        result = self._parse_json_response(processed_response)
+        result = await self._parse_json_response(processed_response)  # Changed to await
         
         return result
     
@@ -169,7 +169,7 @@ IMPORTANT:
 """
         return prompt
     
-    def _parse_json_response(self, response: str) -> Dict[str, str]:
+    async def _parse_json_response(self, response: str) -> Dict[str, str]:  # Changed to async
         """
         Parse the JSON response from LLM.
         
@@ -181,7 +181,7 @@ IMPORTANT:
         """
         try:
             # Use the existing LLM parsing utility from the codebase
-            result = parse_json_from_llm(response, {})
+            result = await parse_json_from_llm(response, {})  # Added await
             
             # Ensure all keys and values are strings
             if isinstance(result, dict):

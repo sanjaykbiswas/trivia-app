@@ -639,6 +639,20 @@ def extract_bullet_list(text: str) -> List[str]:
     """Helper function to extract bullet list from text."""
     return LLMParsingUtils.extract_bullet_list(text)
 
+def parse_json_from_llm_sync(text: str, default_value: Any = None) -> Any:
+    """
+    Synchronous version of parse_json_from_llm.
+    Uses only rule-based approaches without LLM repair.
+    
+    Args:
+        text: JSON text from LLM to parse
+        default_value: Default value to return if parsing fails
+            
+    Returns:
+        Parsed JSON object or default_value if parsing fails
+    """
+    return LLMParsingUtils.parse_json_with_fallbacks(text, default_value)
+
 async def parse_json_from_llm(text: str, default_value: Any = None) -> Any:
     """
     Parse JSON from LLM output with automatic LLM-based repair if needed.
@@ -655,8 +669,8 @@ async def parse_json_from_llm(text: str, default_value: Any = None) -> Any:
     """
     # First try traditional rule-based parsing approaches
     try:
-        # Use the existing fallback chain in parse_json_with_fallbacks
-        parsed_result = LLMParsingUtils.parse_json_with_fallbacks(text, None)
+        # Use the synchronous version first for efficiency
+        parsed_result = parse_json_from_llm_sync(text, None)
         if parsed_result is not None:
             return parsed_result
     except Exception as e:
@@ -687,21 +701,6 @@ def extract_key_value_pairs(text: str) -> Dict[str, str]:
 def detect_and_parse_format(text: str) -> Union[List, Dict, str]:
     """Helper function to detect and parse based on format."""
     return LLMParsingUtils.parse_based_on_format(text)
-
-# Function for backward compatibility with synchronous code
-def parse_json_from_llm_sync(text: str, default_value: Any = None) -> Any:
-    """
-    Synchronous version of parse_json_from_llm for backward compatibility.
-    Uses only rule-based approaches without LLM repair.
-    
-    Args:
-        text: JSON text from LLM to parse
-        default_value: Default value to return if parsing fails
-            
-    Returns:
-        Parsed JSON object or default_value if parsing fails
-    """
-    return LLMParsingUtils.parse_json_with_fallbacks(text, default_value)
 
 
 __all__ = [
