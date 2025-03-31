@@ -1,12 +1,12 @@
 # backend/src/utils/question_generation/pack_difficulty_creation.py
 import uuid
 import re
+import json
 from typing import List, Dict, Optional, Any
 from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
 from ..document_processing.processors import clean_text, normalize_text, split_into_chunks
-from ..llm.llm_parsing_utils import extract_key_value_pairs
 
 class PackDifficultyCreation:
     """
@@ -72,9 +72,6 @@ class PackDifficultyCreation:
         """
         Parse the LLM response into a dictionary of difficulty levels and descriptions.
         
-        This fixed parser addresses the issue where other difficulty names appear within
-        the Easy description, causing all content to be assigned to Easy.
-        
         Args:
             response_text: Processed response from LLM
             
@@ -85,7 +82,6 @@ class PackDifficultyCreation:
         expected_difficulties = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
         
         # Split the text by difficulty level markers
-        # This creates a more direct approach that should work regardless of formatting
         parts = {}
         for i in range(len(expected_difficulties)):
             current_level = expected_difficulties[i]
@@ -110,7 +106,6 @@ class PackDifficultyCreation:
                     content = match.strip()
                     
                     # Clean up the content
-                    # Remove any trailing backslashes, which were only meant for formatting
                     content = re.sub(r'\\+\s*$', '', content)
                     
                     # Remove any difficulty level markers that might be in the content
@@ -189,41 +184,45 @@ DO NOT include any other difficulty names within a difficulty description.
 """
         return prompt
     
-    def create_combined_difficulty_descriptions(self, custom_descriptions: Dict[str, str]) -> List[str]:
+    def create_difficulty_json(self, custom_descriptions: Dict[str, str]) -> Dict[str, Dict[str, str]]:
         """
-        Combine base descriptions with custom descriptions in the required format.
+        Create a structured JSON object with base and custom descriptions for each difficulty level.
         
         Args:
             custom_descriptions: Dictionary of custom descriptions by difficulty level
             
         Returns:
-            List of combined descriptions in the format: "Level; Base Description; Custom Description"
+            Nested dictionary with difficulty levels as keys, each containing a dictionary with 'base' and 'custom' keys
         """
-        combined_descriptions = []
+        difficulty_json = {}
         
         for level, base_desc in self.base_descriptions.items():
             custom_desc = custom_descriptions.get(level, "")
-            combined_description = f"{level}; {base_desc}; {custom_desc}"
-            combined_descriptions.append(combined_description)
+            difficulty_json[level] = {
+                "base": base_desc,
+                "custom": custom_desc
+            }
         
-        return combined_descriptions
+        return difficulty_json
     
-    async def store_difficulty_descriptions(self, pack_id: uuid.UUID, combined_descriptions: List[str]) -> None:
+    async def store_difficulty_descriptions(self, pack_id: uuid.UUID, difficulty_json: Dict[str, Dict[str, str]]) -> None:
         """
-        Store combined difficulty descriptions in the pack_creation_data table.
-        If difficulty descriptions already exist for this pack, they will be overwritten.
+        Store difficulty descriptions in JSON format in the pack_creation_data table.
         
         Args:
             pack_id: UUID of the pack
-            combined_descriptions: List of combined descriptions to store
+            difficulty_json: Nested dictionary of difficulty descriptions
         """
+        # Convert dictionary to JSON string to store in the database
+        difficulty_json_str = json.dumps(difficulty_json)
+        
         # Check if there's already data for this pack
         existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
         if existing_data:
-            # Update existing record
+            # Update existing record with JSON string
             update_data = PackCreationDataUpdate(
-                custom_difficulty_description=combined_descriptions
+                custom_difficulty_description=difficulty_json_str
             )
             await self.pack_creation_repository.update(id=existing_data.id, obj_in=update_data)
         else:
@@ -232,12 +231,12 @@ DO NOT include any other difficulty names within a difficulty description.
             print(f"Warning: No existing pack creation data found for pack_id {pack_id}")
             # We would need additional information to create a new record
     
-    def format_descriptions_for_prompt(self, combined_descriptions: List[str], difficulties: Optional[List[str]] = None) -> str:
+    def format_descriptions_for_prompt(self, difficulty_json: Dict[str, Dict[str, str]], difficulties: Optional[List[str]] = None) -> str:
         """
-        Format the combined descriptions for use in future prompts.
+        Format the difficulty descriptions for use in future prompts.
         
         Args:
-            combined_descriptions: List of combined descriptions
+            difficulty_json: Nested dictionary of difficulty descriptions
             difficulties: Optional list of difficulty levels to include (e.g., ["Easy", "Medium"])
                          If None, all difficulties will be included
             
@@ -246,27 +245,22 @@ DO NOT include any other difficulty names within a difficulty description.
         """
         formatted_descriptions = []
         
-        for description in combined_descriptions:
-            # Split the combined description into its components
-            parts = description.split(";")
-            if len(parts) >= 3:
-                level = parts[0].strip()
+        for level, descriptions in difficulty_json.items():
+            # Skip this difficulty if it's not in the requested list
+            if difficulties is not None and level not in difficulties:
+                continue
                 
-                # Skip this difficulty if it's not in the requested list
-                if difficulties is not None and level not in difficulties:
-                    continue
-                    
-                base_desc = parts[1].strip()
-                custom_desc = parts[2].strip()
-                
-                # Format as required for the prompt
-                formatted = f"* {level}: {base_desc}. {custom_desc}."
-                formatted_descriptions.append(formatted)
+            base_desc = descriptions.get("base", "")
+            custom_desc = descriptions.get("custom", "")
+            
+            # Format as required for the prompt
+            formatted = f"* {level}: {base_desc}. {custom_desc}."
+            formatted_descriptions.append(formatted)
         
         # Join with newlines
         return "\n".join(formatted_descriptions)
     
-    async def get_existing_difficulty_descriptions(self, pack_id: uuid.UUID) -> List[str]:
+    async def get_existing_difficulty_descriptions(self, pack_id: uuid.UUID) -> Dict[str, Dict[str, str]]:
         """
         Retrieve existing difficulty descriptions for a pack.
         
@@ -274,46 +268,43 @@ DO NOT include any other difficulty names within a difficulty description.
             pack_id: UUID of the pack
             
         Returns:
-            List of existing difficulty descriptions
+            Nested dictionary of difficulty descriptions
         """
         creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
         if creation_data and hasattr(creation_data, 'custom_difficulty_description'):
-            return creation_data.custom_difficulty_description
-        else:
-            return []
-    
-    def parse_difficulty_descriptions(self, combined_descriptions: List[str]) -> Dict[str, Dict[str, str]]:
-        """
-        Parse combined difficulty descriptions into a structured dictionary.
-        
-        Args:
-            combined_descriptions: List of combined descriptions in format "Level; Base Description; Custom Description"
+            # Get the stored data
+            stored_data = creation_data.custom_difficulty_description
             
-        Returns:
-            Dictionary with difficulty levels as keys, each containing a dictionary with 'base' and 'custom' keys
-        """
-        parsed_descriptions = {}
+            # Check if the stored data is in JSON format (string)
+            if isinstance(stored_data, str):
+                try:
+                    return json.loads(stored_data)
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, return empty structure
+                    print(f"Warning: Invalid JSON format in custom_difficulty_description for pack_id {pack_id}")
+                    return self._get_default_difficulty_structure()
+            elif isinstance(stored_data, dict):
+                # It's already a dictionary (might happen if already parsed by Pydantic)
+                return stored_data
         
-        for description in combined_descriptions:
-            parts = description.split(";")
-            if len(parts) >= 3:
-                level = parts[0].strip()
-                base_desc = parts[1].strip()
-                custom_desc = parts[2].strip()
-                
-                parsed_descriptions[level] = {
-                    'base': base_desc,
-                    'custom': custom_desc
-                }
-                
-        return parsed_descriptions
+        # Return default structure if no data found
+        return self._get_default_difficulty_structure()
+    
+    def _get_default_difficulty_structure(self) -> Dict[str, Dict[str, str]]:
+        """
+        Get the default difficulty structure with empty custom descriptions.
+        
+        Returns:
+            Default nested dictionary with base descriptions
+        """
+        return {level: {"base": base_desc, "custom": ""} for level, base_desc in self.base_descriptions.items()}
     
     async def update_specific_difficulty_descriptions(
         self,
         pack_id: uuid.UUID,
         difficulty_updates: Dict[str, str]
-    ) -> List[str]:
+    ) -> Dict[str, Dict[str, str]]:
         """
         Update specific difficulty descriptions without replacing all of them.
         
@@ -323,42 +314,27 @@ DO NOT include any other difficulty names within a difficulty description.
                                (e.g., {"Hard": "New hard description", "Expert": "New expert description"})
             
         Returns:
-            Updated list of combined difficulty descriptions
-            
-        Raises:
-            ValueError: If no existing difficulty descriptions are found for the pack
+            Updated nested dictionary of difficulty descriptions
         """
         # Get existing descriptions
         existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
         
-        if not existing_descriptions:
-            raise ValueError(f"No existing difficulty descriptions found for pack_id {pack_id}")
-        
-        # Parse existing descriptions
-        parsed_descriptions = self.parse_difficulty_descriptions(existing_descriptions)
-        
         # Update only the specified difficulty levels
         for level, new_custom_desc in difficulty_updates.items():
-            if level in parsed_descriptions:
-                parsed_descriptions[level]['custom'] = new_custom_desc
+            if level in existing_descriptions:
+                existing_descriptions[level]["custom"] = new_custom_desc
             else:
                 # If level doesn't exist yet, create it with default base description
                 base_desc = self.base_descriptions.get(level, "")
-                parsed_descriptions[level] = {
-                    'base': base_desc,
-                    'custom': new_custom_desc
+                existing_descriptions[level] = {
+                    "base": base_desc,
+                    "custom": new_custom_desc
                 }
         
-        # Reconstruct combined descriptions
-        updated_descriptions = []
-        for level, descriptions in parsed_descriptions.items():
-            combined = f"{level}; {descriptions['base']}; {descriptions['custom']}"
-            updated_descriptions.append(combined)
-        
         # Store updated descriptions
-        await self.store_difficulty_descriptions(pack_id, updated_descriptions)
+        await self.store_difficulty_descriptions(pack_id, existing_descriptions)
         
-        return updated_descriptions
+        return existing_descriptions
     
     async def generate_specific_difficulty_descriptions(
         self,
@@ -366,7 +342,7 @@ DO NOT include any other difficulty names within a difficulty description.
         creation_name: str,
         pack_topics: List[str],
         difficulty_levels: List[str]
-    ) -> List[str]:
+    ) -> Dict[str, Dict[str, str]]:
         """
         Generate descriptions for specific difficulty levels and update them while preserving others.
         
@@ -377,21 +353,10 @@ DO NOT include any other difficulty names within a difficulty description.
             difficulty_levels: List of difficulty levels to update (e.g., ["Hard", "Expert"])
             
         Returns:
-            Updated list of combined difficulty descriptions
-            
-        Raises:
-            ValueError: If no existing difficulty descriptions are found for the pack
+            Updated nested dictionary of difficulty descriptions
         """
         # Get existing descriptions first
         existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
-        
-        if not existing_descriptions:
-            # If no existing descriptions, generate all of them
-            return await self.generate_and_store_difficulty_descriptions(
-                pack_id=pack_id,
-                creation_name=creation_name,
-                pack_topics=pack_topics
-            )
         
         # Generate all difficulty descriptions (temporary)
         all_descriptions = await self.generate_difficulty_descriptions(
@@ -408,9 +373,9 @@ DO NOT include any other difficulty names within a difficulty description.
             difficulty_updates=updates
         )
         
-    async def generate_and_store_difficulty_descriptions(self, pack_id: uuid.UUID, creation_name: str, pack_topics: List[str]) -> List[str]:
+    async def generate_and_store_difficulty_descriptions(self, pack_id: uuid.UUID, creation_name: str, pack_topics: List[str]) -> Dict[str, Dict[str, str]]:
         """
-        Generate, combine, and store difficulty descriptions for a pack in one operation.
+        Generate and store difficulty descriptions for a pack in JSON format.
         This will overwrite any existing difficulty descriptions.
         
         Args:
@@ -419,7 +384,7 @@ DO NOT include any other difficulty names within a difficulty description.
             pack_topics: List of topics in the pack
             
         Returns:
-            List of combined difficulty descriptions
+            Nested dictionary of difficulty descriptions
         """
         # Generate custom descriptions
         custom_descriptions = await self.generate_difficulty_descriptions(
@@ -427,16 +392,16 @@ DO NOT include any other difficulty names within a difficulty description.
             pack_topics=pack_topics
         )
         
-        # Combine with base descriptions
-        combined_descriptions = self.create_combined_difficulty_descriptions(custom_descriptions)
+        # Convert to JSON structure
+        difficulty_json = self.create_difficulty_json(custom_descriptions)
         
         # Store in database
         await self.store_difficulty_descriptions(
             pack_id=pack_id,
-            combined_descriptions=combined_descriptions
+            difficulty_json=difficulty_json
         )
         
-        return combined_descriptions
+        return difficulty_json
     
     async def generate_and_handle_existing_difficulty_descriptions(
         self, 
@@ -444,7 +409,7 @@ DO NOT include any other difficulty names within a difficulty description.
         creation_name: str, 
         pack_topics: List[str],
         force_regenerate: bool = False
-    ) -> List[str]:
+    ) -> Dict[str, Dict[str, str]]:
         """
         Handles the generation of difficulty descriptions while respecting existing ones.
         
@@ -455,13 +420,20 @@ DO NOT include any other difficulty names within a difficulty description.
             force_regenerate: If True, will regenerate descriptions even if they exist
             
         Returns:
-            List of combined difficulty descriptions
+            Nested dictionary of difficulty descriptions
         """
         # Check if difficulty descriptions already exist
         existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
         
+        # Check if we have any custom descriptions
+        has_custom_descriptions = False
+        for level_data in existing_descriptions.values():
+            if level_data.get("custom", ""):
+                has_custom_descriptions = True
+                break
+        
         # If descriptions exist and we don't want to regenerate, return them
-        if existing_descriptions and not force_regenerate:
+        if has_custom_descriptions and not force_regenerate:
             return existing_descriptions
         
         # Otherwise, generate new descriptions
