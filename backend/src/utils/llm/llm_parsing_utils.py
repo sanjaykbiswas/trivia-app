@@ -171,61 +171,6 @@ class LLMParsingUtils:
         return response_text
     
     @staticmethod
-    def parse_json_with_fallbacks(json_str: str, default_value: Any = None) -> Any:
-        """
-        Parse JSON with multiple fallback strategies.
-        
-        Args:
-            json_str: JSON string to parse
-            default_value: Default value to return if parsing fails
-            
-        Returns:
-            Parsed JSON object or default value
-        """
-        # Try parsing directly first
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            pass  # Move to fallback strategies
-        
-        # Extract JSON from mixed content
-        cleaned_json = LLMParsingUtils.extract_json_from_response(json_str)
-        
-        try:
-            return json.loads(cleaned_json)
-        except json.JSONDecodeError:
-            pass  # Move to next fallback
-            
-        # Handle potentially truncated arrays
-        fixed_json = LLMParsingUtils.handle_truncated_json_array(cleaned_json)
-        
-        try:
-            return json.loads(fixed_json)
-        except json.JSONDecodeError:
-            pass  # Move to next fallback
-        
-        # Manual character-by-character cleanup
-        sanitized_json = LLMParsingUtils.sanitize_json(fixed_json)
-        
-        try:
-            return json.loads(sanitized_json)
-        except json.JSONDecodeError:
-            # Enhanced recovery for truncated arrays - this is a more aggressive approach
-            if fixed_json.strip().startswith('['):
-                # This looks like a JSON array, try to recover complete items
-                recovered_items = LLMParsingUtils.recover_items_from_truncated_array(fixed_json)
-                if recovered_items:
-                    return recovered_items
-                    
-                # If standard recovery fails, try chunk-based recovery
-                chunk_recovered_items = LLMParsingUtils.chunk_recover_json_array(fixed_json)
-                if chunk_recovered_items:
-                    return chunk_recovered_items
-            
-            logger.error(f"Failed to parse JSON after all fallback attempts: {json_str[:100]}...")
-            return default_value
-    
-    @staticmethod
     def handle_truncated_json_array(json_str: str) -> str:
         """
         Handles truncated JSON arrays by finding the last complete item.
@@ -587,7 +532,9 @@ class LLMParsingUtils:
         format_type = LLMParsingUtils.detect_format(text)
         
         if format_type == 'json':
-            return LLMParsingUtils.parse_json_with_fallbacks(text, {})
+            # Use parse_json_from_llm which now integrates the functionality 
+            # of parse_json_with_fallbacks
+            return asyncio.run(parse_json_from_llm(text, {}))
         elif format_type == 'bullet_list':
             return LLMParsingUtils.extract_bullet_list(text)
         elif format_type == 'numbered_list':
@@ -639,20 +586,6 @@ def extract_bullet_list(text: str) -> List[str]:
     """Helper function to extract bullet list from text."""
     return LLMParsingUtils.extract_bullet_list(text)
 
-def parse_json_from_llm_sync(text: str, default_value: Any = None) -> Any:
-    """
-    Synchronous version of parse_json_from_llm.
-    Uses only rule-based approaches without LLM repair.
-    
-    Args:
-        text: JSON text from LLM to parse
-        default_value: Default value to return if parsing fails
-            
-    Returns:
-        Parsed JSON object or default_value if parsing fails
-    """
-    return LLMParsingUtils.parse_json_with_fallbacks(text, default_value)
-
 async def parse_json_from_llm(text: str, default_value: Any = None) -> Any:
     """
     Parse JSON from LLM output with automatic LLM-based repair if needed.
@@ -669,10 +602,44 @@ async def parse_json_from_llm(text: str, default_value: Any = None) -> Any:
     """
     # First try traditional rule-based parsing approaches
     try:
-        # Use the synchronous version first for efficiency
-        parsed_result = parse_json_from_llm_sync(text, None)
-        if parsed_result is not None:
-            return parsed_result
+        # Try direct JSON parsing first (fastest)
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+            
+        # Extract JSON from mixed content
+        cleaned_json = LLMParsingUtils.extract_json_from_response(text)
+        try:
+            return json.loads(cleaned_json)
+        except json.JSONDecodeError:
+            pass
+            
+        # Handle potentially truncated arrays
+        fixed_json = LLMParsingUtils.handle_truncated_json_array(cleaned_json)
+        try:
+            return json.loads(fixed_json)
+        except json.JSONDecodeError:
+            pass
+        
+        # Manual character-by-character cleanup
+        sanitized_json = LLMParsingUtils.sanitize_json(fixed_json)
+        try:
+            return json.loads(sanitized_json)
+        except json.JSONDecodeError:
+            # Try recovery approaches for arrays
+            if fixed_json.strip().startswith('['):
+                recovered_items = LLMParsingUtils.recover_items_from_truncated_array(fixed_json)
+                if recovered_items:
+                    return recovered_items
+                    
+                chunk_recovered_items = LLMParsingUtils.chunk_recover_json_array(fixed_json)
+                if chunk_recovered_items:
+                    return chunk_recovered_items
+                    
+            # If we reach here, all rule-based approaches failed
+            raise ValueError("Rule-based JSON parsing failed")
+            
     except Exception as e:
         logger.debug(f"Traditional JSON parsing failed: {str(e)}")
     
@@ -707,7 +674,6 @@ __all__ = [
     "LLMParsingUtils",
     "extract_bullet_list",
     "parse_json_from_llm",
-    "parse_json_from_llm_sync",
     "format_as_bullet_list",
     "extract_key_value_pairs",
     "detect_and_parse_format",
