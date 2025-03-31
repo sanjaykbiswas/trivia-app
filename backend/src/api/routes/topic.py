@@ -65,18 +65,12 @@ async def generate_topics(
         )
     
     try:
-        # Generate topics, potentially using predefined topic
-        topics = await topic_service.topic_creator.create_pack_topics(
+        # Use the new method that respects predefined topics
+        topics = await topic_service.generate_or_use_topics(
+            pack_id=pack_id,
             creation_name=creation_name,
             num_topics=topic_request.num_topics,
             predefined_topic=topic_request.predefined_topic
-        )
-        
-        # Store topics
-        await topic_service.store_pack_topics(
-            pack_id=pack_id,
-            topics=topics,
-            creation_name=creation_name
         )
         
         return TopicResponse(topics=topics)

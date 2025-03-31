@@ -81,6 +81,41 @@ class TopicService:
         else:
             return []
     
+    async def generate_or_use_topics(self, pack_id: str, 
+                                 creation_name: str, 
+                                 num_topics: int = 5, 
+                                 predefined_topic: Optional[str] = None) -> List[str]:
+        """
+        Generate topics or use a predefined topic for a pack.
+        
+        Args:
+            pack_id: ID of the pack
+            creation_name: The name of the trivia pack
+            num_topics: Number of topics to generate (used only if no predefined topic)
+            predefined_topic: Optional predefined topic to use instead of generation
+            
+        Returns:
+            List of topics (either generated or containing just the predefined topic)
+        """
+        # If predefined topic is provided, use only that
+        if predefined_topic:
+            topics = [predefined_topic]
+        else:
+            # Generate topics using LLM
+            topics = await self.topic_creator.create_pack_topics(
+                creation_name=creation_name,
+                num_topics=num_topics
+            )
+        
+        # Store the topics
+        await self.store_pack_topics(
+            pack_id=pack_id,
+            topics=topics,
+            creation_name=creation_name
+        )
+        
+        return topics
+    
     async def add_additional_topics(self, pack_id: str, 
                                   creation_name: str,
                                   num_additional_topics: int = 3,
@@ -103,13 +138,21 @@ class TopicService:
         # Get existing topics
         existing_topics = await self.get_existing_pack_topics(pack_id)
         
-        # Use the utility to create new topics based on existing ones
-        new_topics = await self.topic_creator.create_additional_topics(
-            existing_topics=existing_topics,
-            creation_name=creation_name, 
-            num_additional_topics=num_additional_topics,
-            predefined_topic=predefined_topic
-        )
+        # If predefined topic is provided, only add that
+        if predefined_topic:
+            # Check if the topic already exists
+            if predefined_topic not in existing_topics:
+                new_topics = [predefined_topic]
+            else:
+                logger.warning(f"Predefined topic '{predefined_topic}' already exists in topics list")
+                return existing_topics
+        else:
+            # Use the utility to create new topics based on existing ones
+            new_topics = await self.topic_creator.create_additional_topics(
+                existing_topics=existing_topics,
+                creation_name=creation_name, 
+                num_additional_topics=num_additional_topics
+            )
         
         # Combine with existing, avoiding duplicates
         all_topics = existing_topics.copy()

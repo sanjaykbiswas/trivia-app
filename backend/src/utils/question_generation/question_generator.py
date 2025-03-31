@@ -233,10 +233,11 @@ IMPORTANT:
         
         if examples:
             return f"""
-Here are some example questions and answers for this pack:
+Here are some example questions and answers for this pack and topic:
 
 {"\n\n".join(examples)}
 
+The example questions play with wordplay, allusions, and clever phrasing that ties to the topic without being too on-the-nose.
 Please use these as a guide for style and format, but create completely new questions.
 """
         return ""
