@@ -29,6 +29,38 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
         self.db = db
         self.table_name = table_name
 
+    def _serialize_data_for_db(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Recursively serialize data for database storage, handling UUIDs and other special types.
+        
+        Args:
+            data: Dictionary containing data to serialize
+            
+        Returns:
+            Serialized dictionary ready for database insertion
+        """
+        result = {}
+        
+        for key, value in data.items():
+            # Handle UUIDs
+            if isinstance(value, uuid.UUID):
+                result[key] = str(value)
+            # Handle lists
+            elif isinstance(value, list):
+                result[key] = [
+                    str(item) if isinstance(item, uuid.UUID) else 
+                    self._serialize_data_for_db(item) if isinstance(item, dict) else 
+                    item for item in value
+                ]
+            # Handle nested dictionaries
+            elif isinstance(value, dict):
+                result[key] = self._serialize_data_for_db(value)
+            # Handle other types
+            else:
+                result[key] = value
+                
+        return result
+
     async def _execute_query(self, query) -> APIResponse:
         """Helper to execute supabase query and handle potential errors."""
         try:
@@ -69,10 +101,8 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
         # Convert model to dict and prepare for insertion
         insert_data = obj_in.dict(exclude_unset=False, by_alias=False)
         
-        # Handle UUIDs by converting to strings
-        for key, value in insert_data.items():
-            if isinstance(value, uuid.UUID):
-                insert_data[key] = str(value)
+        # Serialize all data (including UUIDs) for database
+        insert_data = self._serialize_data_for_db(insert_data)
 
         # Step 1: Insert the data
         query = self.db.table(self.table_name).insert(insert_data)
@@ -109,10 +139,8 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             # If there's nothing to update, return the existing object
             return await self.get_by_id(id)
 
-        # Handle UUIDs by converting to strings
-        for key, value in update_data.items():
-            if isinstance(value, uuid.UUID):
-                update_data[key] = str(value)
+        # Serialize all data (including UUIDs) for database
+        update_data = self._serialize_data_for_db(update_data)
 
         # Step 1: Update the record
         query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
