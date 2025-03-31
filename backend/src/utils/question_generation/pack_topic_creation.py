@@ -31,14 +31,12 @@ class PackTopicCreation:
         self.llm_service = llm_service or LLMService()
         
     async def create_pack_topics(self, creation_name: str, 
-                               creation_description: Optional[str] = None, 
                                num_topics: int = 5) -> List[str]:
         """
         Create a list of topics for a trivia pack using LLM.
         
         Args:
             creation_name: The name of the trivia pack
-            creation_description: Optional description of the pack
             num_topics: Number of topics to generate
             
         Returns:
@@ -46,13 +44,10 @@ class PackTopicCreation:
         """
         # Clean and normalize inputs using document_processing utilities
         creation_name = normalize_text(creation_name, lowercase=False)
-        if creation_description:
-            creation_description = clean_text(creation_description)
         
         # Generate the prompt for topic creation
         prompt = self._build_topic_generation_prompt(
             creation_name=creation_name,
-            creation_description=creation_description,
             num_topics=num_topics
         )
         
@@ -85,22 +80,18 @@ class PackTopicCreation:
         return topics
     
     def _build_topic_generation_prompt(self, creation_name: str, 
-                                      creation_description: Optional[str] = None,
                                       num_topics: int = 5) -> str:
         """
         Build the prompt for topic creation.
         
         Args:
             creation_name: Name of the trivia pack
-            creation_description: Optional description
             num_topics: Number of topics to generate
             
         Returns:
             Formatted prompt string
         """
-        description_text = f"\nDescription: {creation_description}" if creation_description else ""
-        
-        prompt = f"""Generate {num_topics} specific topics for a trivia pack named "{creation_name}".{description_text}
+        prompt = f"""Generate {num_topics} specific topics for a trivia pack named "{creation_name}".
 
 The topics should:
 - Be specific enough to generate interesting trivia questions
@@ -127,8 +118,7 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         return prompt
     
     async def store_pack_topics(self, pack_id: uuid.UUID, topics: List[str], 
-                              creation_name: str,
-                              creation_description: Optional[str] = None) -> None:
+                              creation_name: str) -> None:
         """
         Store topics in the pack_creation_data table.
         
@@ -136,7 +126,6 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
             pack_id: UUID of the pack
             topics: List of topics to store
             creation_name: Name of the pack/creator
-            creation_description: Optional description to store
         """
         # Ensure pack_id is a proper UUID object
         pack_id = ensure_uuid(pack_id)
@@ -147,8 +136,7 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         if existing_data:
             # Update existing record
             update_data = PackCreationDataUpdate(
-                pack_topics=topics,
-                creation_description=creation_description
+                pack_topics=topics
             )
             await self.pack_creation_repository.update(id=existing_data.id, obj_in=update_data)
         else:
@@ -157,7 +145,6 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
                 pack_id=pack_id,
                 pack_topics=topics,
                 creation_name=creation_name,  # Required field
-                creation_description=creation_description,
                 custom_difficulty_description={}  # Empty dictionary for now
             )
             await self.pack_creation_repository.create(obj_in=new_data)
@@ -184,7 +171,6 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
     
     async def add_additional_topics(self, pack_id: uuid.UUID, 
                                   creation_name: str,
-                                  creation_description: Optional[str] = None,
                                   num_additional_topics: int = 3) -> List[str]:
         """
         Add additional topics to an existing pack.
@@ -192,7 +178,6 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         Args:
             pack_id: UUID of the pack
             creation_name: The name of the trivia pack
-            creation_description: Optional description of the pack
             num_additional_topics: Number of new topics to add
             
         Returns:
@@ -207,8 +192,6 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         # Build prompt for additional topics
         additional_prompt = f"""Generate {num_additional_topics} new specific topics for a trivia pack named "{creation_name}".
         
-{creation_description or ''}
-
 Please provide topics DIFFERENT from these existing topics:
 {', '.join(existing_topics)}
 
@@ -257,8 +240,7 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         await self.store_pack_topics(
             pack_id=pack_id,
             topics=all_topics,
-            creation_name=creation_name,
-            creation_description=creation_description
+            creation_name=creation_name
         )
         
         return all_topics

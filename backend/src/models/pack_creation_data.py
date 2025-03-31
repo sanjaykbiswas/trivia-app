@@ -17,7 +17,6 @@ class PackCreationData(BaseModel):
         creation_name: Name of the creator or creation source
         is_pow: Whether this is a "proof of work" pack
         pow_analysis: Optional analysis of the proof of work
-        creation_description: Optional description of the creation process
         pack_topics: List of topics in the pack
         custom_difficulty_description: JSON structure containing difficulty descriptions
         is_temporal: Whether this pack is time-based or has temporal relevance
@@ -28,7 +27,6 @@ class PackCreationData(BaseModel):
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
-    creation_description: Optional[str] = None
     pack_topics: List[str]
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
     is_temporal: bool = False
@@ -44,7 +42,6 @@ class PackCreationDataCreate(BaseCreateSchema):
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
-    creation_description: Optional[str] = None
     pack_topics: List[str]
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
     is_temporal: bool = False
@@ -55,7 +52,6 @@ class PackCreationDataUpdate(BaseUpdateSchema):
     creation_name: Optional[str] = None
     is_pow: Optional[bool] = None
     pow_analysis: Optional[str] = None
-    creation_description: Optional[str] = None
     pack_topics: Optional[List[str]] = None
     custom_difficulty_description: Optional[Dict[str, Any]] = None
     is_temporal: Optional[bool] = None

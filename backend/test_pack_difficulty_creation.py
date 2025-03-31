@@ -22,7 +22,6 @@ from src.utils import ensure_uuid
 
 async def create_sample_pack_with_topics_and_difficulties(
     pack_name, 
-    pack_description, 
     num_topics=5, 
     update_existing_difficulties=False,
     debug_mode=False  # New parameter for verbose debugging
@@ -32,7 +31,6 @@ async def create_sample_pack_with_topics_and_difficulties(
     
     Args:
         pack_name: Name of the pack to create or retrieve
-        pack_description: Description of the pack 
         num_topics: Number of topics to generate if creating a new pack
         update_existing_difficulties: Whether to update existing difficulty descriptions if found
         debug_mode: Whether to show verbose debugging info
@@ -66,7 +64,7 @@ async def create_sample_pack_with_topics_and_difficulties(
         pack, is_new = await get_or_create_pack(
             pack_repo=pack_repo,
             pack_name=pack_name,
-            pack_description=pack_description,
+            description=pack_name,  # Use the name as a basic description
             price=0.0,
             creator_type=CreatorType.SYSTEM
         )
@@ -79,7 +77,6 @@ async def create_sample_pack_with_topics_and_difficulties(
                 print("\n--- DEBUGGING: Topic Generation ---")
                 topic_prompt = topic_creator._build_topic_generation_prompt(
                     creation_name=pack_name,
-                    creation_description=pack_description,
                     num_topics=num_topics
                 )
                 print("\nTopic Generation Prompt:")
@@ -95,7 +92,6 @@ async def create_sample_pack_with_topics_and_difficulties(
             print("\nGenerating topics with LLM...")
             topics = await topic_creator.create_pack_topics(
                 creation_name=pack_name,
-                creation_description=pack_description,
                 num_topics=num_topics
             )
             
@@ -108,8 +104,7 @@ async def create_sample_pack_with_topics_and_difficulties(
             await topic_creator.store_pack_topics(
                 pack_id=pack.id,
                 topics=topics,
-                creation_name=pack_name,
-                creation_description=pack_description
+                creation_name=pack_name
             )
             
             # DEBUGGING: Capture raw difficulty description generation response before parsing
@@ -326,17 +321,11 @@ if __name__ == "__main__":
     
     # Interactive prompts with defaults
     default_name = "Ancient Greece History"
-    default_description = "A fascinating journey through ancient Greek history, mythology, and culture."
     
     # Ask for pack name
     pack_name = input(f"Enter pack name [{default_name}]: ")
     if not pack_name.strip():
         pack_name = default_name
-    
-    # Ask for pack description
-    pack_description = input(f"Enter pack description [{default_description}]: ")
-    if not pack_description.strip():
-        pack_description = default_description
     
     # Ask for number of topics
     topics_input = input("Enter number of topics to generate [5]: ")
@@ -360,7 +349,6 @@ if __name__ == "__main__":
     # Run the main function
     pack_id = asyncio.run(create_sample_pack_with_topics_and_difficulties(
         pack_name, 
-        pack_description,
         num_topics,
         update_existing_difficulties,
         debug_mode_enabled
