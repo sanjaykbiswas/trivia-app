@@ -1,7 +1,6 @@
 # backend/src/utils/question_generation/pack_difficulty_creation.py
 import uuid
 import re
-import json
 from typing import List, Dict, Optional, Any
 from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
@@ -57,7 +56,7 @@ class PackDifficultyCreation:
         raw_response = await self.llm_service.generate_content(prompt)
         processed_response = await self.llm_service.process_llm_response(raw_response)
         
-        # Parse the response - using improved parsing logic
+        # Parse the response
         difficulty_descriptions = self._parse_difficulty_response(processed_response)
         
         # Ensure all expected difficulty levels are included
@@ -207,22 +206,19 @@ DO NOT include any other difficulty names within a difficulty description.
     
     async def store_difficulty_descriptions(self, pack_id: uuid.UUID, difficulty_json: Dict[str, Dict[str, str]]) -> None:
         """
-        Store difficulty descriptions in JSON format in the pack_creation_data table.
+        Store difficulty descriptions in the pack_creation_data table.
         
         Args:
             pack_id: UUID of the pack
             difficulty_json: Nested dictionary of difficulty descriptions
         """
-        # Convert dictionary to JSON string to store in the database
-        difficulty_json_str = json.dumps(difficulty_json)
-        
         # Check if there's already data for this pack
         existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
         if existing_data:
-            # Update existing record with JSON string
+            # Update existing record with the dictionary directly
             update_data = PackCreationDataUpdate(
-                custom_difficulty_description=difficulty_json_str
+                custom_difficulty_description=difficulty_json
             )
             await self.pack_creation_repository.update(id=existing_data.id, obj_in=update_data)
         else:
@@ -276,19 +272,11 @@ DO NOT include any other difficulty names within a difficulty description.
             # Get the stored data
             stored_data = creation_data.custom_difficulty_description
             
-            # Check if the stored data is in JSON format (string)
-            if isinstance(stored_data, str):
-                try:
-                    return json.loads(stored_data)
-                except json.JSONDecodeError:
-                    # If it's not valid JSON, return empty structure
-                    print(f"Warning: Invalid JSON format in custom_difficulty_description for pack_id {pack_id}")
-                    return self._get_default_difficulty_structure()
-            elif isinstance(stored_data, dict):
-                # It's already a dictionary (might happen if already parsed by Pydantic)
+            # Check if we have valid dictionary data
+            if isinstance(stored_data, dict) and stored_data:
                 return stored_data
         
-        # Return default structure if no data found
+        # Return default structure if no data found or not in expected format
         return self._get_default_difficulty_structure()
     
     def _get_default_difficulty_structure(self) -> Dict[str, Dict[str, str]]:
