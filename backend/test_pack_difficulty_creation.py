@@ -17,6 +17,7 @@ from src.utils.question_generation.pack_difficulty_creation import PackDifficult
 from src.utils.llm.llm_service import LLMService
 from src.models.pack import Pack, CreatorType
 from src.utils.question_generation.pack_management import get_or_create_pack
+from src.utils import ensure_uuid
 
 
 async def create_sample_pack_with_topics_and_difficulties(
@@ -248,8 +249,9 @@ async def generate_specific_difficulty_levels(pack_id, difficulty_levels, debug_
             llm_service=llm_service
         )
         
-        # Get the pack
-        pack = await pack_repo.get_by_id(uuid.UUID(pack_id))
+        # Get the pack - using ensure_uuid utility
+        pack = await pack_repo.get_by_id(ensure_uuid(pack_id))
+        
         if not pack:
             print(f"Pack with ID {pack_id} not found")
             return None
