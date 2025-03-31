@@ -1,3 +1,5 @@
+# python3 test_generator.py --pack-name "Book Title Adjectives" --topic "Book Title Adjectives" --seed-questions seed_questions.txt --auto-generate-instructions
+
 #!/usr/bin/env python
 import requests
 import json
