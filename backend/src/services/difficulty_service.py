@@ -1,5 +1,4 @@
 # backend/src/services/difficulty_service.py
-import uuid
 from typing import List, Dict, Any, Optional
 
 from ..models.pack_creation_data import PackCreationDataUpdate
@@ -24,15 +23,15 @@ class DifficultyService:
         # PackDifficultyCreation only expects llm_service, not pack_creation_data_repository
         self.difficulty_creator = PackDifficultyCreation()
     
-    async def store_difficulty_descriptions(self, pack_id: uuid.UUID, difficulty_json: Dict[str, Dict[str, str]]) -> None:
+    async def store_difficulty_descriptions(self, pack_id: str, difficulty_json: Dict[str, Dict[str, str]]) -> None:
         """
         Store difficulty descriptions in the pack_creation_data table.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             difficulty_json: Nested dictionary of difficulty descriptions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Check if there's already data for this pack
@@ -50,17 +49,17 @@ class DifficultyService:
             print(f"Warning: No existing pack creation data found for pack_id {pack_id}")
             # We would need additional information to create a new record
     
-    async def get_existing_difficulty_descriptions(self, pack_id: uuid.UUID) -> Dict[str, Dict[str, str]]:
+    async def get_existing_difficulty_descriptions(self, pack_id: str) -> Dict[str, Dict[str, str]]:
         """
         Retrieve existing difficulty descriptions for a pack.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             
         Returns:
             Nested dictionary of difficulty descriptions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
@@ -78,21 +77,21 @@ class DifficultyService:
     
     async def update_specific_difficulty_descriptions(
         self,
-        pack_id: uuid.UUID,
+        pack_id: str,
         difficulty_updates: Dict[str, str]
     ) -> Dict[str, Dict[str, str]]:
         """
         Update specific difficulty descriptions without replacing all of them.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             difficulty_updates: Dictionary mapping difficulty levels to their new custom descriptions
                                (e.g., {"Hard": "New hard description", "Expert": "New expert description"})
             
         Returns:
             Updated nested dictionary of difficulty descriptions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Get existing descriptions
@@ -117,7 +116,7 @@ class DifficultyService:
     
     async def generate_and_store_difficulty_descriptions(
         self, 
-        pack_id: uuid.UUID, 
+        pack_id: str, 
         creation_name: str, 
         pack_topics: List[str]
     ) -> Dict[str, Dict[str, str]]:
@@ -126,14 +125,14 @@ class DifficultyService:
         This will overwrite any existing difficulty descriptions.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             creation_name: Name of the trivia pack
             pack_topics: List of topics in the pack
             
         Returns:
             Nested dictionary of difficulty descriptions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Generate custom descriptions using the utility
@@ -155,7 +154,7 @@ class DifficultyService:
     
     async def generate_and_handle_existing_difficulty_descriptions(
         self, 
-        pack_id: uuid.UUID, 
+        pack_id: str, 
         creation_name: str, 
         pack_topics: List[str],
         force_regenerate: bool = False
@@ -164,7 +163,7 @@ class DifficultyService:
         Handles the generation of difficulty descriptions while respecting existing ones.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             creation_name: Name of the trivia pack
             pack_topics: List of topics in the pack
             force_regenerate: If True, will regenerate descriptions even if they exist
@@ -172,7 +171,7 @@ class DifficultyService:
         Returns:
             Nested dictionary of difficulty descriptions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Check if difficulty descriptions already exist
@@ -198,7 +197,7 @@ class DifficultyService:
     
     async def generate_specific_difficulty_descriptions(
         self,
-        pack_id: uuid.UUID,
+        pack_id: str,
         creation_name: str,
         pack_topics: List[str],
         difficulty_levels: List[str]
@@ -207,7 +206,7 @@ class DifficultyService:
         Generate descriptions for specific difficulty levels and update them while preserving others.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             creation_name: Name of the trivia pack
             pack_topics: List of topics in the pack
             difficulty_levels: List of difficulty levels to update (e.g., ["Hard", "Expert"])
@@ -215,7 +214,7 @@ class DifficultyService:
         Returns:
             Updated nested dictionary of difficulty descriptions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Generate all difficulty descriptions (temporary)

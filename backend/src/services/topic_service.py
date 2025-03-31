@@ -1,5 +1,4 @@
 # backend/src/services/topic_service.py
-import uuid
 import logging
 from typing import List, Optional
 
@@ -30,17 +29,17 @@ class TopicService:
         llm_service = LLMService()
         self.topic_creator = PackTopicCreation(llm_service=llm_service)
     
-    async def store_pack_topics(self, pack_id: uuid.UUID, topics: List[str], 
+    async def store_pack_topics(self, pack_id: str, topics: List[str], 
                               creation_name: str) -> None:
         """
         Store topics in the pack_creation_data table.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             topics: List of topics to store
             creation_name: Name of the pack/creator
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Check if there's already data for this pack
@@ -62,17 +61,17 @@ class TopicService:
             )
             await self.pack_creation_repository.create(obj_in=new_data)
     
-    async def get_existing_pack_topics(self, pack_id: uuid.UUID) -> List[str]:
+    async def get_existing_pack_topics(self, pack_id: str) -> List[str]:
         """
         Retrieve existing topics for a pack.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             
         Returns:
             List of existing topics
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
@@ -82,21 +81,21 @@ class TopicService:
         else:
             return []
     
-    async def add_additional_topics(self, pack_id: uuid.UUID, 
+    async def add_additional_topics(self, pack_id: str, 
                                   creation_name: str,
                                   num_additional_topics: int = 3) -> List[str]:
         """
         Add additional topics to an existing pack.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             creation_name: The name of the trivia pack
             num_additional_topics: Number of new topics to add
             
         Returns:
             Full list of topics (existing + new)
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Get existing topics

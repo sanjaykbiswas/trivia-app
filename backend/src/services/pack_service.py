@@ -1,5 +1,4 @@
 # backend/src/services/pack_service.py
-import uuid
 from typing import Tuple, Optional
 
 from ..models.pack import Pack, PackCreate, PackUpdate, CreatorType

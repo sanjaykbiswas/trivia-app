@@ -3,9 +3,8 @@
 Utility for generating trivia questions using LLM based on pack topics and difficulty.
 """
 
-import uuid
 import json
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Union
 import logging
 import traceback
 from ...models.question import DifficultyLevel, Question
@@ -35,7 +34,7 @@ class QuestionGenerator:
     
     async def generate_questions(
         self, 
-        pack_id: uuid.UUID,
+        pack_id: str,
         creation_name: str,
         pack_topic: str,
         difficulty: Union[str, DifficultyLevel],
@@ -49,7 +48,7 @@ class QuestionGenerator:
         Generate questions for a specific topic and difficulty.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             creation_name: Name of the trivia pack
             pack_topic: The specific topic to generate questions for
             difficulty: Difficulty level for the questions
@@ -113,14 +112,9 @@ class QuestionGenerator:
             
             if self.debug_enabled:
                 print("\n=== Processed Questions ===")
-                # Use a safe JSON serialization to avoid UUID errors in debug output
+                # Use safe JSON serialization for debug output
                 try:
-                    safe_questions = []
-                    for q in processed_questions:
-                        safe_q = q.copy()
-                        safe_q['pack_id'] = str(safe_q['pack_id']) if 'pack_id' in safe_q else None
-                        safe_questions.append(safe_q)
-                    print(json.dumps(safe_questions, indent=2))
+                    print(json.dumps(processed_questions, indent=2))
                 except Exception as e:
                     print(f"Error showing processed questions: {str(e)}")
                     print(f"Raw processed questions: {processed_questions}")
@@ -250,7 +244,7 @@ Please use these as a guide for style and format, but create completely new ques
     def _process_question_response(
         self,
         response: str,
-        pack_id: uuid.UUID,
+        pack_id: str,
         pack_topic: str,
         difficulty_str: str
     ) -> List[Dict[str, Any]]:
@@ -259,7 +253,7 @@ Please use these as a guide for style and format, but create completely new ques
         
         Args:
             response: Raw response from LLM
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             pack_topic: Topic the questions are about
             difficulty_str: Difficulty level string
             
@@ -293,11 +287,11 @@ Please use these as a guide for style and format, but create completely new ques
                     question_text = clean_text(item["question"])
                     answer_text = clean_text(item["answer"])
                     
-                    # Create a structured question dict - convert UUID to string
+                    # Create a structured question dict
                     question_dict = {
                         "question": question_text,
                         "answer": answer_text,
-                        "pack_id": pack_id,  # This is a UUID object
+                        "pack_id": pack_id,  # Already a string ID
                         "pack_topics_item": pack_topic,
                         "difficulty_initial": difficulty,
                         "difficulty_current": difficulty
@@ -306,9 +300,7 @@ Please use these as a guide for style and format, but create completely new ques
                     structured_questions.append(question_dict)
                     
                     if self.debug_enabled:
-                        safe_dict = question_dict.copy()
-                        safe_dict["pack_id"] = str(safe_dict["pack_id"])
-                        print(f"Structured question: {safe_dict}")
+                        print(f"Structured question: {question_dict}")
                 else:
                     logger.warning(f"Skipping invalid question format: {item}")
         else:

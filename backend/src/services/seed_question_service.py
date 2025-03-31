@@ -1,5 +1,4 @@
 # backend/src/services/seed_question_service.py
-import uuid
 import logging
 from typing import Dict, Optional
 
@@ -28,19 +27,19 @@ class SeedQuestionService:
         # Pass None to avoid repository in utils
         self.seed_processor = SeedQuestionProcessor(pack_creation_repository=None)
     
-    async def store_seed_questions(self, pack_id: uuid.UUID, seed_questions: Dict[str, str]) -> bool:
+    async def store_seed_questions(self, pack_id: str, seed_questions: Dict[str, str]) -> bool:
         """
         Store seed questions in the pack_creation_data table.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             seed_questions: Dictionary of question-answer pairs
             
         Returns:
             Success flag
         """
         try:
-            # Ensure pack_id is a proper UUID object
+            # Ensure pack_id is a valid UUID string
             pack_id = ensure_uuid(pack_id)
             
             # Check if there's already data for this pack
@@ -61,17 +60,17 @@ class SeedQuestionService:
             logger.error(f"Error storing seed questions: {str(e)}")
             return False
     
-    async def get_seed_questions(self, pack_id: uuid.UUID) -> Dict[str, str]:
+    async def get_seed_questions(self, pack_id: str) -> Dict[str, str]:
         """
         Retrieve seed questions for a pack.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             
         Returns:
             Dictionary of seed questions
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)

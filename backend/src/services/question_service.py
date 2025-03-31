@@ -43,7 +43,7 @@ class QuestionService:
     
     async def generate_and_store_questions(
         self,
-        pack_id: uuid.UUID,
+        pack_id: str,
         creation_name: str,
         pack_topic: str,
         difficulty: Union[str, DifficultyLevel],
@@ -54,7 +54,7 @@ class QuestionService:
         Generate questions using LLM and store them in the database.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             creation_name: Name of the trivia pack
             pack_topic: Specific topic to generate questions for
             difficulty: Difficulty level for questions
@@ -73,7 +73,7 @@ class QuestionService:
             print(f"Difficulty: {difficulty}")
             print(f"Number of questions: {num_questions}")
         
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Retrieve difficulty descriptions if pack_creation_data_repository is provided
@@ -116,11 +116,10 @@ class QuestionService:
             if self.debug_enabled:
                 print(f"\n=== Generated Question Data ===")
                 print(f"Number of questions generated: {len(question_data_list)}")
-                # Safe JSON serialization for UUID objects
+                # Safe JSON serialization for data display
                 safe_data = []
                 for q in question_data_list:
                     safe_q = q.copy()
-                    safe_q['pack_id'] = str(safe_q['pack_id']) if 'pack_id' in safe_q else None
                     safe_data.append(safe_q)
                 
                 if safe_data:
@@ -166,23 +165,13 @@ class QuestionService:
             # Debug: Print the question data before modification
             if self.debug_enabled:
                 print(f"\n=== Creating Question ===")
-                # Create a safe copy with UUID as string for display
-                safe_data = question_data.copy()
-                safe_data["pack_id"] = str(safe_data["pack_id"]) if "pack_id" in safe_data else None
-                print(f"Question data: {safe_data}")
-            
-            # Convert UUID to string for database insertion
-            pack_id = question_data["pack_id"]
-            if isinstance(pack_id, uuid.UUID):
-                pack_id_str = str(pack_id)
-            else:
-                pack_id_str = pack_id  # Assume it's already a string
+                print(f"Question data: {question_data}")
             
             # Prepare question create schema
             question_create = QuestionCreate(
                 question=question_data["question"],
                 answer=question_data["answer"],
-                pack_id=pack_id_str,  # Use string version of UUID
+                pack_id=question_data["pack_id"],  # Already a string
                 pack_topics_item=question_data.get("pack_topics_item"),
                 difficulty_initial=question_data.get("difficulty_initial"),
                 difficulty_current=question_data.get("difficulty_current"),
@@ -207,35 +196,34 @@ class QuestionService:
                 print(traceback.format_exc())
             return None
     
-    # Rest of the methods remain unchanged
-    async def get_questions_by_pack_id(self, pack_id: uuid.UUID) -> List[Question]:
+    async def get_questions_by_pack_id(self, pack_id: str) -> List[Question]:
         """
         Retrieve all questions for a specific pack.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             
         Returns:
             List of Question objects
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Use the repository to get questions
         return await self.question_repository.get_by_pack_id(pack_id)
     
-    async def get_questions_by_topic(self, pack_id: uuid.UUID, topic: str) -> List[Question]:
+    async def get_questions_by_topic(self, pack_id: str, topic: str) -> List[Question]:
         """
         Retrieve questions for a specific pack filtered by topic.
         
         Args:
-            pack_id: UUID of the pack
+            pack_id: ID of the pack
             topic: Topic to filter by
             
         Returns:
             List of Question objects
         """
-        # Ensure pack_id is a proper UUID object
+        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
         
         # Get all questions for the pack
@@ -246,20 +234,20 @@ class QuestionService:
     
     async def update_question_statistics(
         self,
-        question_id: uuid.UUID,
+        question_id: str,
         correct: bool
     ) -> Optional[Question]:
         """
         Update question statistics based on user answer.
         
         Args:
-            question_id: UUID of the question
+            question_id: ID of the question
             correct: Whether the user answered correctly
             
         Returns:
             Updated Question object or None if update failed
         """
-        # Ensure question_id is a proper UUID object
+        # Ensure question_id is a valid UUID string
         question_id = ensure_uuid(question_id)
         
         # Get the question
