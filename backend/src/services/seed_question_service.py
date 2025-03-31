@@ -24,8 +24,8 @@ class SeedQuestionService:
             pack_creation_data_repository: Repository for pack creation data operations
         """
         self.pack_creation_repository = pack_creation_data_repository
-        # Pass None to avoid repository in utils
-        self.seed_processor = SeedQuestionProcessor(pack_creation_repository=None)
+        # Fix: Initialize with llm_service=None instead of pack_creation_repository=None
+        self.seed_processor = SeedQuestionProcessor(llm_service=None)
     
     async def store_seed_questions(self, pack_id: str, seed_questions: Dict[str, str]) -> bool:
         """
