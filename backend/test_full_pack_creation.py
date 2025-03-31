@@ -4,6 +4,9 @@ import sys
 import os
 from pathlib import Path
 import json
+import traceback
+from typing import Any, Optional, Dict, List, Callable
+import functools
 
 # Add backend/src to the Python path
 current_dir = Path(os.getcwd())
@@ -18,8 +21,86 @@ from src.services.pack_service import PackService
 from src.services.topic_service import TopicService
 from src.services.difficulty_service import DifficultyService
 from src.services.question_service import QuestionService
+from src.utils.llm.llm_service import LLMService
+from src.utils.llm.llm_parsing_utils import parse_json_from_llm
+from src.utils.llm.llm_json_repair import repair_json, repair_and_parse
 from src.models.pack import CreatorType
 from src.models.question import DifficultyLevel
+
+# Patch LLMService to print raw responses
+original_generate_content = LLMService.generate_content
+
+async def patched_generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
+                          clean_prompt: bool = False) -> str:
+    """Patched version of generate_content that prints the raw response"""
+    response = await original_generate_content(self, prompt, temperature, max_tokens, clean_prompt)
+    
+    print("\n=== Raw LLM Response ===")
+    print(response[:1000] + "..." if len(response) > 1000 else response)
+    print("========================\n")
+    
+    return response
+
+# Patch the method
+LLMService.generate_content = patched_generate_content
+
+# Patch parse_json_from_llm to detect when repair is used
+original_parse_json_from_llm = parse_json_from_llm
+
+async def patched_parse_json_from_llm(text: str, default_value: Any = None) -> Any:
+    """Patched version that detects when LLM repair is invoked"""
+    try:
+        # Try direct JSON parsing first
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            # This is expected, continue with other methods
+            pass
+        
+        # Try other parsing methods...
+        # If we reach the LLM repair part, print a notification
+        print("\n=== INVOKING LLM JSON REPAIR ===")
+        print("Traditional JSON parsing failed, attempting repair with LLM")
+        print("=====================================\n")
+        
+        # Call the original function's LLM repair part
+        result = await original_parse_json_from_llm(text, default_value)
+        
+        # Check if repair was successful
+        if result is not default_value:
+            print("\n=== LLM JSON REPAIR SUCCEEDED ===")
+            print("Successfully repaired and parsed JSON with LLM")
+            print("==================================\n")
+        else:
+            print("\n=== LLM JSON REPAIR FAILED ===")
+            print("Failed to repair JSON with LLM")
+            print("==============================\n")
+            
+        return result
+        
+    except Exception as e:
+        print(f"\n=== ERROR IN JSON PARSING ===")
+        print(f"Error: {str(e)}")
+        traceback.print_exc()
+        print("============================\n")
+        return default_value
+
+# Apply the patch selectively when needed
+def with_json_repair_monitoring(func):
+    """Decorator to add JSON repair monitoring to a function"""
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        # Save the original
+        original = sys.modules['src.utils.llm.llm_parsing_utils'].parse_json_from_llm
+        # Apply the patch
+        sys.modules['src.utils.llm.llm_parsing_utils'].parse_json_from_llm = patched_parse_json_from_llm
+        try:
+            # Call the function
+            return await func(*args, **kwargs)
+        finally:
+            # Restore the original
+            sys.modules['src.utils.llm.llm_parsing_utils'].parse_json_from_llm = original
+    return wrapper
 
 async def test_full_pack_creation(
     pack_name: str, 
@@ -88,7 +169,10 @@ async def test_full_pack_creation(
             regenerate = input("\nDo you want to regenerate topics? (y/n) [n]: ").lower()
             if regenerate.startswith('y'):
                 print(f"\nRegenerating {num_topics} topics...")
-                topics = await topic_service.topic_creator.create_pack_topics(
+                
+                # Apply the monitoring decorator
+                create_pack_topics = with_json_repair_monitoring(topic_service.topic_creator.create_pack_topics)
+                topics = await create_pack_topics(
                     creation_name=pack_name,
                     num_topics=num_topics
                 )
@@ -106,7 +190,10 @@ async def test_full_pack_creation(
                 topics = existing_topics
         else:
             print(f"\nGenerating {num_topics} topics...")
-            topics = await topic_service.topic_creator.create_pack_topics(
+            
+            # Apply the monitoring decorator
+            create_pack_topics = with_json_repair_monitoring(topic_service.topic_creator.create_pack_topics)
+            topics = await create_pack_topics(
                 creation_name=pack_name,
                 num_topics=num_topics
             )
@@ -136,10 +223,22 @@ async def test_full_pack_creation(
         
         if has_custom_descriptions:
             print("\nExisting difficulty descriptions found")
+            
+            # Print the descriptions if in debug mode
+            if debug_mode:
+                print("\nCurrent difficulty descriptions:")
+                for level, data in existing_difficulties.items():
+                    custom_desc = data.get("custom", "")
+                    if custom_desc:
+                        print(f"  {level}: {custom_desc[:100]}..." if len(custom_desc) > 100 else f"  {level}: {custom_desc}")
+            
             regenerate_diff = input("Do you want to regenerate difficulty descriptions? (y/n) [n]: ").lower()
             if regenerate_diff.startswith('y'):
                 print("\nRegenerating difficulty descriptions...")
-                difficulty_json = await difficulty_service.generate_and_store_difficulty_descriptions(
+                
+                # Apply the monitoring decorator
+                generate_and_store = with_json_repair_monitoring(difficulty_service.generate_and_store_difficulty_descriptions)
+                difficulty_json = await generate_and_store(
                     pack_id=pack.id,
                     creation_name=pack_name,
                     pack_topics=topics
@@ -148,7 +247,10 @@ async def test_full_pack_creation(
                 difficulty_json = existing_difficulties
         else:
             print("\nGenerating difficulty descriptions...")
-            difficulty_json = await difficulty_service.generate_and_store_difficulty_descriptions(
+            
+            # Apply the monitoring decorator
+            generate_and_store = with_json_repair_monitoring(difficulty_service.generate_and_store_difficulty_descriptions)
+            difficulty_json = await generate_and_store(
                 pack_id=pack.id,
                 creation_name=pack_name,
                 pack_topics=topics
@@ -236,8 +338,11 @@ async def test_full_pack_creation(
             )
             print(f"\nUsing difficulty description:\n{difficulty_desc}")
         
+        # Apply the monitoring decorator for question generation
+        generate_and_store_questions = with_json_repair_monitoring(question_service.generate_and_store_questions)
+        
         # Generate and store the questions
-        generated_questions = await question_service.generate_and_store_questions(
+        generated_questions = await generate_and_store_questions(
             pack_id=pack.id,
             creation_name=pack_name,
             pack_topic=selected_topic,
@@ -262,6 +367,18 @@ async def test_full_pack_creation(
                     print("\n=== Last Raw LLM Response (from debug data) ===")
                     print(last_response)
                     print("=================================================")
+                    
+                # Print the last processed questions if available
+                if hasattr(question_service.question_generator, 'last_processed_questions'):
+                    last_processed = question_service.question_generator.last_processed_questions
+                    if last_processed:
+                        print("\n=== Last Processed Questions (from debug data) ===")
+                        try:
+                            print(json.dumps(last_processed, indent=2))
+                        except Exception as e:
+                            print(f"Error displaying processed questions: {str(e)}")
+                            print(f"Raw processed questions: {last_processed}")
+                        print("====================================================")
         
         print("\nSuccessfully completed full pack creation process!")
         
@@ -270,11 +387,13 @@ async def test_full_pack_creation(
         
     except Exception as e:
         print(f"Error: {e}")
-        import traceback
         traceback.print_exc()
         return None
     
     finally:
+        # Restore original functions to avoid side effects
+        LLMService.generate_content = original_generate_content
+        
         # Close the Supabase client
         await close_supabase_client(supabase)
         print("Supabase client closed")

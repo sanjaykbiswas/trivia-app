@@ -144,7 +144,7 @@ class LLMJsonRepair:
         base_prompt = f"""You are a JSON repair expert. I have a malformed or incomplete JSON that needs to be fixed.
 
 The JSON is supposed to be a valid JSON {json_type}. Fix all structural issues, syntax errors, and incomplete elements.
-Don't add or remove content unless necessary to make the JSON valid. Keep all existing data.
+Don't add or remove content unless necessary to make the JSON valid. Keep all existing data, however if dealing with truncated data - you can remove the truncated part.
 
 Here is the malformed JSON:
 ```
@@ -180,7 +180,7 @@ Please provide ONLY the corrected JSON with no explanation or markdown formattin
 The specific JSON error is: {error_message}
 
 The JSON should be a valid {json_type}. Fix ONLY the structural issues causing this error.
-Do not change any content unless absolutely necessary to make it valid JSON.
+Do not change any content unless absolutely necessary to make it valid JSON, however if dealing with truncated data - you can remove the truncated part
 
 Here is the JSON to fix:
 ```

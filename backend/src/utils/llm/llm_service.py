@@ -21,8 +21,8 @@ class LLMService:
         self.model = self.llm_config.get_model()
         self.provider = self.llm_config.get_provider()
     
-    async def generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
-                              clean_prompt: bool = False) -> str:
+    def generate_content(self, prompt: str, temperature: float = 0.7, max_tokens: int = 1000, 
+                         clean_prompt: bool = False) -> str:
         """
         Generate content using the configured LLM provider.
         
@@ -41,17 +41,17 @@ class LLMService:
         
         # Call appropriate method based on provider
         if self.provider == "openai":
-            return await self._generate_with_openai(prompt, temperature, max_tokens)
+            return self._generate_with_openai(prompt, temperature, max_tokens)
         elif self.provider == "anthropic":
-            return await self._generate_with_anthropic(prompt, temperature, max_tokens)
+            return self._generate_with_anthropic(prompt, temperature, max_tokens)
         elif self.provider == "gemini":
-            return await self._generate_with_gemini(prompt, temperature, max_tokens)
+            return self._generate_with_gemini(prompt, temperature, max_tokens)
         else:
             raise ValueError(f"Unsupported LLM provider: {self.provider}")
     
-    async def _generate_with_openai(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def _generate_with_openai(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate content using OpenAI API."""
-        response = await self.client.chat.completions.create(
+        response = self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that creates high-quality trivia content."},
@@ -62,9 +62,9 @@ class LLMService:
         )
         return response.choices[0].message.content
     
-    async def _generate_with_anthropic(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def _generate_with_anthropic(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate content using Anthropic API."""
-        message = await self.client.messages.create(
+        message = self.client.messages.create(
             model=self.model,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -75,11 +75,11 @@ class LLMService:
         )
         return message.content[0].text
     
-    async def _generate_with_gemini(self, prompt: str, temperature: float, max_tokens: int) -> str:
+    def _generate_with_gemini(self, prompt: str, temperature: float, max_tokens: int) -> str:
         """Generate content using Google's Gemini API."""
         genai = self.client
         model = genai.GenerativeModel(self.model)
-        response = await model.generate_content_async(  # Changed to async version
+        response = model.generate_content(  # Changed to sync version
             prompt,
             generation_config={
                 "temperature": temperature,
@@ -88,8 +88,8 @@ class LLMService:
         )
         return response.text
     
-    async def process_llm_response(self, response: str, normalize: bool = True, 
-                                 remove_extra_whitespace: bool = True) -> str:
+    def process_llm_response(self, response: str, normalize: bool = True, 
+                           remove_extra_whitespace: bool = True) -> str:
         """
         Process an LLM response using document processing utilities.
         
