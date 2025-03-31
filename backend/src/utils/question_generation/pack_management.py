@@ -4,6 +4,7 @@ from typing import Tuple, Optional
 from ...models.pack import Pack, PackCreate, PackUpdate, CreatorType
 from ...repositories.pack_repository import PackRepository
 from ..question_generation.pack_introduction import PackIntroduction
+from ...utils import ensure_uuid
 
 async def get_or_create_pack(
     pack_repo: PackRepository,
@@ -36,6 +37,9 @@ async def get_or_create_pack(
     exists, existing_pack_id = await pack_intro.validate_creation_name(pack_name)
     
     if exists and existing_pack_id:
+        # Ensure existing_pack_id is a proper UUID object
+        existing_pack_id = ensure_uuid(existing_pack_id)
+        
         # Pack exists, retrieve it
         existing_pack = await pack_repo.get_by_id(existing_pack_id)
         

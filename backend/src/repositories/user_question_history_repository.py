@@ -5,6 +5,7 @@ from supabase import AsyncClient
 
 from ..models.user_question_history import UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate
 from .base_repository_impl import BaseRepositoryImpl
+from ..utils import ensure_uuid
 
 class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate, uuid.UUID]):
     """
@@ -17,6 +18,9 @@ class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, User
 
     async def get_by_user_id(self, user_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[UserQuestionHistory]:
         """Retrieve history entries for a specific user."""
+        # Ensure user_id is a proper UUID object
+        user_id = ensure_uuid(user_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -30,6 +34,9 @@ class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, User
 
     async def get_by_question_id(self, question_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[UserQuestionHistory]:
         """Retrieve history entries for a specific question."""
+        # Ensure question_id is a proper UUID object
+        question_id = ensure_uuid(question_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -43,6 +50,10 @@ class UserQuestionHistoryRepository(BaseRepositoryImpl[UserQuestionHistory, User
 
     async def get_by_user_and_question(self, user_id: uuid.UUID, question_id: uuid.UUID) -> List[UserQuestionHistory]:
         """Retrieve all history entries for a specific user and question."""
+        # Ensure UUIDs are proper UUID objects
+        user_id = ensure_uuid(user_id)
+        question_id = ensure_uuid(question_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")

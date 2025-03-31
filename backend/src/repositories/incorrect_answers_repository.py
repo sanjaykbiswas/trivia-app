@@ -5,6 +5,7 @@ from supabase import AsyncClient
 
 from ..models.incorrect_answers import IncorrectAnswers, IncorrectAnswersCreate, IncorrectAnswersUpdate
 from .base_repository_impl import BaseRepositoryImpl
+from ..utils import ensure_uuid
 
 class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectAnswersCreate, IncorrectAnswersUpdate, uuid.UUID]):
     """
@@ -17,6 +18,9 @@ class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectA
 
     async def get_by_question_id(self, question_id: uuid.UUID) -> Optional[IncorrectAnswers]:
         """Retrieve incorrect answers for a specific question."""
+        # Ensure question_id is a proper UUID object
+        question_id = ensure_uuid(question_id)
+        
         # Assuming only one set of incorrect answers per question_id
         query = (
             self.db.table(self.table_name)
@@ -31,6 +35,9 @@ class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectA
 
     async def delete_by_question_id(self, question_id: uuid.UUID) -> List[IncorrectAnswers]:
         """Deletes incorrect answers associated with a specific question_id."""
+        # Ensure question_id is a proper UUID object
+        question_id = ensure_uuid(question_id)
+        
         # First, retrieve the records to be deleted
         query = (
             self.db.table(self.table_name)

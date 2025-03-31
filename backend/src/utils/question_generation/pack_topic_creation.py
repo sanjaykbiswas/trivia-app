@@ -7,6 +7,7 @@ from ...repositories.pack_creation_data_repository import PackCreationDataReposi
 from ..llm.llm_service import LLMService
 from ..document_processing.processors import clean_text, normalize_text
 from ..llm.llm_parsing_utils import parse_json_from_llm
+from ...utils import ensure_uuid
 
 # Setup logger
 logger = logging.getLogger(__name__)
@@ -137,6 +138,9 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
             creation_name: Name of the pack/creator
             creation_description: Optional description to store
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Check if there's already data for this pack
         existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
@@ -168,6 +172,9 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         Returns:
             List of existing topics
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
         if creation_data and hasattr(creation_data, 'pack_topics'):
@@ -191,6 +198,9 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         Returns:
             Full list of topics (existing + new)
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Get existing topics
         existing_topics = await self.get_existing_pack_topics(pack_id)
         

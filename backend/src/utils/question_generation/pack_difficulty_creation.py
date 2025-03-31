@@ -6,6 +6,7 @@ from ...models.pack_creation_data import PackCreationDataCreate, PackCreationDat
 from ...repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..llm.llm_service import LLMService
 from ..document_processing.processors import clean_text, normalize_text, split_into_chunks
+from ...utils import ensure_uuid
 
 class PackDifficultyCreation:
     """
@@ -212,6 +213,9 @@ DO NOT include any other difficulty names within a difficulty description.
             pack_id: UUID of the pack
             difficulty_json: Nested dictionary of difficulty descriptions
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Check if there's already data for this pack
         existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
@@ -266,6 +270,9 @@ DO NOT include any other difficulty names within a difficulty description.
         Returns:
             Nested dictionary of difficulty descriptions
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id)
         
         if creation_data and hasattr(creation_data, 'custom_difficulty_description'):
@@ -304,6 +311,9 @@ DO NOT include any other difficulty names within a difficulty description.
         Returns:
             Updated nested dictionary of difficulty descriptions
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Get existing descriptions
         existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
         
@@ -343,6 +353,9 @@ DO NOT include any other difficulty names within a difficulty description.
         Returns:
             Updated nested dictionary of difficulty descriptions
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Get existing descriptions first
         existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
         
@@ -374,6 +387,9 @@ DO NOT include any other difficulty names within a difficulty description.
         Returns:
             Nested dictionary of difficulty descriptions
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Generate custom descriptions
         custom_descriptions = await self.generate_difficulty_descriptions(
             creation_name=creation_name,
@@ -410,6 +426,9 @@ DO NOT include any other difficulty names within a difficulty description.
         Returns:
             Nested dictionary of difficulty descriptions
         """
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         # Check if difficulty descriptions already exist
         existing_descriptions = await self.get_existing_difficulty_descriptions(pack_id)
         

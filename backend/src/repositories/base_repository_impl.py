@@ -6,6 +6,7 @@ from supabase import AsyncClient
 from postgrest import APIResponse
 
 from .base_repository import BaseRepository, ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType
+from ..utils import ensure_uuid
 
 class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType]):
     """
@@ -46,6 +47,9 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
 
     async def get_by_id(self, id: IdentifierType) -> Optional[ModelType]:
         """Get a record by ID with proper conversion of UUID to string."""
+        # Ensure id is a proper UUID object
+        id = ensure_uuid(id)
+        
         query = self.db.table(self.table_name).select("*").eq("id", str(id)).limit(1)
         response = await self._execute_query(query)
 
@@ -95,6 +99,9 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
 
     async def update(self, *, id: IdentifierType, obj_in: UpdateSchemaType) -> Optional[ModelType]:
         """Update a record with proper handling of optional fields."""
+        # Ensure id is a proper UUID object
+        id = ensure_uuid(id)
+        
         # Use exclude_unset=True for partial updates and exclude None values
         update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
 
@@ -116,6 +123,9 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
 
     async def delete(self, *, id: IdentifierType) -> Optional[ModelType]:
         """Delete a record and return the deleted object if successful."""
+        # Ensure id is a proper UUID object
+        id = ensure_uuid(id)
+        
         # Step 1: Get the object before deletion
         obj = await self.get_by_id(id)
         

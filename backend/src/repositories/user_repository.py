@@ -5,6 +5,7 @@ from supabase import AsyncClient
 
 from ..models.user import User, UserCreate, UserUpdate
 from .base_repository_impl import BaseRepositoryImpl
+from ..utils import ensure_uuid
 
 class UserRepository(BaseRepositoryImpl[User, UserCreate, UserUpdate, uuid.UUID]):
     """

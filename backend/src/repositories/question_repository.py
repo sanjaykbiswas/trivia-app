@@ -5,6 +5,7 @@ from supabase import AsyncClient
 
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
 from .base_repository_impl import BaseRepositoryImpl
+from ..utils import ensure_uuid
 
 
 class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUpdate, uuid.UUID]):
@@ -28,6 +29,9 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
 
     async def get_by_pack_id(self, pack_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[Question]:
         """Retrieve questions belonging to a specific pack."""
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -53,6 +57,9 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
 
     async def update_statistics(self, question_id: uuid.UUID, correct_rate: float, new_difficulty: Optional[DifficultyLevel] = None) -> Optional[Question]:
         """Updates the statistics for a given question."""
+        # Ensure question_id is a proper UUID object
+        question_id = ensure_uuid(question_id)
+        
         update_data = {"correct_answer_rate": correct_rate}
         if new_difficulty:
             update_data["difficulty_current"] = new_difficulty.value
@@ -84,6 +91,9 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
 
     async def update(self, *, id: uuid.UUID, obj_in: QuestionUpdate) -> Optional[Question]:
         """Update an existing question with proper enum handling."""
+        # Ensure id is a proper UUID object
+        id = ensure_uuid(id)
+        
         update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
         
         if not update_data:

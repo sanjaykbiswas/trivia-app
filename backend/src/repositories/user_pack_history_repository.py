@@ -6,6 +6,7 @@ from datetime import datetime
 
 from ..models.user_pack_history import UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate
 from .base_repository_impl import BaseRepositoryImpl
+from ..utils import ensure_uuid
 
 class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate, uuid.UUID]):
     """
@@ -18,6 +19,9 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
 
     async def get_by_user_id(self, user_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[UserPackHistory]:
         """Retrieve history entries for a specific user."""
+        # Ensure user_id is a proper UUID object
+        user_id = ensure_uuid(user_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -31,6 +35,9 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
 
     async def get_by_pack_id(self, pack_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[UserPackHistory]:
         """Retrieve history entries for a specific pack."""
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -44,6 +51,10 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
 
     async def get_by_user_and_pack(self, user_id: uuid.UUID, pack_id: uuid.UUID) -> Optional[UserPackHistory]:
         """Retrieve the specific history entry for a user and pack."""
+        # Ensure UUIDs are proper UUID objects
+        user_id = ensure_uuid(user_id)
+        pack_id = ensure_uuid(pack_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -58,6 +69,10 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
 
     async def increment_play_count(self, user_id: uuid.UUID, pack_id: uuid.UUID) -> Optional[UserPackHistory]:
         """Finds existing history or creates one, increments play count and updates timestamp."""
+        # Ensure UUIDs are proper UUID objects
+        user_id = ensure_uuid(user_id)
+        pack_id = ensure_uuid(pack_id)
+        
         existing = await self.get_by_user_and_pack(user_id, pack_id)
         now = datetime.utcnow()
 

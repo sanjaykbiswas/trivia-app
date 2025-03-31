@@ -5,6 +5,7 @@ from supabase import AsyncClient
 
 from ..models.pack import Pack, PackCreate, PackUpdate, CreatorType
 from .base_repository_impl import BaseRepositoryImpl
+from ..utils import ensure_uuid
 
 class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]):
     """
@@ -28,6 +29,9 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
 
     async def get_by_pack_group_id(self, pack_group_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[Pack]:
         """Retrieve packs associated with a specific PackGroup ID (checks list)."""
+        # Ensure pack_group_id is a proper UUID object
+        pack_group_id = ensure_uuid(pack_group_id)
+        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -66,6 +70,9 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
 
     async def update_correct_answer_rate(self, pack_id: uuid.UUID, rate: float) -> Optional[Pack]:
         """Updates the correct answer rate for a given pack."""
+        # Ensure pack_id is a proper UUID object
+        pack_id = ensure_uuid(pack_id)
+        
         update_data = {"correct_answer_rate": rate}
         query = self.db.table(self.table_name).update(update_data).eq("id", str(pack_id))
         await self._execute_query(query)
@@ -93,6 +100,9 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
 
     async def update(self, *, id: uuid.UUID, obj_in: PackUpdate) -> Optional[Pack]:
         """Update an existing pack with proper enum handling."""
+        # Ensure id is a proper UUID object
+        id = ensure_uuid(id)
+        
         update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
         
         if not update_data:

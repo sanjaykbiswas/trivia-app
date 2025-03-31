@@ -3,6 +3,7 @@ import uuid
 from typing import Optional, Tuple
 from ...repositories.pack_repository import PackRepository
 from ..document_processing.processors import normalize_text
+from ...utils import ensure_uuid
 
 class PackIntroduction:
     """
