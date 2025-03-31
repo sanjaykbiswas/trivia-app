@@ -97,11 +97,13 @@ class TopicService:
         Returns:
             List of topics (either generated or containing just the predefined topic)
         """
-        # If predefined topic is provided, use only that
+        # If predefined topic is provided, use ONLY that
         if predefined_topic:
             topics = [predefined_topic]
+            logger.info(f"Using predefined topic only: {predefined_topic}")
         else:
             # Generate topics using LLM
+            logger.info(f"Generating {num_topics} topics for pack: {creation_name}")
             topics = await self.topic_creator.create_pack_topics(
                 creation_name=creation_name,
                 num_topics=num_topics
@@ -138,27 +140,44 @@ class TopicService:
         # Get existing topics
         existing_topics = await self.get_existing_pack_topics(pack_id)
         
-        # If predefined topic is provided, only add that
+        # If predefined topic is provided, use it
         if predefined_topic:
             # Check if the topic already exists
             if predefined_topic not in existing_topics:
-                new_topics = [predefined_topic]
+                # For brand new packs, when a predefined topic is given,
+                # use ONLY that topic without generating others
+                if not existing_topics:
+                    new_topics = [predefined_topic]
+                    all_topics = new_topics  # Use only the predefined topic
+                else:
+                    # For packs with existing topics, add the predefined topic
+                    new_topics = [predefined_topic]
+                    all_topics = existing_topics.copy()
+                    all_topics.append(predefined_topic)
             else:
                 logger.warning(f"Predefined topic '{predefined_topic}' already exists in topics list")
                 return existing_topics
         else:
-            # Use the utility to create new topics based on existing ones
-            new_topics = await self.topic_creator.create_additional_topics(
-                existing_topics=existing_topics,
-                creation_name=creation_name, 
-                num_additional_topics=num_additional_topics
-            )
-        
-        # Combine with existing, avoiding duplicates
-        all_topics = existing_topics.copy()
-        for topic in new_topics:
-            if topic not in all_topics:
-                all_topics.append(topic)
+            # No predefined topic provided
+            if not existing_topics:
+                # For brand new packs with no topics, we need to generate some
+                topics = await self.topic_creator.create_pack_topics(
+                    creation_name=creation_name,
+                    num_topics=num_additional_topics
+                )
+                all_topics = topics
+            else:
+                # For packs with existing topics, generate additional ones
+                new_topics = await self.topic_creator.create_additional_topics(
+                    existing_topics=existing_topics,
+                    creation_name=creation_name, 
+                    num_additional_topics=num_additional_topics
+                )
+                # Combine with existing, avoiding duplicates
+                all_topics = existing_topics.copy()
+                for topic in new_topics:
+                    if topic not in all_topics:
+                        all_topics.append(topic)
         
         # Store the updated list
         await self.store_pack_topics(

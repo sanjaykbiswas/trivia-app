@@ -53,25 +53,15 @@ def create_pack(name: str, description: str = None) -> Optional[str]:
 
 def add_topic(pack_id: str, custom_topic: str) -> bool:
     """Add a specific topic to a pack."""
+    # Skip the initialization step and directly set our custom topic
     data = {
-        "num_additional_topics": 1,
         "predefined_topic": custom_topic
     }
     
     print(f"{Colors.HEADER}Adding custom topic '{custom_topic}' to pack ID: {pack_id}{Colors.ENDC}")
     
-    # First ensure pack has a topics list initialized
-    init_data = {
-        "num_topics": 1
-    }
-    init_response = requests.post(f"{BASE_URL}/packs/{pack_id}/topics/", json=init_data)
-    
-    if init_response.status_code != 200:
-        print(f"{Colors.WARNING}Failed to initialize topics list: {init_response.status_code}{Colors.ENDC}")
-        # Continue anyway as the add_topics endpoint might create the list if needed
-    
-    # Now add our custom topic
-    response = requests.post(f"{BASE_URL}/packs/{pack_id}/topics/additional", json=data)
+    # Use the regular topics endpoint with predefined_topic to set just this topic
+    response = requests.post(f"{BASE_URL}/packs/{pack_id}/topics/", json=data)
     
     if response.status_code == 200:
         result = response.json()
