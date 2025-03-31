@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, Field, root_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from .base_schema import BaseCreateSchema, BaseUpdateSchema
 
@@ -14,6 +14,7 @@ class DifficultyLevel(str, Enum):
     MEDIUM = "medium"
     HARD = "hard"
     EXPERT = "expert"
+    MIXED = "mixed"  # Added MIXED difficulty level
 
 
 class Question(BaseModel):
