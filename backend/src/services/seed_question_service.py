@@ -1,7 +1,7 @@
 # backend/src/services/seed_question_service.py
 import uuid
 import logging
-from typing import Dict, Optional, bool
+from typing import Dict, Optional
 
 from ..models.pack_creation_data import PackCreationDataUpdate
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
