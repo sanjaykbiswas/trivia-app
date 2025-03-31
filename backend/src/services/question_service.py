@@ -1,12 +1,10 @@
 # backend/src/services/question_service.py
 import uuid
 import logging
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Union
 
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
-from ..models.incorrect_answers import IncorrectAnswers, IncorrectAnswersCreate
 from ..repositories.question_repository import QuestionRepository
-from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..utils.question_generation.question_generator import QuestionGenerator
 from ..utils import ensure_uuid
@@ -19,13 +17,12 @@ class QuestionService:
     Service for question management operations.
     
     Handles business logic related to creating, retrieving,
-    and managing trivia questions and their incorrect answers.
+    and managing trivia questions.
     """
     
     def __init__(
         self,
         question_repository: QuestionRepository,
-        incorrect_answers_repository: IncorrectAnswersRepository,
         pack_creation_data_repository: Optional[PackCreationDataRepository] = None,
         question_generator: Optional[QuestionGenerator] = None
     ):
@@ -34,12 +31,10 @@ class QuestionService:
         
         Args:
             question_repository: Repository for question operations
-            incorrect_answers_repository: Repository for incorrect answers operations
             pack_creation_data_repository: Optional repository for accessing pack metadata
             question_generator: Optional question generator utility
         """
         self.question_repository = question_repository
-        self.incorrect_answers_repository = incorrect_answers_repository
         self.pack_creation_data_repository = pack_creation_data_repository
         self.question_generator = question_generator or QuestionGenerator()
     
@@ -49,8 +44,7 @@ class QuestionService:
         creation_name: str,
         pack_topic: str,
         difficulty: Union[str, DifficultyLevel],
-        num_questions: int = 5,
-        incorrect_answers_per_question: int = 3
+        num_questions: int = 5
     ) -> List[Question]:
         """
         Generate questions using LLM and store them in the database.
@@ -61,7 +55,6 @@ class QuestionService:
             pack_topic: Specific topic to generate questions for
             difficulty: Difficulty level for questions
             num_questions: Number of questions to generate
-            incorrect_answers_per_question: Number of incorrect answers to generate per question
             
         Returns:
             List of created Question objects
@@ -98,13 +91,7 @@ class QuestionService:
         for question_data in question_data_list:
             # Create the question
             question_obj = await self._create_question(question_data)
-            
-            # Generate and store incorrect answers
             if question_obj:
-                await self._generate_and_store_incorrect_answers(
-                    question_obj,
-                    num_incorrect_answers=incorrect_answers_per_question
-                )
                 created_questions.append(question_obj)
         
         return created_questions
@@ -136,44 +123,6 @@ class QuestionService:
             
         except Exception as e:
             logger.error(f"Error creating question: {str(e)}")
-            return None
-    
-    async def _generate_and_store_incorrect_answers(
-        self,
-        question: Question,
-        num_incorrect_answers: int = 3
-    ) -> Optional[IncorrectAnswers]:
-        """
-        Generate incorrect answers for a question and store them.
-        
-        Args:
-            question: Question object to generate incorrect answers for
-            num_incorrect_answers: Number of incorrect answers to generate
-            
-        Returns:
-            Created IncorrectAnswers object or None if creation failed
-        """
-        try:
-            # In a real implementation, we would use LLM to generate plausible
-            # incorrect answers based on the question and correct answer
-            
-            # For now, use placeholder incorrect answers
-            incorrect_answers = [
-                f"Incorrect answer {i+1} for '{question.question}'" 
-                for i in range(num_incorrect_answers)
-            ]
-            
-            # Create incorrect answers schema
-            incorrect_answers_create = IncorrectAnswersCreate(
-                incorrect_answers=incorrect_answers,
-                question_id=question.id
-            )
-            
-            # Store in the database
-            return await self.incorrect_answers_repository.create(obj_in=incorrect_answers_create)
-            
-        except Exception as e:
-            logger.error(f"Error creating incorrect answers: {str(e)}")
             return None
     
     async def get_questions_by_pack_id(self, pack_id: uuid.UUID) -> List[Question]:
@@ -212,37 +161,6 @@ class QuestionService:
         # Filter by topic
         return [q for q in all_questions if q.pack_topics_item == topic]
     
-    async def get_question_with_incorrect_answers(
-        self,
-        question_id: uuid.UUID
-    ) -> Tuple[Optional[Question], List[str]]:
-        """
-        Retrieve a question and its incorrect answers.
-        
-        Args:
-            question_id: UUID of the question
-            
-        Returns:
-            Tuple containing:
-                - Question object or None if not found
-                - List of incorrect answer strings
-        """
-        # Ensure question_id is a proper UUID object
-        question_id = ensure_uuid(question_id)
-        
-        # Get the question
-        question = await self.question_repository.get_by_id(question_id)
-        if not question:
-            return None, []
-        
-        # Get incorrect answers
-        incorrect_answers_obj = await self.incorrect_answers_repository.get_by_question_id(question_id)
-        
-        if incorrect_answers_obj:
-            return question, incorrect_answers_obj.incorrect_answers
-        else:
-            return question, []
-    
     async def update_question_statistics(
         self,
         question_id: uuid.UUID,
@@ -268,7 +186,6 @@ class QuestionService:
         
         # Recalculate correct answer rate
         # This is a simple weighted average approach
-        # In a real implementation, you might want a more sophisticated algorithm
         weight = 0.1  # Weight for the new data point
         new_rate = question.correct_answer_rate * (1 - weight) + (1.0 if correct else 0.0) * weight
         
@@ -308,7 +225,6 @@ class QuestionService:
             return None
         
         # Simple rules for difficulty adjustment
-        # In a real implementation, these thresholds would be configurable
         if current_difficulty == DifficultyLevel.EASY:
             if correct_rate > 0.90:
                 return DifficultyLevel.MEDIUM
