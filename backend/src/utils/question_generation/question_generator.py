@@ -224,11 +224,11 @@ IMPORTANT:
         examples = []
         count = 0
         
-        # Limit to 3 examples to keep prompt concise
+        # Limit to 5 examples to keep prompt concise
         for question, answer in seed_questions.items():
             examples.append(f"Question: {question}\nAnswer: {answer}")
             count += 1
-            if count >= 3:
+            if count >= 5:
                 break
         
         if examples:
