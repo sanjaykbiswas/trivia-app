@@ -19,9 +19,9 @@ class UserQuestionHistory(BaseModel):
         incorrect_answer_selected: Index of the incorrect answer selected (if any)
         created_at: When this record was created
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    user_id: uuid.UUID
-    question_id: uuid.UUID
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    question_id: str
     correct: bool
     incorrect_answer_selected: Optional[int] = None  # None when answered correctly
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -32,8 +32,8 @@ class UserQuestionHistory(BaseModel):
 
 class UserQuestionHistoryCreate(BaseCreateSchema):
     """Schema for creating a new user question history entry."""
-    user_id: uuid.UUID
-    question_id: uuid.UUID
+    user_id: str
+    question_id: str
     correct: bool
     incorrect_answer_selected: Optional[int] = None
 

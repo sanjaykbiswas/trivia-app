@@ -31,10 +31,10 @@ class Question(BaseModel):
         correct_answer_rate: Percentage of correct answers given by users
         created_at: When this question was created
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     question: str
     answer: str
-    pack_id: uuid.UUID
+    pack_id: str
     pack_topics_item: Optional[str] = None
     difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None
@@ -63,7 +63,7 @@ class QuestionCreate(BaseCreateSchema):
     """Schema for creating a new question."""
     question: str
     answer: str
-    pack_id: uuid.UUID
+    pack_id: str
     pack_topics_item: Optional[str] = None
     difficulty_initial: Optional[DifficultyLevel] = None
     difficulty_current: Optional[DifficultyLevel] = None

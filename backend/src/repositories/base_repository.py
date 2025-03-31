@@ -1,5 +1,4 @@
 # backend/src/repositories/base_repository.py
-import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional, TypeVar, Generic, Type
 from pydantic import BaseModel
@@ -8,7 +7,8 @@ from pydantic import BaseModel
 ModelType = TypeVar('ModelType', bound=BaseModel)
 CreateSchemaType = TypeVar('CreateSchemaType', bound=BaseModel)
 UpdateSchemaType = TypeVar('UpdateSchemaType', bound=BaseModel)
-IdentifierType = TypeVar('IdentifierType', bound=uuid.UUID) # Assuming UUID primary keys
+# Change bound from uuid.UUID to str
+IdentifierType = TypeVar('IdentifierType', bound=str)
 
 class BaseRepository(Generic[ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType], ABC):
     """

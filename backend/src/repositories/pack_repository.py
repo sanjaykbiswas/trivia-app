@@ -7,7 +7,7 @@ from ..models.pack import Pack, PackCreate, PackUpdate, CreatorType
 from .base_repository_impl import BaseRepositoryImpl
 from ..utils import ensure_uuid
 
-class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]):
+class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
     """
     Repository for managing Pack data in Supabase.
     """
@@ -20,22 +20,17 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
         result = data.copy()
         if 'creator_type' in result and isinstance(result['creator_type'], CreatorType):
             result['creator_type'] = result['creator_type'].value
-        
-        # Handle UUID lists
-        if 'pack_group_id' in result and isinstance(result['pack_group_id'], list):
-            result['pack_group_id'] = [str(uuid_val) for uuid_val in result['pack_group_id'] if uuid_val is not None]
-            
         return result
 
-    async def get_by_pack_group_id(self, pack_group_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[Pack]:
+    async def get_by_pack_group_id(self, pack_group_id: str, *, skip: int = 0, limit: int = 100) -> List[Pack]:
         """Retrieve packs associated with a specific PackGroup ID (checks list)."""
-        # Ensure pack_group_id is a proper UUID object
-        pack_group_id = ensure_uuid(pack_group_id)
+        # Ensure pack_group_id is a valid UUID string
+        pack_group_id_str = ensure_uuid(pack_group_id)
         
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .cs("pack_group_id", [str(pack_group_id)])
+            .cs("pack_group_id", [pack_group_id_str])
             .offset(skip)
             .limit(limit)
             .order("created_at", desc=True)
@@ -68,13 +63,13 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
         response = await self._execute_query(query)
         return [self.model.parse_obj(item) for item in response.data]
 
-    async def update_correct_answer_rate(self, pack_id: uuid.UUID, rate: float) -> Optional[Pack]:
+    async def update_correct_answer_rate(self, pack_id: str, rate: float) -> Optional[Pack]:
         """Updates the correct answer rate for a given pack."""
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
+        # Ensure pack_id is a valid UUID string
+        pack_id_str = ensure_uuid(pack_id)
         
         update_data = {"correct_answer_rate": rate}
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(pack_id))
+        query = self.db.table(self.table_name).update(update_data).eq("id", pack_id_str)
         await self._execute_query(query)
         # Fetch and return the updated object
         return await self.get_by_id(pack_id)
@@ -93,15 +88,15 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
             new_id = response.data[0].get('id')
             if new_id:
                 # Fetch the complete record
-                return await self.get_by_id(uuid.UUID(new_id))
+                return await self.get_by_id(new_id)
             return self.model.parse_obj(response.data[0])
         else:
             raise ValueError("Failed to create pack, no data returned.")
 
-    async def update(self, *, id: uuid.UUID, obj_in: PackUpdate) -> Optional[Pack]:
+    async def update(self, *, id: str, obj_in: PackUpdate) -> Optional[Pack]:
         """Update an existing pack with proper enum handling."""
-        # Ensure id is a proper UUID object
-        id = ensure_uuid(id)
+        # Ensure id is a valid UUID string
+        id_str = ensure_uuid(id)
         
         update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
         
@@ -110,7 +105,7 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
             
         update_data = self._serialize_enum_values(update_data)
         
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
+        query = self.db.table(self.table_name).update(update_data).eq("id", id_str)
         await self._execute_query(query)
 
         # Fetch and return the updated object

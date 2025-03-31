@@ -7,7 +7,7 @@ from ..models.pack_group import PackGroup, PackGroupCreate, PackGroupUpdate
 from .base_repository_impl import BaseRepositoryImpl
 from ..utils import ensure_uuid
 
-class PackGroupRepository(BaseRepositoryImpl[PackGroup, PackGroupCreate, PackGroupUpdate, uuid.UUID]):
+class PackGroupRepository(BaseRepositoryImpl[PackGroup, PackGroupCreate, PackGroupUpdate, str]):
     """
     Repository for managing PackGroup data in Supabase.
     """

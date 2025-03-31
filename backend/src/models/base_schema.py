@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 from typing import TypeVar, Generic, Type
 
+# Change the bound from uuid.UUID to str
 ModelType = TypeVar('ModelType', bound=BaseModel)
 
 class BaseCreateSchema(BaseModel):

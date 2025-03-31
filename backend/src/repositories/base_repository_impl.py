@@ -1,35 +1,12 @@
 # backend/src/repositories/base_repository_impl.py
 import uuid
-import json
 from typing import List, Optional, Type, Dict, Any, Union, TypeVar
 from pydantic import BaseModel
 from supabase import AsyncClient
 from postgrest import APIResponse
-from enum import Enum
 
 from .base_repository import BaseRepository, ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType
 from ..utils import ensure_uuid
-
-# Global JSON serialization function that leverages existing logic
-def serialize_for_json(obj):
-    """Global serializer function for JSON encoding"""
-    if isinstance(obj, uuid.UUID):
-        return str(obj)
-    if isinstance(obj, Enum):
-        return obj.value
-    # Let the default serializer handle anything else
-    raise TypeError(f'Object of type {obj.__class__.__name__} is not JSON serializable')
-
-# Patch the JSON module to handle UUIDs and Enums
-def patch_json_module():
-    """
-    Patch the json module to handle UUID and Enum objects.
-    This affects all json.dumps() calls throughout the application.
-    """
-    json._default_encoder.default = serialize_for_json
-
-# Apply the patch immediately when this module is imported
-patch_json_module()
 
 class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType]):
     """
@@ -54,7 +31,7 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
 
     def _serialize_data_for_db(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Recursively serialize data for database storage, handling UUIDs and other special types.
+        Recursively serialize data for database storage.
         
         Args:
             data: Dictionary containing data to serialize
@@ -65,15 +42,11 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
         result = {}
         
         for key, value in data.items():
-            # Handle UUIDs
-            if isinstance(value, uuid.UUID):
-                result[key] = str(value)
             # Handle lists
-            elif isinstance(value, list):
+            if isinstance(value, list):
                 result[key] = [
-                    str(item) if isinstance(item, uuid.UUID) else 
-                    self._serialize_data_for_db(item) if isinstance(item, dict) else 
-                    item for item in value
+                    self._serialize_data_for_db(item) if isinstance(item, dict) else item 
+                    for item in value
                 ]
             # Handle nested dictionaries
             elif isinstance(value, dict):
@@ -101,11 +74,11 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             raise # Re-raise for now
 
     async def get_by_id(self, id: IdentifierType) -> Optional[ModelType]:
-        """Get a record by ID with proper conversion of UUID to string."""
-        # Ensure id is a proper UUID object
-        id = ensure_uuid(id)
+        """Get a record by ID."""
+        # Ensure id is a valid UUID string
+        id_str = ensure_uuid(id)
         
-        query = self.db.table(self.table_name).select("*").eq("id", str(id)).limit(1)
+        query = self.db.table(self.table_name).select("*").eq("id", id_str).limit(1)
         response = await self._execute_query(query)
 
         if response.data:
@@ -124,7 +97,7 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
         # Convert model to dict and prepare for insertion
         insert_data = obj_in.dict(exclude_unset=False, by_alias=False)
         
-        # Serialize all data (including UUIDs) for database
+        # Serialize data for database
         insert_data = self._serialize_data_for_db(insert_data)
 
         # Step 1: Insert the data
@@ -152,8 +125,8 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
 
     async def update(self, *, id: IdentifierType, obj_in: UpdateSchemaType) -> Optional[ModelType]:
         """Update a record with proper handling of optional fields."""
-        # Ensure id is a proper UUID object
-        id = ensure_uuid(id)
+        # Ensure id is a valid UUID string
+        id_str = ensure_uuid(id)
         
         # Use exclude_unset=True for partial updates and exclude None values
         update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
@@ -162,11 +135,11 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             # If there's nothing to update, return the existing object
             return await self.get_by_id(id)
 
-        # Serialize all data (including UUIDs) for database
+        # Serialize data for database
         update_data = self._serialize_data_for_db(update_data)
 
         # Step 1: Update the record
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
+        query = self.db.table(self.table_name).update(update_data).eq("id", id_str)
         await self._execute_query(query)
 
         # Step 2: Fetch the updated record
@@ -174,8 +147,8 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
 
     async def delete(self, *, id: IdentifierType) -> Optional[ModelType]:
         """Delete a record and return the deleted object if successful."""
-        # Ensure id is a proper UUID object
-        id = ensure_uuid(id)
+        # Ensure id is a valid UUID string
+        id_str = ensure_uuid(id)
         
         # Step 1: Get the object before deletion
         obj = await self.get_by_id(id)
@@ -184,7 +157,7 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             return None  # Object doesn't exist
             
         # Step 2: Delete the object
-        query = self.db.table(self.table_name).delete().eq("id", str(id))
+        query = self.db.table(self.table_name).delete().eq("id", id_str)
         await self._execute_query(query)
         
         # Step 3: Return the object that was deleted

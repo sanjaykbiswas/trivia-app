@@ -18,9 +18,9 @@ class UserPackHistory(BaseModel):
         play_count: Number of times the user has played this pack
         last_played_at: When the user last played this pack
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    user_id: uuid.UUID
-    pack_id: uuid.UUID
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    pack_id: str
     play_count: int
     last_played_at: datetime = Field(default_factory=datetime.utcnow)
     
@@ -30,8 +30,8 @@ class UserPackHistory(BaseModel):
 
 class UserPackHistoryCreate(BaseCreateSchema):
     """Schema for creating a new user pack history entry."""
-    user_id: uuid.UUID
-    pack_id: uuid.UUID
+    user_id: str
+    pack_id: str
     play_count: int
     last_played_at: Optional[datetime] = None
 

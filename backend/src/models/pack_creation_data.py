@@ -24,8 +24,8 @@ class PackCreationData(BaseModel):
         is_temporal: Whether this pack is time-based or has temporal relevance
         created_at: When this record was created
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
-    pack_id: uuid.UUID
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    pack_id: str
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
@@ -42,7 +42,7 @@ class PackCreationData(BaseModel):
 
 class PackCreationDataCreate(BaseCreateSchema):
     """Schema for creating new pack creation metadata."""
-    pack_id: uuid.UUID
+    pack_id: str
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None

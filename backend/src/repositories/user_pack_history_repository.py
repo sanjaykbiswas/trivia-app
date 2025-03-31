@@ -8,7 +8,7 @@ from ..models.user_pack_history import UserPackHistory, UserPackHistoryCreate, U
 from .base_repository_impl import BaseRepositoryImpl
 from ..utils import ensure_uuid
 
-class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate, uuid.UUID]):
+class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate, str]):
     """
     Repository for managing UserPackHistory data in Supabase.
     """
@@ -17,15 +17,15 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
 
     # --- Custom UserPackHistory-specific methods ---
 
-    async def get_by_user_id(self, user_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[UserPackHistory]:
+    async def get_by_user_id(self, user_id: str, *, skip: int = 0, limit: int = 100) -> List[UserPackHistory]:
         """Retrieve history entries for a specific user."""
-        # Ensure user_id is a proper UUID object
-        user_id = ensure_uuid(user_id)
+        # Ensure user_id is a valid UUID string
+        user_id_str = ensure_uuid(user_id)
         
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .eq("user_id", str(user_id))
+            .eq("user_id", user_id_str)
             .order("last_played_at", desc=True) # Order by most recently played
             .offset(skip)
             .limit(limit)
@@ -33,15 +33,15 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
         response = await self._execute_query(query)
         return [self.model.parse_obj(item) for item in response.data]
 
-    async def get_by_pack_id(self, pack_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[UserPackHistory]:
+    async def get_by_pack_id(self, pack_id: str, *, skip: int = 0, limit: int = 100) -> List[UserPackHistory]:
         """Retrieve history entries for a specific pack."""
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
+        # Ensure pack_id is a valid UUID string
+        pack_id_str = ensure_uuid(pack_id)
         
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .eq("pack_id", str(pack_id))
+            .eq("pack_id", pack_id_str)
             .order("last_played_at", desc=True)
             .offset(skip)
             .limit(limit)
@@ -49,17 +49,17 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
         response = await self._execute_query(query)
         return [self.model.parse_obj(item) for item in response.data]
 
-    async def get_by_user_and_pack(self, user_id: uuid.UUID, pack_id: uuid.UUID) -> Optional[UserPackHistory]:
+    async def get_by_user_and_pack(self, user_id: str, pack_id: str) -> Optional[UserPackHistory]:
         """Retrieve the specific history entry for a user and pack."""
-        # Ensure UUIDs are proper UUID objects
-        user_id = ensure_uuid(user_id)
-        pack_id = ensure_uuid(pack_id)
+        # Ensure UUIDs are valid UUID strings
+        user_id_str = ensure_uuid(user_id)
+        pack_id_str = ensure_uuid(pack_id)
         
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .eq("user_id", str(user_id))
-            .eq("pack_id", str(pack_id))
+            .eq("user_id", user_id_str)
+            .eq("pack_id", pack_id_str)
             .limit(1) # Should be unique combination
         )
         response = await self._execute_query(query)
@@ -67,13 +67,13 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
             return self.model.parse_obj(response.data[0])
         return None
 
-    async def increment_play_count(self, user_id: uuid.UUID, pack_id: uuid.UUID) -> Optional[UserPackHistory]:
+    async def increment_play_count(self, user_id: str, pack_id: str) -> Optional[UserPackHistory]:
         """Finds existing history or creates one, increments play count and updates timestamp."""
-        # Ensure UUIDs are proper UUID objects
-        user_id = ensure_uuid(user_id)
-        pack_id = ensure_uuid(pack_id)
+        # Ensure UUIDs are valid UUID strings
+        user_id_str = ensure_uuid(user_id)
+        pack_id_str = ensure_uuid(pack_id)
         
-        existing = await self.get_by_user_and_pack(user_id, pack_id)
+        existing = await self.get_by_user_and_pack(user_id_str, pack_id_str)
         now = datetime.utcnow()
 
         if existing:
@@ -82,7 +82,7 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
                 "play_count": existing.play_count + 1,
                 "last_played_at": now.isoformat() # Ensure ISO format string for Supabase
             }
-            query = self.db.table(self.table_name).update(update_data).eq("id", str(existing.id))
+            query = self.db.table(self.table_name).update(update_data).eq("id", existing.id)
             await self._execute_query(query)
             
             # Fetch and return the updated record
@@ -90,8 +90,8 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
         else:
             # Create new entry with the proper create schema
             new_history = UserPackHistoryCreate(
-                user_id=user_id,
-                pack_id=pack_id,
+                user_id=user_id_str,
+                pack_id=pack_id_str,
                 play_count=1,
                 last_played_at=now
             )

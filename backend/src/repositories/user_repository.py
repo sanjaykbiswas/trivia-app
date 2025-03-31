@@ -7,7 +7,7 @@ from ..models.user import User, UserCreate, UserUpdate
 from .base_repository_impl import BaseRepositoryImpl
 from ..utils import ensure_uuid
 
-class UserRepository(BaseRepositoryImpl[User, UserCreate, UserUpdate, uuid.UUID]):
+class UserRepository(BaseRepositoryImpl[User, UserCreate, UserUpdate, str]):
     """
     Repository for managing User data in Supabase.
     Inherits generic CRUD operations from BaseRepositoryImpl.

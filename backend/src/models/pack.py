@@ -28,11 +28,11 @@ class Pack(BaseModel):
         correct_answer_rate: Average rate of correct answers for this pack's questions
         created_at: When this pack was created
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: Optional[str] = None
     price: float
-    pack_group_id: Optional[List[uuid.UUID]] = None
+    pack_group_id: Optional[List[str]] = None
     creator_type: CreatorType
     correct_answer_rate: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -46,7 +46,7 @@ class PackCreate(BaseCreateSchema):
     name: str
     description: Optional[str] = None
     price: float
-    pack_group_id: Optional[List[uuid.UUID]] = None
+    pack_group_id: Optional[List[str]] = None
     creator_type: CreatorType
     correct_answer_rate: Optional[float] = None
 
@@ -56,6 +56,6 @@ class PackUpdate(BaseUpdateSchema):
     name: Optional[str] = None
     description: Optional[str] = None
     price: Optional[float] = None
-    pack_group_id: Optional[List[uuid.UUID]] = None
+    pack_group_id: Optional[List[str]] = None
     creator_type: Optional[CreatorType] = None
     correct_answer_rate: Optional[float] = None

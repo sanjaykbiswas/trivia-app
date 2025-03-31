@@ -21,7 +21,7 @@ class PackService:
         """
         self.pack_repository = pack_repository
     
-    async def validate_creation_name(self, creation_name: str) -> Tuple[bool, Optional[uuid.UUID]]:
+    async def validate_creation_name(self, creation_name: str) -> Tuple[bool, Optional[str]]:
         """
         Check if a pack with the given creation name already exists.
         
@@ -31,7 +31,7 @@ class PackService:
         Returns:
             Tuple containing:
                 - Boolean indicating if the pack exists
-                - UUID of the existing pack (if found, otherwise None)
+                - ID of the existing pack (if found, otherwise None)
         """
         # Import here to avoid circular imports
         from ..utils.document_processing.processors import normalize_text
@@ -84,16 +84,16 @@ class PackService:
         exists, existing_pack_id = await self.validate_creation_name(pack_name)
         
         if exists and existing_pack_id:
-            # Ensure existing_pack_id is a proper UUID object
-            existing_pack_id = ensure_uuid(existing_pack_id)
+            # Ensure existing_pack_id is a valid UUID string
+            existing_pack_id_str = ensure_uuid(existing_pack_id)
             
             # Pack exists, retrieve it
-            existing_pack = await self.pack_repository.get_by_id(existing_pack_id)
+            existing_pack = await self.pack_repository.get_by_id(existing_pack_id_str)
             
             # Optionally update the description if provided and different
             if update_if_exists and pack_description and existing_pack.description != pack_description:
                 update_data = PackUpdate(description=pack_description)
-                existing_pack = await self.pack_repository.update(id=existing_pack_id, obj_in=update_data)
+                existing_pack = await self.pack_repository.update(id=existing_pack_id_str, obj_in=update_data)
                 
             return existing_pack, False
         

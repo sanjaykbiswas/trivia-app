@@ -8,7 +8,7 @@ from .base_repository_impl import BaseRepositoryImpl
 from ..utils import ensure_uuid
 
 
-class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUpdate, uuid.UUID]):
+class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUpdate, str]):
     """
     Repository for managing Question data in Supabase.
     """
@@ -27,15 +27,15 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
 
     # --- Custom Question-specific methods ---
 
-    async def get_by_pack_id(self, pack_id: uuid.UUID, *, skip: int = 0, limit: int = 100) -> List[Question]:
+    async def get_by_pack_id(self, pack_id: str, *, skip: int = 0, limit: int = 100) -> List[Question]:
         """Retrieve questions belonging to a specific pack."""
-        # Ensure pack_id is a proper UUID object
-        pack_id = ensure_uuid(pack_id)
+        # Ensure pack_id is a valid UUID string
+        pack_id_str = ensure_uuid(pack_id)
         
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .eq("pack_id", str(pack_id))
+            .eq("pack_id", pack_id_str)
             .offset(skip)
             .limit(limit)
         )
@@ -55,16 +55,16 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
         response = await self._execute_query(query)
         return [self.model.parse_obj(item) for item in response.data]
 
-    async def update_statistics(self, question_id: uuid.UUID, correct_rate: float, new_difficulty: Optional[DifficultyLevel] = None) -> Optional[Question]:
+    async def update_statistics(self, question_id: str, correct_rate: float, new_difficulty: Optional[DifficultyLevel] = None) -> Optional[Question]:
         """Updates the statistics for a given question."""
-        # Ensure question_id is a proper UUID object
-        question_id = ensure_uuid(question_id)
+        # Ensure question_id is a valid UUID string
+        question_id_str = ensure_uuid(question_id)
         
         update_data = {"correct_answer_rate": correct_rate}
         if new_difficulty:
             update_data["difficulty_current"] = new_difficulty.value
 
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(question_id))
+        query = self.db.table(self.table_name).update(update_data).eq("id", question_id_str)
         await self._execute_query(query)
         
         # Fetch and return the updated object
@@ -84,15 +84,15 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
             new_id = response.data[0].get('id')
             if new_id:
                 # Fetch the complete record
-                return await self.get_by_id(uuid.UUID(new_id))
+                return await self.get_by_id(new_id)
             return self.model.parse_obj(response.data[0])
         else:
             raise ValueError("Failed to create question, no data returned.")
 
-    async def update(self, *, id: uuid.UUID, obj_in: QuestionUpdate) -> Optional[Question]:
+    async def update(self, *, id: str, obj_in: QuestionUpdate) -> Optional[Question]:
         """Update an existing question with proper enum handling."""
-        # Ensure id is a proper UUID object
-        id = ensure_uuid(id)
+        # Ensure id is a valid UUID string
+        id_str = ensure_uuid(id)
         
         update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
         
@@ -101,7 +101,7 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
             
         update_data = self._serialize_enum_values(update_data)
         
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
+        query = self.db.table(self.table_name).update(update_data).eq("id", id_str)
         await self._execute_query(query)
 
         # Fetch and return the updated object

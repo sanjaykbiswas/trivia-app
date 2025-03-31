@@ -20,7 +20,7 @@ class User(BaseModel):
         auth_id: Optional identifier from the authentication provider
         created_at: When this user account was created
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     displayname: Optional[str] = None
     email: Optional[EmailStr] = None
     is_temporary: bool

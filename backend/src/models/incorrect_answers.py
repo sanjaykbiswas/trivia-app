@@ -17,9 +17,9 @@ class IncorrectAnswers(BaseModel):
         question_id: Reference to the question these answers belong to
         created_at: When this record was created
     """
-    id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     incorrect_answers: List[str]
-    question_id: uuid.UUID
+    question_id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     class Config:
@@ -29,7 +29,7 @@ class IncorrectAnswers(BaseModel):
 class IncorrectAnswersCreate(BaseCreateSchema):
     """Schema for creating incorrect answers for a question."""
     incorrect_answers: List[str]
-    question_id: uuid.UUID
+    question_id: str
 
 
 class IncorrectAnswersUpdate(BaseUpdateSchema):
