@@ -6,6 +6,7 @@ from typing import List, Optional
 from ..models.pack_creation_data import PackCreationDataCreate, PackCreationDataUpdate
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..utils.question_generation.pack_topic_creation import PackTopicCreation
+from ..utils.llm.llm_service import LLMService
 from ..utils import ensure_uuid
 
 # Setup logger
@@ -25,7 +26,9 @@ class TopicService:
             pack_creation_data_repository: Repository for pack creation data operations
         """
         self.pack_creation_repository = pack_creation_data_repository
-        self.topic_creator = PackTopicCreation(pack_creation_data_repository=None)
+        # Initialize the LLM service and topic creator - fixed to match the expected constructor
+        llm_service = LLMService()
+        self.topic_creator = PackTopicCreation(llm_service=llm_service)
     
     async def store_pack_topics(self, pack_id: uuid.UUID, topics: List[str], 
                               creation_name: str) -> None:

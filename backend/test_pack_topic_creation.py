@@ -18,7 +18,6 @@ from src.models.pack import CreatorType
 
 async def test_pack_topic_creation(
     pack_name: str, 
-    pack_description: str,
     num_topics: int = 5,
     debug_mode: bool = False
 ):
@@ -27,7 +26,6 @@ async def test_pack_topic_creation(
     
     Args:
         pack_name: Name of the pack to create
-        pack_description: Description of the pack
         num_topics: Number of topics to generate if creating a new pack
         debug_mode: Whether to show verbose debugging info
     """
@@ -52,7 +50,6 @@ async def test_pack_topic_creation(
         print(f"\nGetting or creating pack: {pack_name}")
         pack, is_new = await pack_service.get_or_create_pack(
             pack_name=pack_name,
-            pack_description=pack_description,
             price=0.0,
             creator_type=CreatorType.SYSTEM
         )
@@ -165,17 +162,11 @@ if __name__ == "__main__":
     
     # Interactive prompts with defaults
     default_name = "World Geography Trivia"
-    default_description = "A collection of geography trivia questions from around the world"
     
     # Ask for pack name
     pack_name = input(f"Enter pack name [{default_name}]: ")
     if not pack_name.strip():
         pack_name = default_name
-    
-    # Ask for pack description
-    pack_desc = input(f"Enter pack description [{default_description}]: ")
-    if not pack_desc.strip():
-        pack_desc = default_description
     
     # Ask for number of topics
     topics_input = input("Enter number of topics to generate [5]: ")
@@ -192,7 +183,6 @@ if __name__ == "__main__":
     # Run the test function
     pack_id = asyncio.run(test_pack_topic_creation(
         pack_name, 
-        pack_desc,
         num_topics,
         debug_mode_enabled
     ))
