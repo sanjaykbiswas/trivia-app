@@ -172,14 +172,14 @@ class QuestionGenerator:
         # Build the prompt
         prompt = f"""Generate {num_questions} trivia questions about {pack_topic} for a trivia pack called "{creation_name}".
 
-The questions should be at {difficulty} difficulty level.
-Difficulty description: {diff_description}
+The questions should be at a {difficulty} difficulty level.
+{difficulty} difficulty description: {diff_description}
 
 Each question should:
 1. Be clear and unambiguous
 2. Have a single correct answer that is factually accurate
 3. Be specific to the topic of {pack_topic}
-4. Be at the appropriate {difficulty} difficulty level
+4. Be at the appropriate difficulty level
 """
 
         # Add custom instructions if provided
@@ -237,8 +237,8 @@ Here are some example questions and answers for this pack and topic:
 
 {"\n\n".join(examples)}
 
-The example questions play with wordplay, allusions, and clever phrasing that ties to the topic without being too on-the-nose.
-Please use these as a guide for style and format, but create completely new questions.
+Use the instructions and example questions as inspiration, but create entirely new questions that play with wordplay, allusions, and clever phrasing that ties to the topic without being too on-the-nose.
+Ensure you follow all instructions listed.  Above all, the answer created must be correct.
 """
         return ""
     
