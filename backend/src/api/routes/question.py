@@ -76,7 +76,8 @@ async def generate_questions(
             pack_topic=question_request.pack_topic,
             difficulty=question_request.difficulty,
             num_questions=question_request.num_questions,
-            debug_mode=question_request.debug_mode
+            debug_mode=question_request.debug_mode,
+            custom_instructions=question_request.custom_instructions
         )
         
         return QuestionsResponse(

@@ -48,7 +48,8 @@ class QuestionService:
         pack_topic: str,
         difficulty: Union[str, DifficultyLevel],
         num_questions: int = 5,
-        debug_mode: bool = False
+        debug_mode: bool = False,
+        custom_instructions: Optional[str] = None
     ) -> List[Question]:
         """
         Generate questions using LLM and store them in the database.
@@ -60,6 +61,7 @@ class QuestionService:
             difficulty: Difficulty level for questions
             num_questions: Number of questions to generate
             debug_mode: Enable verbose debug output
+            custom_instructions: Optional custom instructions for question generation
             
         Returns:
             List of created Question objects
@@ -72,6 +74,8 @@ class QuestionService:
             print(f"Topic: {pack_topic}")
             print(f"Difficulty: {difficulty}")
             print(f"Number of questions: {num_questions}")
+            if custom_instructions:
+                print(f"Custom instructions: {custom_instructions}")
         
         # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
@@ -110,7 +114,8 @@ class QuestionService:
                 difficulty_descriptions=difficulty_descriptions,
                 seed_questions=seed_questions,
                 num_questions=num_questions,
-                debug_mode=debug_mode
+                debug_mode=debug_mode,
+                custom_instructions=custom_instructions
             )
             
             if self.debug_enabled:
