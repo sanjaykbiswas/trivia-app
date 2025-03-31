@@ -72,8 +72,8 @@ class PackDifficultyCreation:
         """
         Parse the LLM response into a dictionary of difficulty levels and descriptions.
         
-        This is an improved parser that handles complex multiline descriptions better
-        than the generic key-value extraction.
+        This fixed parser addresses the issue where other difficulty names appear within
+        the Easy description, causing all content to be assigned to Easy.
         
         Args:
             response_text: Processed response from LLM
@@ -82,19 +82,51 @@ class PackDifficultyCreation:
             Dictionary mapping difficulty levels to their descriptions
         """
         difficulty_descriptions = {}
+        expected_difficulties = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
         
-        # Expected difficulty levels
-        difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
+        # Split the text by difficulty level markers
+        # This creates a more direct approach that should work regardless of formatting
+        parts = {}
+        for i in range(len(expected_difficulties)):
+            current_level = expected_difficulties[i]
+            next_levels = []
+            
+            # Add all potential next levels that could follow the current one
+            for j in range(len(expected_difficulties)):
+                if i != j:  # Don't include the current level
+                    next_levels.append(expected_difficulties[j])
+            
+            # Create a pattern to find the current level and capture everything until the next level
+            if next_levels:
+                marker_pattern = r'(?:^|\s|[;:])' + re.escape(current_level) + r'[;:]?\s*(.*?)(?=(?:\s|^)(?:' + '|'.join(map(re.escape, next_levels)) + r')[;:]|\Z)'
+            else:
+                marker_pattern = r'(?:^|\s|[;:])' + re.escape(current_level) + r'[;:]?\s*(.*?)(?=\Z)'
+            
+            matches = re.findall(marker_pattern, response_text, re.DOTALL | re.IGNORECASE)
+            
+            if matches:
+                # Get the first match that contains content
+                for match in matches:
+                    content = match.strip()
+                    
+                    # Clean up the content
+                    # Remove any trailing backslashes, which were only meant for formatting
+                    content = re.sub(r'\\+\s*$', '', content)
+                    
+                    # Remove any difficulty level markers that might be in the content
+                    for level in expected_difficulties:
+                        content = re.sub(r'\\+\s*' + re.escape(level) + r':', '', content)
+                    
+                    if content:
+                        parts[current_level] = content
+                        break
         
-        # Split the response by difficulty level indicators
-        # Look for patterns like "Easy:", "Medium:", etc. at the beginning of lines
-        pattern = r'(?:^|\n)(' + '|'.join(difficulty_levels) + r'):\s*(.*?)(?=\n(?:' + '|'.join(difficulty_levels) + r'):|$)'
-        matches = re.findall(pattern, response_text, re.DOTALL)
-        
-        for level, description in matches:
-            # Clean up the description
-            cleaned_desc = description.strip()
-            difficulty_descriptions[level] = cleaned_desc
+        # Process the extracted parts
+        for level in expected_difficulties:
+            if level in parts:
+                difficulty_descriptions[level] = parts[level]
+            else:
+                difficulty_descriptions[level] = ""
         
         return difficulty_descriptions
     
@@ -131,14 +163,29 @@ The descriptions should:
 - Provide clear guidance for question creation at each level
 - For the Mixed level, explain how different difficulties would be balanced in this pack
 
-Please format your response exactly as follows, with each difficulty on a new line:
-Easy: [custom description for easy questions]
-Medium: [custom description for medium questions]
-Hard: [custom description for hard questions]
-Expert: [custom description for expert questions]
-Mixed: [custom description for mixed difficulty]
+CRITICAL FORMATTING INSTRUCTIONS:
+1. DO NOT include any other difficulty level names (Easy, Medium, Hard, Expert, Mixed) within any difficulty description
+2. Each difficulty MUST be on its own separate line with NO other difficulty names in that line's description
+3. Place each description on a SEPARATE LINE from other difficulties
 
-Return ONLY these formatted descriptions with no additional text.
+Format exactly like this (notice each difficulty is on its OWN LINE):
+
+Easy: [description for Easy difficulty]
+Medium: [description for Medium difficulty]
+Hard: [description for Hard difficulty]
+Expert: [description for Expert difficulty]
+Mixed: [description for Mixed difficulty]
+
+Example format (EACH ON SEPARATE LINES):
+
+Easy: Questions about basic Roman emperors and common knowledge facts.
+Medium: Questions about specific battles and political reforms.
+Hard: Questions about lesser-known figures and complex historical events.
+Expert: Questions about detailed historical analysis and obscure Roman customs.
+Mixed: A balance of questions from all difficulty levels covering various Roman topics.
+
+DO NOT include any explanatory text before or after the difficulty descriptions.
+DO NOT include any other difficulty names within a difficulty description.
 """
         return prompt
     
