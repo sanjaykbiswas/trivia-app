@@ -23,7 +23,8 @@ async def create_sample_pack_with_topics_and_difficulties(
     pack_name, 
     pack_description, 
     num_topics=5, 
-    update_existing_difficulties=False
+    update_existing_difficulties=False,
+    debug_mode=False  # New parameter for verbose debugging
 ):
     """
     Create a sample pack with topics and custom difficulty descriptions.
@@ -33,6 +34,7 @@ async def create_sample_pack_with_topics_and_difficulties(
         pack_description: Description of the pack 
         num_topics: Number of topics to generate if creating a new pack
         update_existing_difficulties: Whether to update existing difficulty descriptions if found
+        debug_mode: Whether to show verbose debugging info
     """
     # Initialize Supabase client
     print("Initializing Supabase client...")
@@ -71,20 +73,37 @@ async def create_sample_pack_with_topics_and_difficulties(
         if is_new:
             print(f"Created new pack with ID: {pack.id}")
             
+            # DEBUGGING: Capture raw topic generation response before parsing
+            if debug_mode:
+                print("\n--- DEBUGGING: Topic Generation ---")
+                topic_prompt = topic_creator._build_topic_generation_prompt(
+                    creation_name=pack_name,
+                    creation_description=pack_description,
+                    num_topics=num_topics
+                )
+                print("\nTopic Generation Prompt:")
+                print(topic_prompt)
+                
+                raw_topic_response = await llm_service.generate_content(topic_prompt)
+                processed_topic_response = await llm_service.process_llm_response(raw_topic_response)
+                
+                print("\nRaw Topic Response from LLM:")
+                print(processed_topic_response)
+            
             # Generate topics for the new pack
-            print("Generating topics with LLM...")
+            print("\nGenerating topics with LLM...")
             topics = await topic_creator.create_pack_topics(
                 creation_name=pack_name,
                 creation_description=pack_description,
                 num_topics=num_topics
             )
             
-            print("Generated topics:")
+            print("\nParsed Topics:")
             for i, topic in enumerate(topics, 1):
                 print(f"  {i}. {topic}")
             
             # Store the topics in the database
-            print("Storing topics in database...")
+            print("\nStoring topics in database...")
             await topic_creator.store_pack_topics(
                 pack_id=pack.id,
                 topics=topics,
@@ -92,8 +111,29 @@ async def create_sample_pack_with_topics_and_difficulties(
                 creation_description=pack_description
             )
             
+            # DEBUGGING: Capture raw difficulty description generation response before parsing
+            if debug_mode:
+                print("\n--- DEBUGGING: Difficulty Description Generation ---")
+                difficulty_prompt = difficulty_creator._build_difficulty_prompt(
+                    creation_name=pack_name,
+                    pack_topics=topics
+                )
+                print("\nDifficulty Generation Prompt:")
+                print(difficulty_prompt)
+                
+                raw_diff_response = await llm_service.generate_content(difficulty_prompt)
+                processed_diff_response = await llm_service.process_llm_response(raw_diff_response)
+                
+                print("\nRaw Difficulty Response from LLM:")
+                print(processed_diff_response)
+                
+                print("\nParsed Difficulty Output:")
+                difficulty_parsed = difficulty_creator._parse_difficulty_response(processed_diff_response)
+                for level, desc in difficulty_parsed.items():
+                    print(f"  {level}: {desc}")
+            
             # Generate and store difficulty descriptions
-            print("Generating difficulty descriptions...")
+            print("\nGenerating difficulty descriptions...")
             difficulty_descriptions = await difficulty_creator.generate_and_handle_existing_difficulty_descriptions(
                 pack_id=pack.id,
                 creation_name=pack_name,
@@ -101,7 +141,7 @@ async def create_sample_pack_with_topics_and_difficulties(
                 force_regenerate=False
             )
             
-            print("\nGenerated difficulty descriptions:")
+            print("\nStored Difficulty Descriptions:")
             for desc in difficulty_descriptions:
                 print(f"  {desc}")
             
@@ -116,9 +156,30 @@ async def create_sample_pack_with_topics_and_difficulties(
             # Get existing topics
             topics = await topic_creator.get_existing_pack_topics(pack.id)
             
-            print("Existing topics:")
+            print("\nExisting topics:")
             for i, topic in enumerate(topics, 1):
                 print(f"  {i}. {topic}")
+            
+            # DEBUGGING: Show the raw response for difficulty descriptions even for existing packs
+            if debug_mode and update_existing_difficulties:
+                print("\n--- DEBUGGING: Difficulty Description Generation (Update) ---")
+                difficulty_prompt = difficulty_creator._build_difficulty_prompt(
+                    creation_name=pack_name,
+                    pack_topics=topics
+                )
+                print("\nDifficulty Generation Prompt:")
+                print(difficulty_prompt)
+                
+                raw_diff_response = await llm_service.generate_content(difficulty_prompt)
+                processed_diff_response = await llm_service.process_llm_response(raw_diff_response)
+                
+                print("\nRaw Difficulty Response from LLM:")
+                print(processed_diff_response)
+                
+                print("\nParsed Difficulty Output:")
+                difficulty_parsed = difficulty_creator._parse_difficulty_response(processed_diff_response)
+                for level, desc in difficulty_parsed.items():
+                    print(f"  {level}: {desc}")
             
             # Generate and handle difficulty descriptions - use the existing method
             print("\nChecking and generating difficulty descriptions as needed...")
@@ -155,13 +216,14 @@ async def create_sample_pack_with_topics_and_difficulties(
         print("Supabase client closed")
 
 
-async def generate_specific_difficulty_levels(pack_id, difficulty_levels):
+async def generate_specific_difficulty_levels(pack_id, difficulty_levels, debug_mode=False):
     """
     Update specific difficulty levels for an existing pack.
     
     Args:
         pack_id: UUID of the existing pack
         difficulty_levels: List of difficulty levels to update (e.g., ["Hard", "Expert"])
+        debug_mode: Whether to show verbose debugging info
     """
     # Initialize Supabase client
     print("Initializing Supabase client...")
@@ -197,7 +259,29 @@ async def generate_specific_difficulty_levels(pack_id, difficulty_levels):
         # Get topics
         topics = await topic_creator.get_existing_pack_topics(pack.id)
         
-        print(f"Generating specific difficulty descriptions for levels: {', '.join(difficulty_levels)}")
+        # DEBUGGING: Show the raw response for specific difficulty generation
+        if debug_mode:
+            print("\n--- DEBUGGING: Specific Difficulty Description Generation ---")
+            # Generate all difficulty descriptions to see raw output
+            all_desc_prompt = difficulty_creator._build_difficulty_prompt(
+                creation_name=pack.name,
+                pack_topics=topics
+            )
+            print("\nDifficulty Generation Prompt:")
+            print(all_desc_prompt)
+            
+            raw_diff_response = await llm_service.generate_content(all_desc_prompt)
+            processed_diff_response = await llm_service.process_llm_response(raw_diff_response)
+            
+            print("\nRaw Difficulty Response from LLM:")
+            print(processed_diff_response)
+            
+            print("\nParsed Difficulty Output:")
+            difficulty_parsed = difficulty_creator._parse_difficulty_response(processed_diff_response)
+            for level, desc in difficulty_parsed.items():
+                print(f"  {level}: {desc}")
+        
+        print(f"\nGenerating specific difficulty descriptions for levels: {', '.join(difficulty_levels)}")
         updated_descriptions = await difficulty_creator.generate_specific_difficulty_descriptions(
             pack_id=pack.id,
             creation_name=pack.name,
@@ -264,14 +348,20 @@ if __name__ == "__main__":
     update_existing = input("Update existing difficulty descriptions if found? (y/n) [n]: ").lower()
     update_existing_difficulties = update_existing.startswith('y')
     
+    # New option for debug mode
+    debug_mode = input("Enable debug mode to show raw LLM responses? (y/n) [n]: ").lower()
+    debug_mode_enabled = debug_mode.startswith('y')
+    
     print(f"Update existing difficulties: {update_existing_difficulties}")
+    print(f"Debug mode: {debug_mode_enabled}")
     
     # Run the main function
     pack_id = asyncio.run(create_sample_pack_with_topics_and_difficulties(
         pack_name, 
         pack_description,
         num_topics,
-        update_existing_difficulties
+        update_existing_difficulties,
+        debug_mode_enabled
     ))
     
     if pack_id:
@@ -286,7 +376,7 @@ if __name__ == "__main__":
             
             if difficulty_levels:
                 print(f"Updating difficulty levels: {', '.join(difficulty_levels)}")
-                asyncio.run(generate_specific_difficulty_levels(pack_id, difficulty_levels))
+                asyncio.run(generate_specific_difficulty_levels(pack_id, difficulty_levels, debug_mode_enabled))
             else:
                 print("No valid difficulty levels provided. Skipping specific update.")
     else:
