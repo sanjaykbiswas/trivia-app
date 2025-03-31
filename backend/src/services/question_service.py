@@ -1,6 +1,8 @@
 # backend/src/services/question_service.py
 import uuid
 import logging
+import json
+import traceback
 from typing import List, Dict, Any, Optional, Union
 
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
@@ -37,6 +39,7 @@ class QuestionService:
         self.question_repository = question_repository
         self.pack_creation_data_repository = pack_creation_data_repository
         self.question_generator = question_generator or QuestionGenerator()
+        self.debug_enabled = False
     
     async def generate_and_store_questions(
         self,
@@ -44,7 +47,8 @@ class QuestionService:
         creation_name: str,
         pack_topic: str,
         difficulty: Union[str, DifficultyLevel],
-        num_questions: int = 5
+        num_questions: int = 5,
+        debug_mode: bool = False
     ) -> List[Question]:
         """
         Generate questions using LLM and store them in the database.
@@ -55,10 +59,20 @@ class QuestionService:
             pack_topic: Specific topic to generate questions for
             difficulty: Difficulty level for questions
             num_questions: Number of questions to generate
+            debug_mode: Enable verbose debug output
             
         Returns:
             List of created Question objects
         """
+        self.debug_enabled = debug_mode
+        
+        if self.debug_enabled:
+            print(f"\n=== Starting Question Generation and Storage ===")
+            print(f"Pack ID: {pack_id}")
+            print(f"Topic: {pack_topic}")
+            print(f"Difficulty: {difficulty}")
+            print(f"Number of questions: {num_questions}")
+        
         # Ensure pack_id is a proper UUID object
         pack_id = ensure_uuid(pack_id)
         
@@ -67,34 +81,76 @@ class QuestionService:
         seed_questions = {}
         
         if self.pack_creation_data_repository:
-            # Fetch pack creation data
-            creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id)
-            if creation_data:
-                # Get difficulty descriptions
-                difficulty_descriptions = creation_data.custom_difficulty_description
-                # Get seed questions if available
-                seed_questions = creation_data.seed_questions
+            try:
+                # Fetch pack creation data
+                creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id)
+                if creation_data:
+                    # Get difficulty descriptions
+                    difficulty_descriptions = creation_data.custom_difficulty_description
+                    # Get seed questions if available
+                    seed_questions = creation_data.seed_questions
+                    
+                    if self.debug_enabled:
+                        print("\n=== Pack Creation Data Retrieved ===")
+                        print(f"Found difficulty descriptions: {bool(difficulty_descriptions)}")
+                        print(f"Found seed questions: {len(seed_questions) if seed_questions else 0}")
+            except Exception as e:
+                logger.error(f"Error retrieving pack creation data: {str(e)}")
+                if self.debug_enabled:
+                    print(f"Error retrieving pack creation data: {str(e)}")
+                    print(traceback.format_exc())
         
-        # Generate questions using the utility
-        question_data_list = await self.question_generator.generate_questions(
-            pack_id=pack_id,
-            creation_name=creation_name,
-            pack_topic=pack_topic,
-            difficulty=difficulty,
-            difficulty_descriptions=difficulty_descriptions,
-            seed_questions=seed_questions,
-            num_questions=num_questions
-        )
-        
-        # Store the questions
-        created_questions = []
-        for question_data in question_data_list:
-            # Create the question
-            question_obj = await self._create_question(question_data)
-            if question_obj:
-                created_questions.append(question_obj)
-        
-        return created_questions
+        try:
+            # Generate questions using the utility with debug mode
+            question_data_list = await self.question_generator.generate_questions(
+                pack_id=pack_id,
+                creation_name=creation_name,
+                pack_topic=pack_topic,
+                difficulty=difficulty,
+                difficulty_descriptions=difficulty_descriptions,
+                seed_questions=seed_questions,
+                num_questions=num_questions,
+                debug_mode=debug_mode
+            )
+            
+            if self.debug_enabled:
+                print(f"\n=== Generated Question Data ===")
+                print(f"Number of questions generated: {len(question_data_list)}")
+                # Safe JSON serialization for UUID objects
+                safe_data = []
+                for q in question_data_list:
+                    safe_q = q.copy()
+                    safe_q['pack_id'] = str(safe_q['pack_id']) if 'pack_id' in safe_q else None
+                    safe_data.append(safe_q)
+                
+                if safe_data:
+                    try:
+                        print(f"First question data: {json.dumps(safe_data[0], indent=2)}")
+                    except Exception as e:
+                        print(f"Error displaying question data: {str(e)}")
+                        print(f"Raw first question data: {safe_data[0] if safe_data else None}")
+            
+            # Store the questions
+            created_questions = []
+            for question_data in question_data_list:
+                # Create the question
+                question_obj = await self._create_question(question_data)
+                if question_obj:
+                    created_questions.append(question_obj)
+            
+            if self.debug_enabled:
+                print(f"\n=== Question Storage Results ===")
+                print(f"Questions successfully created: {len(created_questions)}/{len(question_data_list)}")
+            
+            return created_questions
+            
+        except Exception as e:
+            logger.error(f"Error in question generation and storage: {str(e)}")
+            if self.debug_enabled:
+                print(f"\n=== Error in Question Generation and Storage ===")
+                print(f"Error: {str(e)}")
+                print(traceback.format_exc())
+            return []
     
     async def _create_question(self, question_data: Dict[str, Any]) -> Optional[Question]:
         """
@@ -107,24 +163,51 @@ class QuestionService:
             Created Question object or None if creation failed
         """
         try:
+            # Debug: Print the question data before modification
+            if self.debug_enabled:
+                print(f"\n=== Creating Question ===")
+                # Create a safe copy with UUID as string for display
+                safe_data = question_data.copy()
+                safe_data["pack_id"] = str(safe_data["pack_id"]) if "pack_id" in safe_data else None
+                print(f"Question data: {safe_data}")
+            
+            # Convert UUID to string for database insertion
+            pack_id = question_data["pack_id"]
+            if isinstance(pack_id, uuid.UUID):
+                pack_id_str = str(pack_id)
+            else:
+                pack_id_str = pack_id  # Assume it's already a string
+            
             # Prepare question create schema
             question_create = QuestionCreate(
                 question=question_data["question"],
                 answer=question_data["answer"],
-                pack_id=question_data["pack_id"],
+                pack_id=pack_id_str,  # Use string version of UUID
                 pack_topics_item=question_data.get("pack_topics_item"),
                 difficulty_initial=question_data.get("difficulty_initial"),
                 difficulty_current=question_data.get("difficulty_current"),
                 correct_answer_rate=question_data.get("correct_answer_rate", 0.0)
             )
             
+            if self.debug_enabled:
+                print(f"Creating question in database with data:")
+                print(f"Question: {question_create.question[:50]}...")
+                print(f"Answer: {question_create.answer[:50]}...")
+                print(f"Pack ID: {question_create.pack_id}")
+                print(f"Topic: {question_create.pack_topics_item}")
+                print(f"Difficulty: {question_create.difficulty_current}")
+            
             # Create the question in the database
             return await self.question_repository.create(obj_in=question_create)
             
         except Exception as e:
             logger.error(f"Error creating question: {str(e)}")
+            if self.debug_enabled:
+                print(f"Error creating question: {str(e)}")
+                print(traceback.format_exc())
             return None
     
+    # Rest of the methods remain unchanged
     async def get_questions_by_pack_id(self, pack_id: uuid.UUID) -> List[Question]:
         """
         Retrieve all questions for a specific pack.

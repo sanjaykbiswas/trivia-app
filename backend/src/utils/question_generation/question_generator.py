@@ -4,8 +4,10 @@ Utility for generating trivia questions using LLM based on pack topics and diffi
 """
 
 import uuid
+import json
 from typing import List, Dict, Any, Optional, Union, Tuple
 import logging
+import traceback
 from ...models.question import DifficultyLevel, Question
 from ..llm.llm_service import LLMService
 from ..llm.llm_parsing_utils import parse_json_from_llm
@@ -27,6 +29,9 @@ class QuestionGenerator:
             llm_service: Service for LLM interactions. If None, creates a new instance.
         """
         self.llm_service = llm_service or LLMService()
+        self.debug_enabled = False
+        self.last_raw_response = None
+        self.last_processed_questions = None
     
     async def generate_questions(
         self, 
@@ -37,7 +42,8 @@ class QuestionGenerator:
         difficulty_descriptions: Dict[str, Dict[str, str]],
         seed_questions: Dict[str, str] = None,
         custom_instructions: Optional[str] = None,
-        num_questions: int = 5
+        num_questions: int = 5,
+        debug_mode: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Generate questions for a specific topic and difficulty.
@@ -51,10 +57,13 @@ class QuestionGenerator:
             seed_questions: Optional dictionary of example questions and answers
             custom_instructions: Optional custom instructions for question generation
             num_questions: Number of questions to generate
+            debug_mode: Enable verbose debug output
             
         Returns:
             List of dictionaries containing question data ready to be stored
         """
+        self.debug_enabled = debug_mode
+        
         # Ensure we have valid difficulty level string
         if isinstance(difficulty, DifficultyLevel):
             difficulty_str = difficulty.value.capitalize()
@@ -72,22 +81,61 @@ class QuestionGenerator:
             num_questions=num_questions
         )
         
-        # Generate questions using LLM
-        raw_response = await self.llm_service.generate_content(
-            prompt=prompt,
-            temperature=0.7,  # Slightly higher temperature for creativity
-            max_tokens=2000   # Ensure enough tokens for multiple questions
-        )
+        if self.debug_enabled:
+            print("\n=== Question Generation Prompt ===")
+            print(prompt)
+            print("==================================\n")
         
-        # Process the response
-        processed_questions = self._process_question_response(
-            response=raw_response,
-            pack_id=pack_id,
-            pack_topic=pack_topic,
-            difficulty_str=difficulty_str
-        )
-        
-        return processed_questions
+        try:
+            # Generate questions using LLM
+            raw_response = await self.llm_service.generate_content(
+                prompt=prompt,
+                temperature=0.7,  # Slightly higher temperature for creativity
+                max_tokens=2000   # Ensure enough tokens for multiple questions
+            )
+            
+            self.last_raw_response = raw_response
+            
+            if self.debug_enabled:
+                print("\n=== Raw LLM Response ===")
+                print(raw_response)
+                print("========================\n")
+            
+            # Process the response
+            processed_questions = self._process_question_response(
+                response=raw_response,
+                pack_id=pack_id,
+                pack_topic=pack_topic,
+                difficulty_str=difficulty_str
+            )
+            
+            self.last_processed_questions = processed_questions
+            
+            if self.debug_enabled:
+                print("\n=== Processed Questions ===")
+                # Use a safe JSON serialization to avoid UUID errors in debug output
+                try:
+                    safe_questions = []
+                    for q in processed_questions:
+                        safe_q = q.copy()
+                        safe_q['pack_id'] = str(safe_q['pack_id']) if 'pack_id' in safe_q else None
+                        safe_questions.append(safe_q)
+                    print(json.dumps(safe_questions, indent=2))
+                except Exception as e:
+                    print(f"Error showing processed questions: {str(e)}")
+                    print(f"Raw processed questions: {processed_questions}")
+                print("===========================\n")
+            
+            return processed_questions
+            
+        except Exception as e:
+            logger.error(f"Error generating questions: {str(e)}")
+            if self.debug_enabled:
+                print(f"\n=== Question Generation Error ===")
+                print(f"Error: {str(e)}")
+                print(traceback.format_exc())
+                print("================================\n")
+            return []
     
     def _build_question_generation_prompt(
         self,
@@ -229,6 +277,12 @@ Please use these as a guide for style and format, but create completely new ques
         # Parse the JSON response
         questions_data = parse_json_from_llm(response, [])
         
+        if self.debug_enabled:
+            print("\n=== Parsed JSON from LLM ===")
+            print(f"Type: {type(questions_data)}")
+            print(f"Content: {questions_data}")
+            print("============================\n")
+        
         structured_questions = []
         
         # Validate and structure each question
@@ -239,20 +293,27 @@ Please use these as a guide for style and format, but create completely new ques
                     question_text = clean_text(item["question"])
                     answer_text = clean_text(item["answer"])
                     
-                    # Create a structured question dict
+                    # Create a structured question dict - convert UUID to string
                     question_dict = {
                         "question": question_text,
                         "answer": answer_text,
-                        "pack_id": pack_id,
+                        "pack_id": pack_id,  # This is a UUID object
                         "pack_topics_item": pack_topic,
                         "difficulty_initial": difficulty,
                         "difficulty_current": difficulty
                     }
                     
                     structured_questions.append(question_dict)
+                    
+                    if self.debug_enabled:
+                        safe_dict = question_dict.copy()
+                        safe_dict["pack_id"] = str(safe_dict["pack_id"])
+                        print(f"Structured question: {safe_dict}")
                 else:
                     logger.warning(f"Skipping invalid question format: {item}")
         else:
             logger.error(f"Failed to parse questions response as a list: {type(questions_data)}")
+            if self.debug_enabled:
+                print(f"Failed to parse questions response as a list. Type: {type(questions_data)}")
         
         return structured_questions
