@@ -39,20 +39,30 @@ async def generate_topics(
     if topic_request is None:
         topic_request = TopicGenerateRequest()
     
-    # Check if the pack exists
-    exists, pack_id_check = await pack_service.validate_creation_name("")
-    if not pack_id_check:
+    # Check if the pack exists - Fix: Use direct repository lookup instead of validate_creation_name
+    # We should lookup the pack_id directly to check if it exists
+    try:
+        # Get the repository from the service
+        pack_repo = pack_service.pack_repository
+        
+        # Try to get the pack by ID
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+            
+        # Use the pack name if creation_name is not provided
+        creation_name = topic_request.creation_name or pack.name
+        
+    except Exception as e:
+        logger.error(f"Error validating pack existence: {str(e)}")
         raise HTTPException(
             status_code=404,
             detail=f"Pack with ID {pack_id} not found"
         )
-    
-    # Get or set creation name
-    creation_name = topic_request.creation_name
-    if not creation_name:
-        # In a real implementation, this would get the pack name from the repository
-        # For now, using a placeholder
-        creation_name = "Default Pack Name"
     
     try:
         # Generate topics
@@ -137,12 +147,29 @@ async def add_topics(
     if topic_request is None:
         topic_request = TopicAddRequest()
     
-    # Get or set creation name
-    creation_name = topic_request.creation_name
-    if not creation_name:
-        # In a real implementation, this would get the pack name from the repository
-        # For now, using a placeholder
-        creation_name = "Default Pack Name"
+    # Check if the pack exists
+    try:
+        # Get the repository from the service
+        pack_repo = pack_service.pack_repository
+        
+        # Try to get the pack by ID
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+            
+        # Use the pack name if creation_name is not provided
+        creation_name = topic_request.creation_name or pack.name
+        
+    except Exception as e:
+        logger.error(f"Error validating pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
     
     try:
         # Add additional topics

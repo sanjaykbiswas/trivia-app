@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Body
 from typing import Optional, List
 import logging
 
-from ..dependencies import get_question_service, get_seed_question_service, get_difficulty_service
+from ..dependencies import get_question_service, get_seed_question_service, get_difficulty_service, get_pack_service
 from ..schemas import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse
@@ -11,6 +11,7 @@ from ..schemas import (
 from ...services.question_service import QuestionService
 from ...services.seed_question_service import SeedQuestionService
 from ...services.difficulty_service import DifficultyService
+from ...services.pack_service import PackService
 from ...models.question import DifficultyLevel
 from ...utils import ensure_uuid
 
@@ -25,7 +26,8 @@ async def generate_questions(
     question_request: QuestionGenerateRequest = Body(...),
     question_service: QuestionService = Depends(get_question_service),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Generate trivia questions for a pack.
@@ -43,6 +45,23 @@ async def generate_questions(
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
     
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
     try:
         # Get difficulty descriptions
         difficulty_descriptions = await difficulty_service.get_existing_difficulty_descriptions(pack_id)
@@ -53,7 +72,7 @@ async def generate_questions(
         # Generate questions
         questions = await question_service.generate_and_store_questions(
             pack_id=pack_id,
-            creation_name="Pack Name",  # This should come from the pack service
+            creation_name=pack.name,
             pack_topic=question_request.pack_topic,
             difficulty=question_request.difficulty,
             num_questions=question_request.num_questions,
@@ -79,7 +98,8 @@ async def get_questions(
     difficulty: Optional[DifficultyLevel] = Query(None, description="Filter by difficulty"),
     skip: int = Query(0, ge=0, description="Number of questions to skip"),
     limit: int = Query(50, ge=1, le=100, description="Number of questions to return"),
-    question_service: QuestionService = Depends(get_question_service)
+    question_service: QuestionService = Depends(get_question_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Get questions for a pack with optional filtering.
@@ -97,6 +117,23 @@ async def get_questions(
     """
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
+    
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
     
     try:
         # Get questions
@@ -129,7 +166,8 @@ async def get_questions(
 async def store_seed_questions(
     pack_id: str = Path(..., description="ID of the pack"),
     seed_request: SeedQuestionRequest = Body(...),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Store seed questions for a pack.
@@ -145,7 +183,40 @@ async def store_seed_questions(
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
     
+    # First verify the pack exists
     try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
+    try:
+        # Check if we have pack creation data already
+        pack_creation_data = await seed_question_service.pack_creation_repository.get_by_pack_id(pack_id)
+        
+        # If not, we need to create it first
+        if not pack_creation_data:
+            # Create basic pack creation data
+            from ...models.pack_creation_data import PackCreationDataCreate
+            
+            creation_data = PackCreationDataCreate(
+                pack_id=pack_id,
+                creation_name=pack.name,
+                pack_topics=[]  # Start with empty topics list
+            )
+            
+            await seed_question_service.pack_creation_repository.create(obj_in=creation_data)
+        
         # Store seed questions
         success = await seed_question_service.store_seed_questions(
             pack_id=pack_id,
@@ -163,6 +234,9 @@ async def store_seed_questions(
             seed_questions=seed_request.seed_questions
         )
     
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"Error storing seed questions: {str(e)}")
         raise HTTPException(
@@ -174,7 +248,8 @@ async def store_seed_questions(
 async def extract_seed_questions(
     pack_id: str = Path(..., description="ID of the pack"),
     text_request: SeedQuestionTextRequest = Body(...),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Extract and store seed questions from text.
@@ -190,6 +265,23 @@ async def extract_seed_questions(
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
     
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
     try:
         # Extract seed questions from text
         extracted_questions = await seed_question_service.seed_processor.detect_and_process_input(
@@ -201,6 +293,22 @@ async def extract_seed_questions(
                 status_code=400,
                 detail="No questions could be extracted from the provided text."
             )
+        
+        # Check if we have pack creation data already
+        pack_creation_data = await seed_question_service.pack_creation_repository.get_by_pack_id(pack_id)
+        
+        # If not, we need to create it first
+        if not pack_creation_data:
+            # Create basic pack creation data
+            from ...models.pack_creation_data import PackCreationDataCreate
+            
+            creation_data = PackCreationDataCreate(
+                pack_id=pack_id,
+                creation_name=pack.name,
+                pack_topics=[]  # Start with empty topics list
+            )
+            
+            await seed_question_service.pack_creation_repository.create(obj_in=creation_data)
         
         # Store the extracted questions
         success = await seed_question_service.store_seed_questions(
@@ -219,6 +327,9 @@ async def extract_seed_questions(
             seed_questions=extracted_questions
         )
     
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logger.error(f"Error extracting seed questions: {str(e)}")
         raise HTTPException(
@@ -229,7 +340,8 @@ async def extract_seed_questions(
 @router.get("/seed", response_model=SeedQuestionsResponse)
 async def get_seed_questions(
     pack_id: str = Path(..., description="ID of the pack"),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Get seed questions for a pack.
@@ -244,10 +356,29 @@ async def get_seed_questions(
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
     
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
     try:
         # Get seed questions
         seed_questions = await seed_question_service.get_seed_questions(pack_id)
         
+        # Even if no seed questions are found, return an empty dictionary
+        # rather than raising an error
         return SeedQuestionsResponse(
             count=len(seed_questions),
             seed_questions=seed_questions

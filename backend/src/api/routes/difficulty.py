@@ -2,10 +2,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Path, Body
 import logging
 
-from ..dependencies import get_difficulty_service, get_topic_service
+from ..dependencies import get_difficulty_service, get_topic_service, get_pack_service
 from ..schemas import DifficultyGenerateRequest, DifficultyUpdateRequest, DifficultyResponse
 from ...services.difficulty_service import DifficultyService
 from ...services.topic_service import TopicService
+from ...services.pack_service import PackService
 from ...utils import ensure_uuid
 
 # Configure logger
@@ -18,7 +19,8 @@ async def generate_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
     difficulty_request: DifficultyGenerateRequest = Body(None),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
-    topic_service: TopicService = Depends(get_topic_service)
+    topic_service: TopicService = Depends(get_topic_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Generate difficulty descriptions for a pack.
@@ -39,6 +41,26 @@ async def generate_difficulties(
     if difficulty_request is None:
         difficulty_request = DifficultyGenerateRequest()
     
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+            
+        # Use the pack name if creation_name is not provided
+        creation_name = difficulty_request.creation_name or pack.name
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
     try:
         # Get existing topics (needed for difficulty generation)
         topics = await topic_service.get_existing_pack_topics(pack_id)
@@ -48,13 +70,6 @@ async def generate_difficulties(
                 status_code=400,
                 detail="Pack has no topics. Please generate topics first."
             )
-        
-        # Get or set creation name
-        creation_name = difficulty_request.creation_name
-        if not creation_name:
-            # In a real implementation, this would get the pack name from the repository
-            # For now, using a placeholder
-            creation_name = "Default Pack Name"
         
         # Generate difficulties
         difficulty_json = await difficulty_service.generate_and_handle_existing_difficulty_descriptions(
@@ -76,7 +91,8 @@ async def generate_difficulties(
 @router.get("/", response_model=DifficultyResponse)
 async def get_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
-    difficulty_service: DifficultyService = Depends(get_difficulty_service)
+    difficulty_service: DifficultyService = Depends(get_difficulty_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Get existing difficulty descriptions for a pack.
@@ -90,6 +106,23 @@ async def get_difficulties(
     """
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
+    
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
     
     try:
         # Get existing difficulty descriptions
@@ -109,7 +142,8 @@ async def update_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
     difficulty_request: DifficultyUpdateRequest = Body(...),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
-    topic_service: TopicService = Depends(get_topic_service)
+    topic_service: TopicService = Depends(get_topic_service),
+    pack_service: PackService = Depends(get_pack_service)
 ):
     """
     Update specific difficulty descriptions.
@@ -125,6 +159,26 @@ async def update_difficulties(
     """
     # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
+    
+    # First verify the pack exists
+    try:
+        pack_repo = pack_service.pack_repository
+        pack = await pack_repo.get_by_id(pack_id)
+        
+        if not pack:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Pack with ID {pack_id} not found"
+            )
+            
+        # Use the pack name if creation_name is not provided
+        creation_name = difficulty_request.creation_name or pack.name
+    except Exception as e:
+        logger.error(f"Error verifying pack existence: {str(e)}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
     
     try:
         # Update specific difficulty descriptions
