@@ -12,7 +12,6 @@ from .topic_service import TopicService
 from .difficulty_service import DifficultyService
 from .seed_question_service import SeedQuestionService
 from .question_service import QuestionService
-from .pack_data_management_service import PackDataManagementService
 
 __all__ = [
     "PackService",
@@ -20,5 +19,4 @@ __all__ = [
     "DifficultyService",
     "SeedQuestionService",
     "QuestionService",
-    "PackDataManagementService",
 ]
