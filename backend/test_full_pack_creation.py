@@ -452,7 +452,7 @@ async def test_full_pack_creation(
         
         # Let user select a difficulty level
         print("\nAvailable difficulty levels:")
-        difficulty_levels = ["Easy", "Medium", "Hard", "Expert"]
+        difficulty_levels = ["Easy", "Medium", "Hard", "Expert", "Mixed"]
         for i, level in enumerate(difficulty_levels, 1):
             print(f"  {i}. {level}")
             

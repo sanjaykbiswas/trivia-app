@@ -24,17 +24,26 @@ class PackTopicCreation:
         self.llm_service = llm_service or LLMService()
         
     async def create_pack_topics(self, creation_name: str, 
-                               num_topics: int = 5) -> List[str]:
+                               num_topics: int = 5,
+                               predefined_topic: Optional[str] = None) -> List[str]:
         """
         Create a list of topics for a trivia pack using LLM.
         
         Args:
             creation_name: The name of the trivia pack
             num_topics: Number of topics to generate
+            predefined_topic: Optional predefined topic to use instead of generation
             
         Returns:
-            List of generated topics
+            List of topics (either generated or containing the predefined topic)
         """
+        # If a predefined topic is provided, use it directly
+        if predefined_topic:
+            # Clean and normalize the predefined topic
+            clean_topic = normalize_text(predefined_topic, lowercase=False)
+            logger.info(f"Using predefined topic: {clean_topic}")
+            return [clean_topic]
+            
         # Clean and normalize inputs using document_processing utilities
         creation_name = normalize_text(creation_name, lowercase=False)
         
@@ -112,7 +121,8 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
     
     async def create_additional_topics(self, existing_topics: List[str], 
                                      creation_name: str,
-                                     num_additional_topics: int = 3) -> List[str]:
+                                     num_additional_topics: int = 3,
+                                     predefined_topic: Optional[str] = None) -> List[str]:
         """
         Create additional topics that don't overlap with existing ones.
         
@@ -120,10 +130,24 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
             existing_topics: List of existing topics to avoid duplicating
             creation_name: The name of the trivia pack
             num_additional_topics: Number of new topics to add
+            predefined_topic: Optional predefined topic to add directly
             
         Returns:
             List of new topics
         """
+        # If a predefined topic is provided, use it directly
+        if predefined_topic:
+            # Clean and normalize the predefined topic
+            clean_topic = normalize_text(predefined_topic, lowercase=False)
+            
+            # Check if the topic already exists
+            if clean_topic in existing_topics:
+                logger.warning(f"Predefined topic '{clean_topic}' already exists in topics list")
+                return []
+                
+            logger.info(f"Adding predefined topic: {clean_topic}")
+            return [clean_topic]
+            
         # Build prompt for additional topics
         additional_prompt = f"""Generate {num_additional_topics} new specific topics for a trivia pack named "{creation_name}".
         

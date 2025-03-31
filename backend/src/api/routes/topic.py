@@ -65,10 +65,11 @@ async def generate_topics(
         )
     
     try:
-        # Generate topics
+        # Generate topics, potentially using predefined topic
         topics = await topic_service.topic_creator.create_pack_topics(
             creation_name=creation_name,
-            num_topics=topic_request.num_topics
+            num_topics=topic_request.num_topics,
+            predefined_topic=topic_request.predefined_topic
         )
         
         # Store topics
@@ -172,11 +173,12 @@ async def add_topics(
         )
     
     try:
-        # Add additional topics
+        # Add additional topics, potentially using predefined topic
         all_topics = await topic_service.add_additional_topics(
             pack_id=pack_id,
             creation_name=creation_name,
-            num_additional_topics=topic_request.num_additional_topics
+            num_additional_topics=topic_request.num_additional_topics,
+            predefined_topic=topic_request.predefined_topic
         )
         
         return TopicResponse(topics=all_topics)

@@ -83,7 +83,8 @@ class TopicService:
     
     async def add_additional_topics(self, pack_id: str, 
                                   creation_name: str,
-                                  num_additional_topics: int = 3) -> List[str]:
+                                  num_additional_topics: int = 3,
+                                  predefined_topic: Optional[str] = None) -> List[str]:
         """
         Add additional topics to an existing pack.
         
@@ -91,6 +92,7 @@ class TopicService:
             pack_id: ID of the pack
             creation_name: The name of the trivia pack
             num_additional_topics: Number of new topics to add
+            predefined_topic: Optional predefined topic to add directly
             
         Returns:
             Full list of topics (existing + new)
@@ -105,7 +107,8 @@ class TopicService:
         new_topics = await self.topic_creator.create_additional_topics(
             existing_topics=existing_topics,
             creation_name=creation_name, 
-            num_additional_topics=num_additional_topics
+            num_additional_topics=num_additional_topics,
+            predefined_topic=predefined_topic
         )
         
         # Combine with existing, avoiding duplicates
