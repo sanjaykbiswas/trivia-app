@@ -21,7 +21,8 @@ class DifficultyService:
             pack_creation_data_repository: Repository for pack creation data operations
         """
         self.pack_creation_repository = pack_creation_data_repository
-        self.difficulty_creator = PackDifficultyCreation(pack_creation_data_repository=None)
+        # PackDifficultyCreation only expects llm_service, not pack_creation_data_repository
+        self.difficulty_creator = PackDifficultyCreation()
     
     async def store_difficulty_descriptions(self, pack_id: uuid.UUID, difficulty_json: Dict[str, Dict[str, str]]) -> None:
         """
