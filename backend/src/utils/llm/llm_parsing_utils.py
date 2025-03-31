@@ -208,6 +208,13 @@ class LLMParsingUtils:
         try:
             return json.loads(sanitized_json)
         except json.JSONDecodeError:
+            # Handle potentially truncated JSON array by recovering complete items
+            if fixed_json.strip().startswith('['):
+                # This looks like a JSON array, try to recover complete items
+                recovered_items = LLMParsingUtils.recover_items_from_truncated_array(fixed_json)
+                if recovered_items:
+                    return recovered_items
+            
             logger.error(f"Failed to parse JSON after all fallback attempts: {json_str[:100]}...")
             return default_value
     
@@ -230,7 +237,8 @@ class LLMParsingUtils:
             pass  # Not valid JSON, try to fix
         
         # Check if it's an array format
-        if not (json_str.strip().startswith('[') and ']' in json_str):
+        if not (json_str.strip().startswith('[') and ']' not in json_str or  # Completely missing closing bracket
+               json_str.strip().startswith('[') and ']' in json_str):  # Has at least one closing bracket
             # Not an array, can't use this method
             return json_str
         
@@ -241,6 +249,11 @@ class LLMParsingUtils:
             item_start = 1  # Skip initial '['
             in_string = False
             escape_char = False
+            item_complete = False
+            
+            # For completely truncated arrays (no closing bracket)
+            if ']' not in json_str:
+                json_str = json_str + "]"  # Add a closing bracket for processing
             
             for i, char in enumerate(json_str[1:], 1):  # Skip initial '['
                 # Handle string quotes and escaping
@@ -259,17 +272,23 @@ class LLMParsingUtils:
                         depth += 1
                     elif char == '}' or char == ']':
                         depth -= 1
+                        # If we just closed an object at the top level, mark it as complete
+                        if depth == 0 and char == '}':
+                            item_complete = True
                 
                 # Check if we have a complete item at the top level
                 if depth == 0 and char == ',':
-                    item_end = i
-                    items.append(json_str[item_start:item_end].strip())
-                    item_start = i + 1
-                elif depth == -1 and char == ']':  # End of array
-                    item_end = i
-                    if item_start < item_end:
-                        # There's content before the closing bracket
+                    if item_complete:
+                        item_end = i
                         items.append(json_str[item_start:item_end].strip())
+                        item_start = i + 1
+                        item_complete = False
+                elif depth == -1 and char == ']':  # End of array
+                    if item_complete:
+                        item_end = i
+                        if item_start < item_end:
+                            # There's content before the closing bracket
+                            items.append(json_str[item_start:item_end].strip())
                     break
             
             # If we found complete items, rebuild the array
@@ -282,6 +301,81 @@ class LLMParsingUtils:
         except Exception as e:
             logger.warning(f"Error handling truncated JSON: {e}")
             return json_str
+    
+    @staticmethod
+    def recover_items_from_truncated_array(json_str: str) -> List[Any]:
+        """
+        Recover complete objects from a truncated JSON array by parsing each item separately.
+        
+        Args:
+            json_str: Potentially truncated JSON array string
+            
+        Returns:
+            List of successfully parsed items
+        """
+        # Regular expression to find potential complete JSON objects in the array
+        # This captures each object between {} with proper nesting handling
+        if not json_str.strip().startswith('['):
+            return []
+        
+        recovered_items = []
+        # Remove the opening bracket and any potential closing bracket
+        content = json_str.strip()[1:]
+        if content.endswith(']'):
+            content = content[:-1]
+            
+        # Split by commas, but only at the top level
+        depth = 0
+        in_string = False
+        escape_char = False
+        current_item = ""
+        
+        for char in content:
+            # Handle string quotes and escaping
+            if char == '"' and not escape_char:
+                in_string = not in_string
+            elif char == '\\' and in_string:
+                escape_char = True
+                current_item += char
+                continue
+            else:
+                escape_char = False
+            
+            # Track nested objects/arrays
+            if not in_string:
+                if char in '{[':
+                    depth += 1
+                elif char in '}]':
+                    depth -= 1
+            
+            # If we're at top level and hit a comma, we have an item boundary
+            if depth == 0 and char == ',' and not in_string:
+                # Try to parse the current item
+                try:
+                    item_json = current_item.strip()
+                    # Check if it looks like a complete item
+                    if item_json.startswith('{') and item_json.endswith('}'):
+                        item = json.loads(item_json)
+                        recovered_items.append(item)
+                except Exception:
+                    # Skip invalid items
+                    pass
+                current_item = ""
+            else:
+                current_item += char
+        
+        # Check if there's a final item
+        if current_item.strip():
+            try:
+                item_json = current_item.strip()
+                if item_json.startswith('{') and item_json.endswith('}'):
+                    item = json.loads(item_json)
+                    recovered_items.append(item)
+            except Exception:
+                # Last item may be incomplete, skip it
+                pass
+        
+        return recovered_items
     
     @staticmethod
     def sanitize_json(json_str: str) -> str:
@@ -307,6 +401,14 @@ class LLMParsingUtils:
         
         # Fix missing quotes around keys
         sanitized = re.sub(r'([{,])\s*([a-zA-Z0-9_]+)\s*:', r'\1"\2":', sanitized)
+        
+        # Fix truncated arrays - if we have an opening [ but no closing ]
+        if sanitized.strip().startswith('[') and ']' not in sanitized:
+            sanitized = sanitized + ']'
+        
+        # Fix truncated objects - if we have an opening { but no closing }
+        if sanitized.strip().startswith('{') and '}' not in sanitized:
+            sanitized = sanitized + '}'
         
         return sanitized
     
