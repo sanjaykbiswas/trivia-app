@@ -57,12 +57,11 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
         if new_difficulty:
             update_data["difficulty_current"] = new_difficulty.value
 
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(question_id)).returning('representation')
-        response = await self._execute_query(query)
-
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None
+        query = self.db.table(self.table_name).update(update_data).eq("id", str(question_id))
+        await self._execute_query(query)
+        
+        # Fetch and return the updated object
+        return await self.get_by_id(question_id)
 
     # Override base methods to handle enum serialization
     async def create(self, *, obj_in: QuestionCreate) -> Question:
@@ -70,10 +69,15 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
         insert_data = obj_in.dict(exclude_unset=False, exclude_none=True, by_alias=False)
         insert_data = self._serialize_enum_values(insert_data)
         
-        query = self.db.table(self.table_name).insert(insert_data, returning='representation')
+        query = self.db.table(self.table_name).insert(insert_data)
         response = await self._execute_query(query)
 
         if response.data:
+            # Get the ID of the newly created record
+            new_id = response.data[0].get('id')
+            if new_id:
+                # Fetch the complete record
+                return await self.get_by_id(uuid.UUID(new_id))
             return self.model.parse_obj(response.data[0])
         else:
             raise ValueError("Failed to create question, no data returned.")
@@ -87,9 +91,8 @@ class QuestionRepository(BaseRepositoryImpl[Question, QuestionCreate, QuestionUp
             
         update_data = self._serialize_enum_values(update_data)
         
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(id)).returning('representation')
-        response = await self._execute_query(query)
+        query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
+        await self._execute_query(query)
 
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None
+        # Fetch and return the updated object
+        return await self.get_by_id(id)

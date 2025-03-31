@@ -32,15 +32,16 @@ class PackCreationDataRepository(BaseRepositoryImpl[PackCreationData, PackCreati
 
     async def delete_by_pack_id(self, pack_id: uuid.UUID) -> Optional[PackCreationData]:
         """Deletes creation data associated with a specific pack_id."""
-        # Assuming one-to-one, so delete expects at most one row
-        query = (
-            self.db.table(self.table_name)
-            .delete()
-            .eq("pack_id", str(pack_id))
-            .returning('representation') # Return the deleted row(s)
-            .limit(1) # Ensure only one row is targeted if multiple somehow exist
-        )
-        response = await self._execute_query(query)
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None # Return None if no row with that pack_id existed
+        # First, get the data to return later
+        data = await self.get_by_pack_id(pack_id)
+        
+        if data:
+            # Then delete it
+            query = (
+                self.db.table(self.table_name)
+                .delete()
+                .eq("pack_id", str(pack_id))
+            )
+            await self._execute_query(query)
+            
+        return data

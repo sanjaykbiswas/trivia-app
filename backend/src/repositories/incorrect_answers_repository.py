@@ -31,12 +31,21 @@ class IncorrectAnswersRepository(BaseRepositoryImpl[IncorrectAnswers, IncorrectA
 
     async def delete_by_question_id(self, question_id: uuid.UUID) -> List[IncorrectAnswers]:
         """Deletes incorrect answers associated with a specific question_id."""
-        # Deletes potentially multiple, returns list of deleted items
+        # First, retrieve the records to be deleted
         query = (
+            self.db.table(self.table_name)
+            .select("*")
+            .eq("question_id", str(question_id))
+        )
+        response = await self._execute_query(query)
+        records = [self.model.parse_obj(item) for item in response.data]
+        
+        # Then delete them
+        delete_query = (
             self.db.table(self.table_name)
             .delete()
             .eq("question_id", str(question_id))
-            .returning('representation')
         )
-        response = await self._execute_query(query)
-        return [self.model.parse_obj(item) for item in response.data]
+        await self._execute_query(delete_query)
+        
+        return records

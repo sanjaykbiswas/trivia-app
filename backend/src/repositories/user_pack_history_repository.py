@@ -67,11 +67,11 @@ class UserPackHistoryRepository(BaseRepositoryImpl[UserPackHistory, UserPackHist
                 "play_count": existing.play_count + 1,
                 "last_played_at": now.isoformat() # Ensure ISO format string for Supabase
             }
-            query = self.db.table(self.table_name).update(update_data).eq("id", str(existing.id)).returning('representation')
-            response = await self._execute_query(query)
-            if response.data:
-                return self.model.parse_obj(response.data[0])
-            return None # Update failed?
+            query = self.db.table(self.table_name).update(update_data).eq("id", str(existing.id))
+            await self._execute_query(query)
+            
+            # Fetch and return the updated record
+            return await self.get_by_id(existing.id)
         else:
             # Create new entry with the proper create schema
             new_history = UserPackHistoryCreate(

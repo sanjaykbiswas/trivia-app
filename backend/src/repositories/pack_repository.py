@@ -67,11 +67,10 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
     async def update_correct_answer_rate(self, pack_id: uuid.UUID, rate: float) -> Optional[Pack]:
         """Updates the correct answer rate for a given pack."""
         update_data = {"correct_answer_rate": rate}
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(pack_id)).returning('representation')
-        response = await self._execute_query(query)
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None
+        query = self.db.table(self.table_name).update(update_data).eq("id", str(pack_id))
+        await self._execute_query(query)
+        # Fetch and return the updated object
+        return await self.get_by_id(pack_id)
 
     # Override base methods to handle enum serialization
     async def create(self, *, obj_in: PackCreate) -> Pack:
@@ -79,10 +78,15 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
         insert_data = obj_in.dict(exclude_unset=False, by_alias=False)
         insert_data = self._serialize_enum_values(insert_data)
         
-        query = self.db.table(self.table_name).insert(insert_data, returning='representation')
+        query = self.db.table(self.table_name).insert(insert_data)
         response = await self._execute_query(query)
 
         if response.data:
+            # Get the ID of the newly created record
+            new_id = response.data[0].get('id')
+            if new_id:
+                # Fetch the complete record
+                return await self.get_by_id(uuid.UUID(new_id))
             return self.model.parse_obj(response.data[0])
         else:
             raise ValueError("Failed to create pack, no data returned.")
@@ -96,9 +100,8 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, uuid.UUID]
             
         update_data = self._serialize_enum_values(update_data)
         
-        query = self.db.table(self.table_name).update(update_data).eq("id", str(id)).returning('representation')
-        response = await self._execute_query(query)
+        query = self.db.table(self.table_name).update(update_data).eq("id", str(id))
+        await self._execute_query(query)
 
-        if response.data:
-            return self.model.parse_obj(response.data[0])
-        return None
+        # Fetch and return the updated object
+        return await self.get_by_id(id)
