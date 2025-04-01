@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Typography from '@/components/ui/Typography';
-import Button from '@/components/ui/Button';
-import AnswerOption from '@/components/game/AnswerOption';
-import FeedbackPanel from '@/components/game/FeedbackPanel';
-import { QuestionWithOptions } from '@/lib/utils';
+import Typography from '../../components/ui/Typography';
+import Button from '../../components/ui/Button';
+import AnswerOption from '../../components/game/AnswerOption';
+import FeedbackPanel from '../../components/game/FeedbackPanel';
+import { QuestionWithOptions } from '../../../lib/utils';
 
 export default function GamePage({ params }: { params: { packId: string } }) {
   const router = useRouter();

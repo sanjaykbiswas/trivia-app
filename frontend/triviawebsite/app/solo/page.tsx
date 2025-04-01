@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Typography from '@/components/ui/Typography';
-import Button from '@/components/ui/Button';
-import PackCard from '@/components/game/PackCard';
-import { Pack } from '@/lib/utils';
+import Typography from '../components/ui/Typography';
+import Button from '../components/ui/Button';
+import PackCard from '../components/game/PackCard';
+import { Pack } from '../../lib/utils';
 
 export default function SoloPage() {
   const router = useRouter();

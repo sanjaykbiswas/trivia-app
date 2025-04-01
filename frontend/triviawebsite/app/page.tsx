@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Typography from '@/components/ui/Typography';
-import SelectionOption from '@/components/ui/SelectionOption';
-import ResultsModal from '@/components/game/ResultsModal';
+import Typography from './components/ui/Typography';
+import SelectionOption from './components/ui/SelectionOption';
+import ResultsModal from './components/game/ResultsModal';
 
 export default function Home() {
   const router = useRouter();
