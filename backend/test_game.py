@@ -36,6 +36,32 @@ def generate_random_name(prefix: str = "Player") -> str:
     random_suffix = ''.join(random.choice(string.ascii_lowercase) for _ in range(4))
     return f"{prefix}_{random_suffix}"
 
+def create_temporary_user(display_name: Optional[str] = None, is_temporary: bool = True) -> Optional[Dict[str, Any]]:
+    """Create a temporary user for testing."""
+    if not display_name:
+        display_name = generate_random_name("User")
+    
+    data = {
+        "displayname": display_name,
+        "is_temporary": is_temporary
+    }
+    
+    print(f"{Colors.HEADER}Creating temporary user: {display_name}{Colors.ENDC}")
+    response = requests.post(f"{BASE_URL}/users/", json=data)
+    
+    if response.status_code == 201:
+        user_data = response.json()
+        print(f"{Colors.GREEN}Successfully created user with ID: {user_data['id']}{Colors.ENDC}")
+        return user_data
+    else:
+        print(f"{Colors.FAIL}Failed to create user: {response.status_code}{Colors.ENDC}")
+        try:
+            error_data = response.json()
+            print_json(error_data)
+        except:
+            print(response.text)
+        return None
+
 def create_or_get_pack(pack_id: Optional[str] = None, pack_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Create a new pack or get an existing one."""
     if pack_id:
@@ -387,12 +413,31 @@ def simulate_game_flow(
         simulated_answers: Whether to simulate random answers
         topic: Optional topic for question generation
     """
+    # Step 1: Create temporary users for the host and participants
+    # Create host user if not provided
+    host_user = None
     if not host_id:
-        # Generate a UUID for the host
-        host_id = str(uuid.uuid4())
-        print(f"{Colors.CYAN}Generated host ID: {host_id}{Colors.ENDC}")
+        host_user = create_temporary_user("Host")
+        if not host_user:
+            print(f"{Colors.FAIL}Failed to create host user. Exiting.{Colors.ENDC}")
+            return
+        host_id = host_user["id"]
+        print(f"{Colors.CYAN}Created host user with ID: {host_id}{Colors.ENDC}")
     
-    # Step 1: Check if pack has questions
+    # Create temporary users for participants
+    player_users = []
+    for i in range(num_players - 1):  # -1 because the host is already counted
+        player_name = generate_random_name()
+        player_user = create_temporary_user(player_name)
+        if player_user:
+            player_users.append(player_user)
+            print(f"{Colors.CYAN}Created player user: {player_name} with ID: {player_user['id']}{Colors.ENDC}")
+    
+    # Check if we created enough players
+    if len(player_users) < (num_players - 1):
+        print(f"{Colors.WARNING}Only created {len(player_users)} player users instead of {num_players - 1}{Colors.ENDC}")
+    
+    # Step 2: Check if pack has questions
     has_questions = check_questions(pack_id)
     
     # If not, generate content for the pack
@@ -407,7 +452,7 @@ def simulate_game_flow(
         print(f"{Colors.FAIL}Cannot create game: Pack still has no questions{Colors.ENDC}")
         return
     
-    # Step 2: Create a game session
+    # Step 3: Create a game session
     game_session = create_game_session(
         pack_id=pack_id,
         host_id=host_id,
@@ -423,41 +468,35 @@ def simulate_game_flow(
     game_id = game_session["id"]
     game_code = game_session["code"]
     
-    # Step 3: Simulate multiple players joining
-    player_ids = []
+    # Step 4: Have players join the game
     participant_ids = []
     player_names = []
     
-    # Create random player IDs
-    for i in range(num_players - 1):  # -1 because the host is already counted
-        player_id = str(uuid.uuid4())
-        player_name = generate_random_name()
-        
-        player_ids.append(player_id)
-        player_names.append(player_name)
-        
-        print(f"{Colors.CYAN}Generated player ID: {player_id} with name {player_name}{Colors.ENDC}")
+    # Add the host first
+    player_names.append("Host")
+    
+    # For each player, join the game
+    for player_user in player_users:
+        player_id = player_user["id"]
+        player_name = player_user["displayname"]
         
         join_result = join_game(game_code, player_id, player_name)
         if join_result:
-            participants = get_participants(game_id)
-            for participant in participants:
-                if participant["display_name"] == player_name:
-                    participant_ids.append(participant["id"])
-                    break
+            player_names.append(player_name)
     
-    # Add the host to our lists
-    player_ids.insert(0, host_id)
-    player_names.insert(0, "Host")
-    
-    # Get all participants to find the host's participant ID
+    # Get all participants to find their participant IDs
     participants = get_participants(game_id)
-    for participant in participants:
-        if participant["is_host"]:
-            participant_ids.insert(0, participant["id"])
-            break
+    participant_map = {}  # Map display names to participant IDs
     
-    # Step 4: Start the game
+    for participant in participants:
+        participant_map[participant["display_name"]] = participant["id"]
+    
+    # Create a list of participant IDs in the same order as player_names
+    for name in player_names:
+        if name in participant_map:
+            participant_ids.append(participant_map[name])
+    
+    # Step 5: Start the game
     start_result = start_game(game_id, host_id)
     if not start_result:
         print(f"{Colors.FAIL}Failed to start game. Exiting.{Colors.ENDC}")
@@ -467,11 +506,11 @@ def simulate_game_flow(
     question_index = current_question.get("index", 0)
     options = current_question.get("options", [])
     
-    # Step 5: Play through all questions
+    # Step 6: Play through all questions
     game_ended = False
     while not game_ended:
         # Simulate each player submitting an answer
-        for i, (player_id, participant_id, player_name) in enumerate(zip(player_ids, participant_ids, player_names)):
+        for i, (player_name, participant_id) in enumerate(zip(player_names, participant_ids)):
             # Optional delay to make the simulation more realistic
             time.sleep(0.5)
             
@@ -508,7 +547,7 @@ def simulate_game_flow(
             return
         
         # Check if the game has ended
-        if "final_results" in next_result:
+        if "final_results" in next_result or next_result.get("game_complete", False):
             game_ended = True
             print(f"{Colors.GREEN}All questions completed!{Colors.ENDC}")
             break
@@ -518,7 +557,7 @@ def simulate_game_flow(
         question_index = current_question.get("index", 0)
         options = current_question.get("options", [])
     
-    # Step 6: Get and display final results
+    # Step 7: Get and display final results
     results = get_game_results(game_id)
     if results:
         print(f"\n{Colors.GREEN}Game completed successfully!{Colors.ENDC}")
@@ -552,18 +591,13 @@ def main():
         print(f"{Colors.FAIL}Failed to get or create a pack. Exiting.{Colors.ENDC}")
         return
     
-    # Generate a host ID if not provided
-    host_id = args.host_id
-    if not host_id:
-        host_id = str(uuid.uuid4())
-    
     # Run the game simulation
     simulate_game_flow(
         pack_id=pack["id"],
         num_players=args.players,
         question_count=args.questions,
         time_limit=args.time_limit,
-        host_id=host_id,
+        host_id=args.host_id,
         simulated_answers=not args.manual,
         topic=args.topic
     )
