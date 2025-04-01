@@ -21,11 +21,11 @@ class PackDifficultyCreation:
         
         # Default base descriptions for each difficulty level
         self.base_descriptions = {
-            "Easy": "Should be easy topics about the topic.",
-            "Medium": "Should be medium topics about the topic.",
-            "Hard": "Should be hard topics about the topic.",
-            "Expert": "Questions should be designed for Experts on the topic.",
-            "Mixed": "A mix of difficulties."
+            "Easy": "Should be relatively easy questions that most audiences would know about.",
+            "Medium": "Should be of medium difficulty.  Some people may not know about the topic of the question.",
+            "Hard": "Should be hard questions that require a deeper understanding of the topic.  Many people may not know the topic, and they should be hard.",
+            "Expert": "Questions should be designed for Experts on the topic.  These can be obscure or specialized questions that are genuinely difficult.  There should not be many hints within the question to help get at the answer.",
+            "Mixed": "A mix of difficulties spanning relatively easy all the way to obscure or specialized questions that are genuinely difficult."
         }
     
     async def generate_difficulty_descriptions(self, creation_name: str, pack_topics: List[str]) -> Dict[str, str]:

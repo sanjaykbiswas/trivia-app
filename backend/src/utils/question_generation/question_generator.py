@@ -207,6 +207,8 @@ IMPORTANT:
 - Ensure the question length is between 10 and 20 words, or at maximum 125 characters
 - Each question should be appropriate for the {difficulty} difficulty level
 - Make the questions interesting and creative while maintaining accuracy
+- Ensure the questions do not require verbose answers
+- Ensure the incorrect answers are not overly verbose, they should be appropriate length for multiple choice trivia
 """
         return prompt
     

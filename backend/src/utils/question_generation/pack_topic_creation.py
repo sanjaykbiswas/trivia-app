@@ -98,6 +98,7 @@ class PackTopicCreation:
 The topics should:
 - Be specific enough to generate interesting trivia questions
 - Cover different aspects related to {creation_name}
+- They should be wide enough that there is room for a variety of interesting questions to be generated about the topic
 
 IMPORTANT: Return the topics as a valid JSON array of strings in this exact format:
 [

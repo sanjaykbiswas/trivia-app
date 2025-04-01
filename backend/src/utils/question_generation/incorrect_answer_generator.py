@@ -274,6 +274,7 @@ IMPORTANT NOTES:
 - Ensure all incorrect answers are factually wrong.
 - Return ONLY the JSON array without any additional text or markdown formatting.
 - Ensure the final output is a single, valid JSON array.
+- Ensure the incorrect answers are not overly verbose, they should be appropriate length for multiple choice trivia
 """
         return prompt
 
