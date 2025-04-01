@@ -104,17 +104,20 @@ async def get_difficulty_service(
     """Get DifficultyService instance."""
     return DifficultyService(pack_creation_data_repository=pack_creation_data_repository)
 
+# --- MODIFIED get_question_service ---
 async def get_question_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
     pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository),
-    incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
+    # REMOVED: incorrect_answers_repository is no longer needed here
+    # incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
 ) -> QuestionService:
     """Get QuestionService instance."""
+    # REMOVED incorrect_answers_repository from the constructor call
     return QuestionService(
         question_repository=question_repository,
-        pack_creation_data_repository=pack_creation_data_repository,
-        incorrect_answers_repository=incorrect_answers_repository
+        pack_creation_data_repository=pack_creation_data_repository
     )
+# --- END MODIFICATION ---
 
 async def get_seed_question_service(
     pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository)
@@ -127,6 +130,7 @@ async def get_incorrect_answer_service(
     incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
 ) -> IncorrectAnswerService:
     """Get IncorrectAnswerService instance."""
+    # This service correctly takes these two repositories
     return IncorrectAnswerService(
         question_repository=question_repository,
         incorrect_answers_repository=incorrect_answers_repository

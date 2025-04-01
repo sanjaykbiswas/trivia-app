@@ -3,14 +3,17 @@ import uuid
 import logging
 import json
 import traceback
+import asyncio # Import asyncio
 from typing import List, Dict, Any, Optional, Union, Tuple
 
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..utils.question_generation.question_generator import QuestionGenerator
-from ..utils.question_generation.incorrect_answer_generator import IncorrectAnswerGenerator
-from ..models.incorrect_answers import IncorrectAnswersCreate
+# We no longer need IncorrectAnswerGenerator or related imports here, as it's handled by IncorrectAnswerService
+# from ..utils.question_generation.incorrect_answer_generator import IncorrectAnswerGenerator
+# from ..models.incorrect_answers import IncorrectAnswersCreate
+from ..api.schemas.question import TopicQuestionConfig # Import the new schema
 from ..utils import ensure_uuid
 
 # Configure logger
@@ -19,262 +22,320 @@ logger = logging.getLogger(__name__)
 class QuestionService:
     """
     Service for question management operations.
-    
+
     Handles business logic related to creating, retrieving,
-    and managing trivia questions.
+    and managing trivia questions. Does NOT handle incorrect answer generation.
     """
-    
+
     def __init__(
         self,
         question_repository: QuestionRepository,
         pack_creation_data_repository: Optional[PackCreationDataRepository] = None,
         question_generator: Optional[QuestionGenerator] = None,
-        incorrect_answer_generator: Optional[IncorrectAnswerGenerator] = None,
-        incorrect_answers_repository: Optional[Any] = None  # Using Any to avoid circular imports
+        # Remove incorrect answer dependencies from this service
+        # incorrect_answer_generator: Optional[IncorrectAnswerGenerator] = None,
+        # incorrect_answers_repository: Optional[Any] = None # Using Any to avoid circular imports if needed
     ):
         """
         Initialize the service with required repositories.
-        
-        Args:
-            question_repository: Repository for question operations
-            pack_creation_data_repository: Optional repository for accessing pack metadata
-            question_generator: Optional question generator utility
-            incorrect_answer_generator: Optional incorrect answer generator utility
-            incorrect_answers_repository: Optional repository for incorrect answers operations
         """
         self.question_repository = question_repository
         self.pack_creation_data_repository = pack_creation_data_repository
         self.question_generator = question_generator or QuestionGenerator()
-        self.incorrect_answer_generator = incorrect_answer_generator or IncorrectAnswerGenerator()
-        self.incorrect_answers_repository = incorrect_answers_repository
+        # self.incorrect_answer_generator = incorrect_answer_generator or IncorrectAnswerGenerator() # Removed
+        # self.incorrect_answers_repository = incorrect_answers_repository # Removed
         self.debug_enabled = False
-    
+
+    async def _create_question(self, question_data: Dict[str, Any]) -> Optional[Question]:
+        """
+        Helper method to create a single question in the database.
+        Validates data and uses the repository.
+        """
+        try:
+            if self.debug_enabled:
+                print(f"\n  === Creating Question (Internal) ===")
+                print(f"  Raw Data: {question_data}")
+
+            # Ensure pack_id is a valid UUID string
+            pack_id_uuid = ensure_uuid(question_data.get("pack_id"))
+            if not pack_id_uuid:
+                 logger.error("Missing or invalid pack_id in question data")
+                 return None
+
+            # Map difficulty string/enum to enum for the model
+            difficulty_initial_val = question_data.get("difficulty_initial")
+            difficulty_current_val = question_data.get("difficulty_current")
+
+            try:
+                difficulty_initial_enum = DifficultyLevel(difficulty_initial_val.lower()) if difficulty_initial_val else None
+                difficulty_current_enum = DifficultyLevel(difficulty_current_val.lower()) if difficulty_current_val else None
+            except ValueError:
+                logger.warning(f"Invalid difficulty value found: initial='{difficulty_initial_val}', current='{difficulty_current_val}'. Defaulting.")
+                difficulty_initial_enum = DifficultyLevel.MIXED # Or handle as error
+                difficulty_current_enum = DifficultyLevel.MIXED
+
+            # Create Pydantic model for validation and structure
+            question_create = QuestionCreate(
+                question=question_data["question"],
+                answer=question_data["answer"],
+                pack_id=pack_id_uuid,
+                pack_topics_item=question_data.get("pack_topics_item"),
+                difficulty_initial=difficulty_initial_enum,
+                difficulty_current=difficulty_current_enum or difficulty_initial_enum, # Default current to initial if missing
+                correct_answer_rate=question_data.get("correct_answer_rate", 0.0)
+            )
+
+            if self.debug_enabled:
+                print(f"  Prepared Schema: {question_create.model_dump(mode='json')}") # Use mode='json' for enum values
+
+            created_question = await self.question_repository.create(obj_in=question_create)
+
+            if self.debug_enabled:
+                 print(f"  Database Result ID: {created_question.id if created_question else 'None'}")
+
+            return created_question
+
+        except Exception as e:
+            logger.error(f"Error creating question internally: {str(e)}", exc_info=True)
+            if self.debug_enabled:
+                print(f"  Error creating question: {str(e)}")
+                print(traceback.format_exc())
+            return None
+
+
+    async def _generate_questions_for_single_topic(
+        self,
+        pack_id: str,
+        creation_name: str,
+        topic_config: TopicQuestionConfig,
+        difficulty_descriptions: Dict,
+        seed_questions: Dict,
+        debug_mode: bool
+    ) -> List[Question]:
+        """
+        Internal helper to generate and store questions for ONE topic.
+        Returns the list of successfully created Question objects.
+        """
+        pack_id_uuid = ensure_uuid(pack_id) # Ensure ID is UUID string
+        if debug_mode:
+            print(f"\n  Starting generation for topic: {topic_config.topic} (Difficulty: {topic_config.difficulty.value})")
+
+        try:
+            # --- Call the QuestionGenerator ---
+            # The generator should return a list of dictionaries representing questions
+            question_data_list: List[Dict] = await self.question_generator.generate_questions(
+                pack_id=pack_id_uuid, # Pass UUID string
+                creation_name=creation_name,
+                pack_topic=topic_config.topic,
+                difficulty=topic_config.difficulty, # Pass Enum directly
+                difficulty_descriptions=difficulty_descriptions,
+                seed_questions=seed_questions, # Pass relevant seeds
+                num_questions=topic_config.num_questions,
+                debug_mode=debug_mode,
+                custom_instructions=topic_config.custom_instructions # Use topic-specific instructions
+            )
+
+            if debug_mode:
+                print(f"  LLM generated {len(question_data_list)} raw question data items for topic '{topic_config.topic}'.")
+                if question_data_list: print_json(question_data_list[0]) # Print first item example
+
+            # --- Store the questions ---
+            created_questions: List[Question] = []
+            for q_data in question_data_list:
+                # Add pack_id if missing (generator should ideally include it)
+                if "pack_id" not in q_data:
+                    q_data["pack_id"] = pack_id_uuid
+                # Add topic if missing
+                if "pack_topics_item" not in q_data:
+                     q_data["pack_topics_item"] = topic_config.topic
+                # Ensure difficulty is set
+                if "difficulty_initial" not in q_data:
+                     q_data["difficulty_initial"] = topic_config.difficulty
+                if "difficulty_current" not in q_data:
+                     q_data["difficulty_current"] = topic_config.difficulty
+
+                # Call internal helper to create
+                question_obj = await self._create_question(q_data)
+                if question_obj:
+                    created_questions.append(question_obj)
+
+            if debug_mode:
+                 print(f"  Successfully created {len(created_questions)} Question objects in DB for topic '{topic_config.topic}'.")
+
+            return created_questions
+
+        except Exception as e:
+            logger.error(f"Error generating questions for topic '{topic_config.topic}': {str(e)}", exc_info=True)
+            if debug_mode:
+                print(f"  ERROR generating questions for topic '{topic_config.topic}': {str(e)}")
+                print(traceback.format_exc())
+            # Return empty list on failure for this specific topic
+            return []
+
     async def generate_and_store_questions(
         self,
         pack_id: str,
         creation_name: str,
         pack_topic: str,
-        difficulty: Union[str, DifficultyLevel],
+        difficulty: DifficultyLevel,
         num_questions: int = 5,
         debug_mode: bool = False,
         custom_instructions: Optional[str] = None
     ) -> List[Question]:
         """
-        Generate questions using LLM and store them in the database.
-        
-        Args:
-            pack_id: ID of the pack
-            creation_name: Name of the trivia pack
-            pack_topic: Specific topic to generate questions for
-            difficulty: Difficulty level for questions
-            num_questions: Number of questions to generate
-            debug_mode: Enable verbose debug output
-            custom_instructions: Optional custom instructions for question generation
-            
-        Returns:
-            List of created Question objects
+        Generate questions for a SINGLE topic and store them.
+        This method is called by the single-topic API endpoint.
+        It now returns the list of created Question objects.
+        Incorrect answer generation is handled separately by the API layer.
         """
         self.debug_enabled = debug_mode
-        
+        pack_id_uuid = ensure_uuid(pack_id)
+
         if self.debug_enabled:
-            print(f"\n=== Starting Question Generation and Storage ===")
-            print(f"Pack ID: {pack_id}")
+            print(f"\n=== Starting Single Topic Question Generation (Service) ===")
+            print(f"Pack ID: {pack_id_uuid}")
             print(f"Topic: {pack_topic}")
-            print(f"Difficulty: {difficulty}")
-            print(f"Number of questions: {num_questions}")
-            if custom_instructions:
-                print(f"Custom instructions: {custom_instructions}")
-        
-        # Ensure pack_id is a valid UUID string
-        pack_id = ensure_uuid(pack_id)
-        
-        # Retrieve difficulty descriptions if pack_creation_data_repository is provided
+            print(f"Difficulty: {difficulty.value}")
+            print(f"Number: {num_questions}")
+
+        # Retrieve shared data (descriptions, seeds)
         difficulty_descriptions = {}
         seed_questions = {}
-        
         if self.pack_creation_data_repository:
             try:
-                # Fetch pack creation data
-                creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id)
+                creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id_uuid)
                 if creation_data:
-                    # Get difficulty descriptions
-                    difficulty_descriptions = creation_data.custom_difficulty_description
-                    # Get seed questions if available
-                    seed_questions = creation_data.seed_questions
-                    
-                    if self.debug_enabled:
-                        print("\n=== Pack Creation Data Retrieved ===")
-                        print(f"Found difficulty descriptions: {bool(difficulty_descriptions)}")
-                        print(f"Found seed questions: {len(seed_questions) if seed_questions else 0}")
+                    difficulty_descriptions = creation_data.custom_difficulty_description or {}
+                    seed_questions = creation_data.seed_questions or {}
             except Exception as e:
-                logger.error(f"Error retrieving pack creation data: {str(e)}")
-                if self.debug_enabled:
-                    print(f"Error retrieving pack creation data: {str(e)}")
-                    print(traceback.format_exc())
-        
-        try:
-            # Generate questions using the utility with debug mode
-            question_data_list = await self.question_generator.generate_questions(
-                pack_id=pack_id,
-                creation_name=creation_name,
-                pack_topic=pack_topic,
-                difficulty=difficulty,
-                difficulty_descriptions=difficulty_descriptions,
-                seed_questions=seed_questions,
-                num_questions=num_questions,
-                debug_mode=debug_mode,
-                custom_instructions=custom_instructions
-            )
-            
-            if self.debug_enabled:
-                print(f"\n=== Generated Question Data ===")
-                print(f"Number of questions generated: {len(question_data_list)}")
-                # Safe JSON serialization for data display
-                safe_data = []
-                for q in question_data_list:
-                    safe_q = q.copy()
-                    safe_data.append(safe_q)
-                
-                if safe_data:
-                    try:
-                        print(f"First question data: {json.dumps(safe_data[0], indent=2)}")
-                    except Exception as e:
-                        print(f"Error displaying question data: {str(e)}")
-                        print(f"Raw first question data: {safe_data[0] if safe_data else None}")
-            
-            # Store the questions
-            created_questions = []
-            for question_data in question_data_list:
-                # Create the question
-                question_obj = await self._create_question(question_data)
-                if question_obj:
-                    created_questions.append(question_obj)
-            
-            if self.debug_enabled:
-                print(f"\n=== Question Storage Results ===")
-                print(f"Questions successfully created: {len(created_questions)}/{len(question_data_list)}")
-            
-            # Generate incorrect answers for the created questions
-            if created_questions:
-                try:
-                    incorrect_answers_results = await self.generate_incorrect_answers_for_questions(
-                        questions=created_questions,
-                        debug_mode=debug_mode
-                    )
-                    
-                    # Get incorrect_answers_repository
-                    incorrect_answers_repo = await self._get_incorrect_answers_repository()
-                    
-                    if incorrect_answers_repo:
-                        # Store the incorrect answers
-                        for question_id, incorrect_answers in incorrect_answers_results.items():
-                            # Create incorrect answers record
-                            if incorrect_answers:
-                                incorrect_answers_data = IncorrectAnswersCreate(
-                                    question_id=question_id,
-                                    incorrect_answers=incorrect_answers
-                                )
-                                
-                                await incorrect_answers_repo.create(obj_in=incorrect_answers_data)
-                                
-                                if self.debug_enabled:
-                                    print(f"Stored {len(incorrect_answers)} incorrect answers for question {question_id}")
-                except Exception as e:
-                    logger.error(f"Error generating or storing incorrect answers: {str(e)}")
-                    if self.debug_enabled:
-                        print(f"Error generating or storing incorrect answers: {str(e)}")
-            
-            return created_questions
-            
-        except Exception as e:
-            logger.error(f"Error in question generation and storage: {str(e)}")
-            if self.debug_enabled:
-                print(f"\n=== Error in Question Generation and Storage ===")
-                print(f"Error: {str(e)}")
-                print(traceback.format_exc())
-            return []
-    
-    async def _create_question(self, question_data: Dict[str, Any]) -> Optional[Question]:
+                logger.error(f"Error retrieving pack creation data for single topic generation: {e}")
+
+        # Use the helper method for the core logic
+        topic_config = TopicQuestionConfig(
+            topic=pack_topic,
+            num_questions=num_questions,
+            difficulty=difficulty,
+            custom_instructions=custom_instructions
+        )
+
+        created_questions = await self._generate_questions_for_single_topic(
+            pack_id=pack_id_uuid,
+            creation_name=creation_name,
+            topic_config=topic_config,
+            difficulty_descriptions=difficulty_descriptions,
+            seed_questions=seed_questions.get(pack_topic, {}), # Get seeds for this specific topic
+            debug_mode=debug_mode
+        )
+
+        # Return the list of created Question objects.
+        # The API layer will handle triggering incorrect answer generation.
+        return created_questions
+
+
+    async def batch_generate_and_store_questions(
+        self,
+        pack_id: str,
+        creation_name: str,
+        topic_configs: List[TopicQuestionConfig],
+        debug_mode: bool = False
+    ) -> Dict[str, Any]:
         """
-        Create a question in the database.
-        
-        Args:
-            question_data: Dictionary containing question data
-            
-        Returns:
-            Created Question object or None if creation failed
+        Generate questions for multiple topics concurrently and store them.
+        Returns a summary dictionary including the list of created Question objects.
+        Incorrect answer generation is handled separately by the API layer.
         """
-        try:
-            # Debug: Print the question data before modification
-            if self.debug_enabled:
-                print(f"\n=== Creating Question ===")
-                print(f"Question data: {question_data}")
-            
-            # Prepare question create schema
-            question_create = QuestionCreate(
-                question=question_data["question"],
-                answer=question_data["answer"],
-                pack_id=question_data["pack_id"],  # Already a string
-                pack_topics_item=question_data.get("pack_topics_item"),
-                difficulty_initial=question_data.get("difficulty_initial"),
-                difficulty_current=question_data.get("difficulty_current"),
-                correct_answer_rate=question_data.get("correct_answer_rate", 0.0)
+        self.debug_enabled = debug_mode
+        pack_id_uuid = ensure_uuid(pack_id)
+        logger.info(f"Starting batch question generation for pack {pack_id_uuid} across {len(topic_configs)} topics.")
+
+        # 1. Fetch shared data (difficulty descriptions, seeds) ONCE
+        difficulty_descriptions = {}
+        all_seed_questions = {} # Store all seeds, keyed by topic if needed later
+        if self.pack_creation_data_repository:
+            try:
+                creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id_uuid)
+                if creation_data:
+                    difficulty_descriptions = creation_data.custom_difficulty_description or {}
+                    all_seed_questions = creation_data.seed_questions or {}
+            except Exception as e:
+                logger.error(f"Error retrieving pack creation data for batch generation: {e}")
+
+        # 2. Create concurrent tasks for each topic
+        tasks = []
+        for config in topic_configs:
+            # Get seeds relevant to the current topic (simple heuristic)
+            topic_seeds = {q: a for q, a in all_seed_questions.items() if config.topic.lower() in q.lower()}
+            if not topic_seeds: topic_seeds = all_seed_questions # Fallback
+
+            task = asyncio.create_task(
+                self._generate_questions_for_single_topic(
+                    pack_id=pack_id_uuid,
+                    creation_name=creation_name,
+                    topic_config=config,
+                    difficulty_descriptions=difficulty_descriptions,
+                    seed_questions=topic_seeds,
+                    debug_mode=debug_mode
+                ),
+                name=f"Generate_{config.topic}" # Name task for easier debugging
             )
-            
-            if self.debug_enabled:
-                print(f"Creating question in database with data:")
-                print(f"Question: {question_create.question[:50]}...")
-                print(f"Answer: {question_create.answer[:50]}...")
-                print(f"Pack ID: {question_create.pack_id}")
-                print(f"Topic: {question_create.pack_topics_item}")
-                print(f"Difficulty: {question_create.difficulty_current}")
-            
-            # Create the question in the database
-            return await self.question_repository.create(obj_in=question_create)
-            
-        except Exception as e:
-            logger.error(f"Error creating question: {str(e)}")
-            if self.debug_enabled:
-                print(f"Error creating question: {str(e)}")
-                print(traceback.format_exc())
-            return None
-    
+            tasks.append(task)
+
+        # 3. Run tasks concurrently and gather results
+        results_list = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # 4. Process results
+        all_generated_questions: List[Question] = []
+        successful_topics: List[str] = []
+        failed_topics: List[str] = []
+        total_generated_count = 0
+
+        for i, result in enumerate(results_list):
+            topic_name = topic_configs[i].topic
+            if isinstance(result, Exception):
+                failed_topics.append(topic_name)
+                logger.error(f"Topic '{topic_name}' generation failed: {result}", exc_info=result)
+                if debug_mode: print(f"  Topic '{topic_name}' FAILED: {result}")
+            elif isinstance(result, list): # Expecting list of Question objects
+                successful_topics.append(topic_name)
+                all_generated_questions.extend(result)
+                total_generated_count += len(result)
+                if debug_mode: print(f"  Topic '{topic_name}' SUCCEEDED, added {len(result)} questions.")
+            else:
+                # This case indicates an issue with _generate_questions_for_single_topic return type
+                failed_topics.append(topic_name)
+                logger.error(f"Topic '{topic_name}' generation returned unexpected type: {type(result)}")
+                if debug_mode: print(f"  Topic '{topic_name}' FAILED (unexpected return type: {type(result)})")
+
+
+        logger.info(f"Batch generation finished for pack {pack_id_uuid}. Success: {len(successful_topics)}, Failed: {len(failed_topics)}, Total Questions: {total_generated_count}")
+
+        # Return results including the list of generated Question objects
+        # The API layer will use "generated_questions" to trigger incorrect answer generation.
+        return {
+            "success_topics": successful_topics,
+            "failed_topics": failed_topics,
+            "total_generated": total_generated_count,
+            "generated_questions": all_generated_questions
+        }
+
+    # --- Other methods ---
     async def get_questions_by_pack_id(self, pack_id: str) -> List[Question]:
         """
         Retrieve all questions for a specific pack.
-        
-        Args:
-            pack_id: ID of the pack
-            
-        Returns:
-            List of Question objects
         """
-        # Ensure pack_id is a valid UUID string
-        pack_id = ensure_uuid(pack_id)
-        
-        # Use the repository to get questions
-        return await self.question_repository.get_by_pack_id(pack_id)
-    
+        pack_id_uuid = ensure_uuid(pack_id)
+        return await self.question_repository.get_by_pack_id(pack_id_uuid)
+
     async def get_questions_by_topic(self, pack_id: str, topic: str) -> List[Question]:
         """
         Retrieve questions for a specific pack filtered by topic.
-        
-        Args:
-            pack_id: ID of the pack
-            topic: Topic to filter by
-            
-        Returns:
-            List of Question objects
         """
-        # Ensure pack_id is a valid UUID string
-        pack_id = ensure_uuid(pack_id)
-        
-        # Get all questions for the pack
-        all_questions = await self.question_repository.get_by_pack_id(pack_id)
-        
-        # Filter by topic
-        return [q for q in all_questions if q.pack_topics_item == topic]
-    
+        pack_id_uuid = ensure_uuid(pack_id)
+        all_questions = await self.question_repository.get_by_pack_id(pack_id_uuid)
+        # Case-insensitive topic matching might be useful
+        topic_lower = topic.lower()
+        return [q for q in all_questions if q.pack_topics_item and q.pack_topics_item.lower() == topic_lower]
+
     async def update_question_statistics(
         self,
         question_id: str,
@@ -282,144 +343,45 @@ class QuestionService:
     ) -> Optional[Question]:
         """
         Update question statistics based on user answer.
-        
-        Args:
-            question_id: ID of the question
-            correct: Whether the user answered correctly
-            
-        Returns:
-            Updated Question object or None if update failed
+        (This logic seems fine and doesn't need changes for batch generation)
         """
-        # Ensure question_id is a valid UUID string
-        question_id = ensure_uuid(question_id)
-        
-        # Get the question
-        question = await self.question_repository.get_by_id(question_id)
+        question_id_uuid = ensure_uuid(question_id)
+        question = await self.question_repository.get_by_id(question_id_uuid)
         if not question:
             return None
-        
-        # Recalculate correct answer rate
-        # This is a simple weighted average approach
-        weight = 0.1  # Weight for the new data point
+
+        weight = 0.1
         new_rate = question.correct_answer_rate * (1 - weight) + (1.0 if correct else 0.0) * weight
-        
-        # Update difficulty based on correct answer rate if needed
+
         new_difficulty = self._adjust_difficulty_based_on_rate(
             question.difficulty_current,
             new_rate,
             question.difficulty_initial
         )
-        
-        # Update the question
-        return await self.question_repository.update_statistics(
-            question_id=question_id,
-            correct_rate=new_rate,
-            new_difficulty=new_difficulty
-        )
-    
+
+        update_data = QuestionUpdate(correct_answer_rate=new_rate)
+        if new_difficulty != question.difficulty_current:
+             update_data.difficulty_current = new_difficulty
+
+        return await self.question_repository.update(id=question_id_uuid, obj_in=update_data)
+
     def _adjust_difficulty_based_on_rate(
         self,
         current_difficulty: Optional[DifficultyLevel],
         correct_rate: float,
         initial_difficulty: Optional[DifficultyLevel]
     ) -> Optional[DifficultyLevel]:
-        """
-        Adjust difficulty based on correct answer rate.
-        
-        Args:
-            current_difficulty: Current difficulty level
-            correct_rate: Current correct answer rate
-            initial_difficulty: Initial difficulty level
-            
-        Returns:
-            New difficulty level or None if no change
-        """
-        # If no current difficulty, maintain that
-        if not current_difficulty:
-            return None
-        
-        # Simple rules for difficulty adjustment
-        if current_difficulty == DifficultyLevel.EASY:
-            if correct_rate > 0.90:
-                return DifficultyLevel.MEDIUM
-        elif current_difficulty == DifficultyLevel.MEDIUM:
-            if correct_rate > 0.85:
-                return DifficultyLevel.HARD
-            elif correct_rate < 0.40:
-                return DifficultyLevel.EASY
-        elif current_difficulty == DifficultyLevel.HARD:
-            if correct_rate > 0.80:
-                return DifficultyLevel.EXPERT
-            elif correct_rate < 0.35:
-                return DifficultyLevel.MEDIUM
-        elif current_difficulty == DifficultyLevel.EXPERT:
-            if correct_rate < 0.30:
-                return DifficultyLevel.HARD
-        
-        # No change
-        return current_difficulty
-    
-    async def generate_incorrect_answers_for_questions(
-        self,
-        questions: List[Question],
-        num_incorrect_answers: int = 3,
-        debug_mode: bool = False
-    ) -> Dict[str, List[str]]:
-        """
-        Generate incorrect answers for questions.
-        
-        Args:
-            questions: List of Question objects
-            num_incorrect_answers: Number of incorrect answers to generate per question
-            debug_mode: Enable verbose debug output
-            
-        Returns:
-            Dictionary mapping question IDs to lists of incorrect answers
-        """
-        self.debug_enabled = debug_mode
-        
-        if not questions:
-            return {}
-        
-        if self.debug_enabled:
-            print(f"\n=== Generating Incorrect Answers for {len(questions)} Questions ===")
-        
-        # Use the incorrect answer generator to create plausible but incorrect answers
-        generation_results = await self.incorrect_answer_generator.generate_incorrect_answers(
-            questions=questions,
-            num_incorrect_answers=num_incorrect_answers,
-            debug_mode=debug_mode
-        )
-        
-        # Convert results to dictionary
-        results = {}
-        for question_id, incorrect_answers in generation_results:
-            results[question_id] = incorrect_answers
-        
-        return results
-    
-    async def _get_incorrect_answers_repository(self):
-        """
-        Get the incorrect answers repository instance.
-        
-        Returns:
-            IncorrectAnswersRepository instance or None if not available
-        """
-        # If we already have an incorrect_answers_repository attribute, use that
-        if hasattr(self, 'incorrect_answers_repository') and self.incorrect_answers_repository:
-            return self.incorrect_answers_repository
-        
-        try:
-            # Import here to avoid circular imports
-            from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
-            from ..config.supabase_client import init_supabase_client
-            
-            # Get a Supabase client
-            supabase = await init_supabase_client()
-            
-            # Create the repository
-            self.incorrect_answers_repository = IncorrectAnswersRepository(supabase)
-            return self.incorrect_answers_repository
-        except Exception as e:
-            logger.error(f"Error creating incorrect answers repository: {str(e)}")
-            return None
+        """Adjust difficulty based on correct answer rate."""
+        if not current_difficulty: return None # Keep None if it was None
+
+        # Simple rules (can be refined)
+        if current_difficulty == DifficultyLevel.EASY and correct_rate > 0.90: return DifficultyLevel.MEDIUM
+        if current_difficulty == DifficultyLevel.MEDIUM:
+            if correct_rate > 0.85: return DifficultyLevel.HARD
+            if correct_rate < 0.40: return DifficultyLevel.EASY
+        if current_difficulty == DifficultyLevel.HARD:
+            if correct_rate > 0.80: return DifficultyLevel.EXPERT
+            if correct_rate < 0.35: return DifficultyLevel.MEDIUM
+        if current_difficulty == DifficultyLevel.EXPERT and correct_rate < 0.30: return DifficultyLevel.HARD
+
+        return current_difficulty # No change

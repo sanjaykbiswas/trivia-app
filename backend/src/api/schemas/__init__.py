@@ -6,42 +6,46 @@ This package contains Pydantic models that define the structure
 of request bodies and response payloads for the API.
 """
 
+# Import schemas from individual files
 from .pack import PackCreateRequest, PackResponse, PackListResponse
 from .topic import TopicGenerateRequest, TopicAddRequest, TopicResponse
 from .difficulty import DifficultyDescription, DifficultyGenerateRequest, DifficultyUpdateRequest, DifficultyResponse
 from .question import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
-    CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse
+    CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse,
+    # --- ADDED IMPORTS for batch generation ---
+    TopicQuestionConfig, BatchQuestionGenerateRequest, BatchQuestionGenerateResponse
 )
 from .game import (
     GameSessionCreateRequest, GameSessionJoinRequest, GameSessionSubmitAnswerRequest,
     ParticipantResponse, GameSessionResponse, GameSessionListResponse,
-    GameQuestionResponse, QuestionResultResponse, GameResultsResponse
+    GameQuestionResponse, QuestionResultResponse, GameResultsResponse, GameStartResponse
 )
-
 from .user import (
     UserCreateRequest, UserResponse, UserUpdateRequest,
     UserLoginRequest, UserAuthRequest, UserConvertRequest
 )
 
+# Define what gets imported when using 'from .schemas import *'
+# Also makes these schemas available directly under 'schemas' namespace
 __all__ = [
     # Pack schemas
     "PackCreateRequest",
     "PackResponse",
     "PackListResponse",
-    
+
     # Topic schemas
     "TopicGenerateRequest",
     "TopicAddRequest",
     "TopicResponse",
-    
+
     # Difficulty schemas
     "DifficultyDescription",
     "DifficultyGenerateRequest",
     "DifficultyUpdateRequest",
     "DifficultyResponse",
-    
+
     # Question schemas
     "QuestionGenerateRequest",
     "SeedQuestionRequest",
@@ -50,19 +54,24 @@ __all__ = [
     "QuestionsResponse",
     "SeedQuestionsResponse",
     "CustomInstructionsGenerateRequest",
-    "CustomInstructionsInputRequest", 
+    "CustomInstructionsInputRequest",
     "CustomInstructionsResponse",
+    # --- ADDED SCHEMAS for batch generation ---
+    "TopicQuestionConfig",
+    "BatchQuestionGenerateRequest",
+    "BatchQuestionGenerateResponse",
 
     # Game schemas
     "GameSessionCreateRequest",
     "GameSessionJoinRequest",
     "GameSessionSubmitAnswerRequest",
     "ParticipantResponse",
-    "GameSessionResponse", 
+    "GameSessionResponse",
     "GameSessionListResponse",
     "GameQuestionResponse",
     "QuestionResultResponse",
     "GameResultsResponse",
+    "GameStartResponse", # Added missing game start schema
 
     # User schemas
     "UserCreateRequest",
