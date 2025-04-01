@@ -1,14 +1,17 @@
-# backend/tests/test_game_api.py
+# test_game_api.py
 import unittest
 import uuid
+import sys
+import os
 from fastapi.testclient import TestClient
 import pytest
-import asyncio
-from typing import Dict, Any, List
+
+# Add the current directory to the path so we can import src modules
+sys.path.insert(0, os.path.abspath("."))
 
 # Import the FastAPI app
-from backend.src.main import app
-from backend.src.models.game_session import GameStatus
+from src.main import app
+from src.models.game_session import GameStatus
 
 # Create test client
 client = TestClient(app)
@@ -40,6 +43,7 @@ class TestGameAPI(unittest.TestCase):
         packs = response.json()
         if packs["total"] > 0:
             self.pack_id = packs["packs"][0]["id"]
+            print(f"Using existing pack with ID: {self.pack_id}")
         else:
             # Create a pack if none exist
             pack_data = {
@@ -51,6 +55,7 @@ class TestGameAPI(unittest.TestCase):
             response = client.post("/api/packs/", json=pack_data)
             self.assertEqual(response.status_code, 201)
             self.pack_id = response.json()["id"]
+            print(f"Created new pack with ID: {self.pack_id}")
             
             # Generate some questions for the pack
             topic_data = {
@@ -90,7 +95,7 @@ class TestGameAPI(unittest.TestCase):
         self.game_code = game_session["code"]
         
         # Verify game properties
-        self.assertEqual(game_session["status"], GameStatus.PENDING.value)
+        self.assertEqual(game_session["status"], "pending")  # Using string instead of enum value
         self.assertEqual(game_session["pack_id"], self.pack_id)
         self.assertEqual(game_session["max_participants"], 5)
         self.assertEqual(game_session["question_count"], 5)
@@ -102,7 +107,7 @@ class TestGameAPI(unittest.TestCase):
     def test_02_join_game(self):
         """Test joining an existing game session"""
         # Create game if not already created
-        if not self.game_code:
+        if not getattr(self, 'game_code', None):
             self.test_01_create_game()
         
         # Join the game
@@ -121,7 +126,7 @@ class TestGameAPI(unittest.TestCase):
         
         # Verify game properties
         self.assertEqual(game_session["code"], self.game_code)
-        self.assertEqual(game_session["status"], GameStatus.PENDING.value)
+        self.assertEqual(game_session["status"], "pending")  # Using string instead of enum value
         self.assertEqual(game_session["is_host"], False)
         
         # Get participants to find our participant ID
@@ -140,7 +145,7 @@ class TestGameAPI(unittest.TestCase):
     def test_03_start_game(self):
         """Test starting a game session"""
         # Create and join game if needed
-        if not self.game_code:
+        if not getattr(self, 'game_code', None):
             self.test_01_create_game()
             self.test_02_join_game()
         
@@ -153,7 +158,7 @@ class TestGameAPI(unittest.TestCase):
         game_data = response.json()
         
         # Verify game status
-        self.assertEqual(game_data["status"], GameStatus.ACTIVE.value)
+        self.assertEqual(game_data["status"], "active")  # Using string instead of enum value
         
         # Verify first question
         self.assertIn("current_question", game_data)
@@ -166,7 +171,7 @@ class TestGameAPI(unittest.TestCase):
     def test_04_submit_answer(self):
         """Test submitting an answer to a question"""
         # Ensure game is started
-        if not self.participant_id:
+        if not getattr(self, 'participant_id', None):
             self.test_01_create_game()
             self.test_02_join_game()
             self.test_03_start_game()
@@ -174,6 +179,10 @@ class TestGameAPI(unittest.TestCase):
         # Submit an answer (first option)
         # Get current question first
         response = client.post(f"/api/games/{self.game_id}/start?user_id={self.host_user_id}")
+        if response.status_code != 200:
+            print(f"Error getting current question: {response.text}")
+            self.fail("Could not get current question")
+            
         question = response.json()["current_question"]
         
         answer_data = {
@@ -200,7 +209,7 @@ class TestGameAPI(unittest.TestCase):
     def test_05_next_question(self):
         """Test advancing to the next question"""
         # Ensure game is started and answer submitted
-        if not self.participant_id:
+        if not getattr(self, 'participant_id', None):
             self.test_01_create_game()
             self.test_02_join_game()
             self.test_03_start_game()
@@ -226,10 +235,14 @@ class TestGameAPI(unittest.TestCase):
     def test_06_get_game_results(self):
         """Test getting game results"""
         # Play through all questions first
-        if not self.game_id:
+        if not getattr(self, 'game_id', None):
             self.test_01_create_game()
             self.test_02_join_game()
             self.test_03_start_game()
+        
+        # Ensure we have a participant ID
+        if not getattr(self, 'participant_id', None):
+            self.test_02_join_game()
         
         # Force game completion by advancing through all questions
         for _ in range(5):  # We created a game with 5 questions
@@ -284,14 +297,14 @@ class TestGameAPI(unittest.TestCase):
         result = response.json()
         
         # Verify cancellation
-        self.assertEqual(result["status"], GameStatus.CANCELLED.value)
+        self.assertEqual(result["status"], "cancelled")  # Using string instead of enum value
         
         print("Game cancelled successfully")
     
     def test_08_list_games(self):
         """Test listing user's games"""
         # Create game if not already created
-        if not self.host_user_id:
+        if not getattr(self, 'host_user_id', None):
             self.test_01_create_game()
         
         # List games
