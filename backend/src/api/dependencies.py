@@ -11,6 +11,7 @@ from ..services.topic_service import TopicService
 from ..services.difficulty_service import DifficultyService
 from ..services.question_service import QuestionService
 from ..services.seed_question_service import SeedQuestionService
+from ..services.incorrect_answer_service import IncorrectAnswerService
 
 async def get_supabase_client(request: Request) -> AsyncClient:
     """
@@ -83,3 +84,13 @@ async def get_seed_question_service(
 ) -> SeedQuestionService:
     """Get SeedQuestionService instance."""
     return SeedQuestionService(pack_creation_data_repository=pack_creation_data_repository)
+
+async def get_incorrect_answer_service(
+    question_repository: QuestionRepository = Depends(get_question_repository),
+    incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
+) -> IncorrectAnswerService:
+    """Get IncorrectAnswerService instance."""
+    return IncorrectAnswerService(
+        question_repository=question_repository,
+        incorrect_answers_repository=incorrect_answers_repository
+    )

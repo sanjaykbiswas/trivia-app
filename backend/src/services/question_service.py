@@ -3,12 +3,14 @@ import uuid
 import logging
 import json
 import traceback
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..utils.question_generation.question_generator import QuestionGenerator
+from ..utils.question_generation.incorrect_answer_generator import IncorrectAnswerGenerator
+from ..models.incorrect_answers import IncorrectAnswersCreate
 from ..utils import ensure_uuid
 
 # Configure logger
@@ -26,7 +28,8 @@ class QuestionService:
         self,
         question_repository: QuestionRepository,
         pack_creation_data_repository: Optional[PackCreationDataRepository] = None,
-        question_generator: Optional[QuestionGenerator] = None
+        question_generator: Optional[QuestionGenerator] = None,
+        incorrect_answer_generator: Optional[IncorrectAnswerGenerator] = None
     ):
         """
         Initialize the service with required repositories.
@@ -35,10 +38,12 @@ class QuestionService:
             question_repository: Repository for question operations
             pack_creation_data_repository: Optional repository for accessing pack metadata
             question_generator: Optional question generator utility
+            incorrect_answer_generator: Optional incorrect answer generator utility
         """
         self.question_repository = question_repository
         self.pack_creation_data_repository = pack_creation_data_repository
         self.question_generator = question_generator or QuestionGenerator()
+        self.incorrect_answer_generator = incorrect_answer_generator or IncorrectAnswerGenerator()
         self.debug_enabled = False
     
     async def generate_and_store_questions(
@@ -145,6 +150,36 @@ class QuestionService:
             if self.debug_enabled:
                 print(f"\n=== Question Storage Results ===")
                 print(f"Questions successfully created: {len(created_questions)}/{len(question_data_list)}")
+            
+            # Generate incorrect answers for the created questions
+            if created_questions:
+                try:
+                    incorrect_answers_results = await self.generate_incorrect_answers_for_questions(
+                        questions=created_questions,
+                        debug_mode=debug_mode
+                    )
+                    
+                    # Store the incorrect answers
+                    for question, incorrect_answers in incorrect_answers_results:
+                        # Create incorrect answers record
+                        if incorrect_answers:
+                            # Get incorrect_answers_repository
+                            incorrect_answers_repo = await self._get_incorrect_answers_repository()
+                            
+                            if incorrect_answers_repo:
+                                incorrect_answers_data = IncorrectAnswersCreate(
+                                    question_id=question.id,
+                                    incorrect_answers=incorrect_answers
+                                )
+                                
+                                await incorrect_answers_repo.create(obj_in=incorrect_answers_data)
+                                
+                                if self.debug_enabled:
+                                    print(f"Stored {len(incorrect_answers)} incorrect answers for question {question.id}")
+                except Exception as e:
+                    logger.error(f"Error generating or storing incorrect answers: {str(e)}")
+                    if self.debug_enabled:
+                        print(f"Error generating or storing incorrect answers: {str(e)}")
             
             return created_questions
             
@@ -320,3 +355,66 @@ class QuestionService:
         
         # No change
         return current_difficulty
+    
+    async def generate_incorrect_answers_for_questions(
+        self,
+        questions: List[Question],
+        num_incorrect_answers: int = 3,
+        debug_mode: bool = False
+    ) -> List[Tuple[Question, List[str]]]:
+        """
+        Generate incorrect answers for questions.
+        
+        Args:
+            questions: List of Question objects
+            num_incorrect_answers: Number of incorrect answers to generate per question
+            debug_mode: Enable verbose debug output
+            
+        Returns:
+            List of tuples containing (question, incorrect_answers_list)
+        """
+        self.debug_enabled = debug_mode
+        
+        if not questions:
+            return []
+        
+        if self.debug_enabled:
+            print(f"\n=== Generating Incorrect Answers for {len(questions)} Questions ===")
+        
+        # Use the incorrect answer generator to create plausible but incorrect answers
+        generation_results = await self.incorrect_answer_generator.generate_incorrect_answers(
+            questions=questions,
+            num_incorrect_answers=num_incorrect_answers,
+            debug_mode=debug_mode
+        )
+        
+        # Map results to questions
+        results = []
+        question_map = {q.id: q for q in questions}
+        
+        for question_id, incorrect_answers in generation_results:
+            if question_id in question_map:
+                results.append((question_map[question_id], incorrect_answers))
+        
+        return results
+    
+    async def _get_incorrect_answers_repository(self):
+        """
+        Get the incorrect answers repository instance.
+        
+        Returns:
+            IncorrectAnswersRepository instance or None if not available
+        """
+        try:
+            # Import here to avoid circular imports
+            from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
+            from ..config.supabase_client import init_supabase_client
+            
+            # Get a Supabase client
+            supabase = await init_supabase_client()
+            
+            # Create the repository
+            return IncorrectAnswersRepository(supabase)
+        except Exception as e:
+            logger.error(f"Error creating incorrect answers repository: {str(e)}")
+            return None

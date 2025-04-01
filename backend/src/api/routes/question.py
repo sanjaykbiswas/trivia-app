@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Body
 from typing import Optional, List
 import logging
 
-from ..dependencies import get_question_service, get_seed_question_service, get_difficulty_service, get_pack_service
+from ..dependencies import get_question_service, get_seed_question_service, get_difficulty_service, get_pack_service, get_incorrect_answer_service
 from ..schemas import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
@@ -13,6 +13,7 @@ from ...services.question_service import QuestionService
 from ...services.seed_question_service import SeedQuestionService
 from ...services.difficulty_service import DifficultyService
 from ...services.pack_service import PackService
+from ...services.incorrect_answer_service import IncorrectAnswerService
 from ...models.question import DifficultyLevel
 from ...utils import ensure_uuid
 
@@ -571,3 +572,102 @@ async def get_custom_instructions(
             status_code=500,
             detail=f"Error retrieving custom instructions: {str(e)}"
         )
+
+@router.post("/{question_id}/incorrect-answers")
+async def generate_incorrect_answers(
+    question_id: str = Path(..., description="ID of the question"),
+    num_answers: int = Query(3, ge=1, le=10, description="Number of incorrect answers to generate"),
+    debug_mode: bool = Query(False, description="Enable verbose debug output"),
+    incorrect_answer_service: IncorrectAnswerService = Depends(get_incorrect_answer_service),
+    question_service: QuestionService = Depends(get_question_service)
+):
+    """
+    Generate incorrect answers for a specific question.
+    
+    Args:
+        question_id: ID of the question
+        num_answers: Number of incorrect answers to generate
+        debug_mode: Enable verbose debug output
+        incorrect_answer_service: Incorrect answer service dependency
+        question_service: Question service dependency
+        
+    Returns:
+        Generated incorrect answers
+    """
+    # Ensure question_id is a valid UUID string
+    question_id = ensure_uuid(question_id)
+    
+    # Get the question
+    question = await question_service.question_repository.get_by_id(question_id)
+    
+    if not question:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Question with ID {question_id} not found"
+        )
+    
+    # Generate incorrect answers
+    result = await incorrect_answer_service.generate_and_store_incorrect_answers(
+        questions=[question],
+        num_incorrect_answers=num_answers,
+        debug_mode=debug_mode
+    )
+    
+    # Check if we got results
+    if question_id in result:
+        return result[question_id]
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate incorrect answers"
+        )
+
+@router.post("/pack/{pack_id}/incorrect-answers")
+async def generate_pack_incorrect_answers(
+    pack_id: str = Path(..., description="ID of the pack"),
+    num_answers: int = Query(3, ge=1, le=10, description="Number of incorrect answers per question"),
+    batch_size: int = Query(5, ge=1, le=20, description="Batch size for processing"),
+    debug_mode: bool = Query(False, description="Enable verbose debug output"),
+    incorrect_answer_service: IncorrectAnswerService = Depends(get_incorrect_answer_service),
+    pack_service: PackService = Depends(get_pack_service)
+):
+    """
+    Generate incorrect answers for all questions in a pack.
+    
+    Args:
+        pack_id: ID of the pack
+        num_answers: Number of incorrect answers per question
+        batch_size: Batch size for processing
+        debug_mode: Enable verbose debug output
+        incorrect_answer_service: Incorrect answer service dependency
+        pack_service: Pack service dependency
+        
+    Returns:
+        Status of incorrect answer generation
+    """
+    # Ensure pack_id is a valid UUID string
+    pack_id = ensure_uuid(pack_id)
+    
+    # Verify the pack exists
+    pack_repo = pack_service.pack_repository
+    pack = await pack_repo.get_by_id(pack_id)
+    
+    if not pack:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pack with ID {pack_id} not found"
+        )
+    
+    # Generate incorrect answers for all questions in the pack
+    results = await incorrect_answer_service.generate_for_pack(
+        pack_id=pack_id,
+        num_incorrect_answers=num_answers,
+        batch_size=batch_size,
+        debug_mode=debug_mode
+    )
+    
+    return {
+        "pack_id": pack_id,
+        "questions_processed": len(results),
+        "status": "completed"
+    }
