@@ -14,6 +14,11 @@ from .question import (
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
     CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse
 )
+from .game import (
+    GameSessionCreateRequest, GameSessionJoinRequest, GameSessionSubmitAnswerRequest,
+    ParticipantResponse, GameSessionResponse, GameSessionListResponse,
+    GameQuestionResponse, QuestionResultResponse, GameResultsResponse
+)
 
 __all__ = [
     # Pack schemas
@@ -42,4 +47,15 @@ __all__ = [
     "CustomInstructionsGenerateRequest",
     "CustomInstructionsInputRequest", 
     "CustomInstructionsResponse",
+
+    # Game schemas
+    "GameSessionCreateRequest",
+    "GameSessionJoinRequest",
+    "GameSessionSubmitAnswerRequest",
+    "ParticipantResponse",
+    "GameSessionResponse", 
+    "GameSessionListResponse",
+    "GameQuestionResponse",
+    "QuestionResultResponse",
+    "GameResultsResponse",
 ]
