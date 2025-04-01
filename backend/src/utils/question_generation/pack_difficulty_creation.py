@@ -25,7 +25,7 @@ class PackDifficultyCreation:
             "Medium": "Should be of medium difficulty.  Some people may not know about the topic of the question.",
             "Hard": "Should be hard questions that require a deeper understanding of the topic.  Many people may not know the topic, and they should be hard.",
             "Expert": "Questions should be designed for Experts on the topic.  These can be obscure or specialized questions that are genuinely difficult.  There should not be many hints within the question to help get at the answer.",
-            "Mixed": "A mix of difficulties spanning relatively easy all the way to obscure or specialized questions that are genuinely difficult."
+            "Mixed": "A mix of difficulties spanning easy all the way to obscure or specialized questions that are genuinely difficult.  See the above descriptions for easy, medium, hard, and expert."
         }
     
     async def generate_difficulty_descriptions(self, creation_name: str, pack_topics: List[str]) -> Dict[str, str]:
