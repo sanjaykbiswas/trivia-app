@@ -8,6 +8,7 @@ from ..repositories.incorrect_answers_repository import IncorrectAnswersReposito
 from ..repositories.game_session_repository import GameSessionRepository
 from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
+from ..repositories.user_repository import UserRepository
 
 from ..services.pack_service import PackService
 from ..services.topic_service import TopicService
@@ -73,6 +74,12 @@ async def get_game_question_repository(
 ) -> GameQuestionRepository:
     """Get GameQuestionRepository instance."""
     return GameQuestionRepository(supabase)
+
+async def get_user_repository(
+    supabase: AsyncClient = Depends(get_supabase_client)
+) -> UserRepository:
+    """Get UserRepository instance."""
+    return UserRepository(supabase)
 
 # Service dependencies
 async def get_pack_service(
