@@ -1,12 +1,10 @@
 # backend/src/services/incorrect_answer_service.py
-"""
-Service for managing incorrect answers generation and storage.
-"""
 import logging
 from typing import List, Optional, Dict
 
 from ..models.question import Question
-from ..models.incorrect_answers import IncorrectAnswers, IncorrectAnswersCreate
+# Import the Update schema
+from ..models.incorrect_answers import IncorrectAnswers, IncorrectAnswersCreate, IncorrectAnswersUpdate
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
 from ..utils.question_generation.incorrect_answer_generator import IncorrectAnswerGenerator
@@ -19,7 +17,7 @@ class IncorrectAnswerService:
     """
     Service for generating and managing incorrect answers for trivia questions.
     """
-    
+
     def __init__(
         self,
         question_repository: QuestionRepository,
@@ -28,7 +26,7 @@ class IncorrectAnswerService:
     ):
         """
         Initialize with required repositories and utilities.
-        
+
         Args:
             question_repository: Repository for question operations
             incorrect_answers_repository: Repository for incorrect answers operations
@@ -37,7 +35,7 @@ class IncorrectAnswerService:
         self.question_repository = question_repository
         self.incorrect_answers_repository = incorrect_answers_repository
         self.incorrect_answer_generator = incorrect_answer_generator or IncorrectAnswerGenerator()
-    
+
     async def generate_and_store_incorrect_answers(
         self,
         questions: List[Question],
@@ -47,20 +45,20 @@ class IncorrectAnswerService:
     ) -> Dict[str, List[str]]:
         """
         Generate incorrect answers for questions and store them in the database.
-        
+
         Args:
             questions: List of Question objects
             num_incorrect_answers: Number of incorrect answers to generate per question
             batch_size: Size of question batches for processing
             debug_mode: Enable verbose debug logging
-            
+
         Returns:
             Dictionary mapping question IDs to their incorrect answers
         """
         if not questions:
             logger.warning("No questions provided for incorrect answer generation")
             return {}
-        
+
         # Generate incorrect answers
         generation_results = await self.incorrect_answer_generator.generate_incorrect_answers(
             questions=questions,
@@ -68,24 +66,26 @@ class IncorrectAnswerService:
             batch_size=batch_size,
             debug_mode=debug_mode
         )
-        
+
         # Store the generated incorrect answers
         stored_answers = {}
-        
+
         for question_id, incorrect_answers in generation_results:
             # Ensure question_id is a valid UUID string
             question_id = ensure_uuid(question_id)
-            
+
             # Check if we already have incorrect answers for this question
             existing_answers = await self.incorrect_answers_repository.get_by_question_id(question_id)
-            
+
             if existing_answers:
-                # Update existing incorrect answers
+                # --- FIX: Create Update Schema instance ---
+                update_schema = IncorrectAnswersUpdate(incorrect_answers=incorrect_answers)
                 update_result = await self.incorrect_answers_repository.update(
                     id=existing_answers.id,
-                    obj_in={"incorrect_answers": incorrect_answers}
+                    obj_in=update_schema # Pass the schema instance
                 )
-                
+                # --- END FIX ---
+
                 if update_result:
                     stored_answers[question_id] = incorrect_answers
                     logger.info(f"Updated incorrect answers for question {question_id}")
@@ -97,18 +97,18 @@ class IncorrectAnswerService:
                     question_id=question_id,
                     incorrect_answers=incorrect_answers
                 )
-                
+
                 created = await self.incorrect_answers_repository.create(obj_in=create_data)
-                
+
                 if created:
                     stored_answers[question_id] = incorrect_answers
                     logger.info(f"Created incorrect answers for question {question_id}")
                 else:
                     logger.error(f"Failed to create incorrect answers for question {question_id}")
-        
+
         logger.info(f"Stored incorrect answers for {len(stored_answers)}/{len(questions)} questions")
         return stored_answers
-    
+
     async def generate_for_pack(
         self,
         pack_id: str,
@@ -118,50 +118,50 @@ class IncorrectAnswerService:
     ) -> Dict[str, List[str]]:
         """
         Generate incorrect answers for all questions in a pack.
-        
+
         Args:
             pack_id: ID of the pack
             num_incorrect_answers: Number of incorrect answers to generate per question
             batch_size: Size of question batches for processing
             debug_mode: Enable verbose debug logging
-            
+
         Returns:
             Dictionary mapping question IDs to their incorrect answers
         """
         # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
-        
+
         # Get all questions for the pack
         questions = await self.question_repository.get_by_pack_id(pack_id)
-        
+
         if not questions:
             logger.warning(f"No questions found for pack {pack_id}")
             return {}
-        
+
         logger.info(f"Generating incorrect answers for {len(questions)} questions in pack {pack_id}")
-        
+
         return await self.generate_and_store_incorrect_answers(
             questions=questions,
             num_incorrect_answers=num_incorrect_answers,
             batch_size=batch_size,
             debug_mode=debug_mode
         )
-    
+
     async def get_incorrect_answers(
         self,
         question_id: str
     ) -> Optional[List[str]]:
         """
         Get incorrect answers for a specific question.
-        
+
         Args:
             question_id: ID of the question
-            
+
         Returns:
             List of incorrect answers or None if not found
         """
         # Ensure question_id is a valid UUID string
         question_id = ensure_uuid(question_id)
-        
+
         result = await self.incorrect_answers_repository.get_by_question_id(question_id)
         return result.incorrect_answers if result else None

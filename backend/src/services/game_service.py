@@ -3,7 +3,7 @@ import random
 import string
 import logging
 from typing import List, Optional, Tuple, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Import timezone
 
 from ..models.game_session import GameSession, GameSessionCreate, GameSessionUpdate, GameStatus
 from ..models.game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
@@ -22,11 +22,11 @@ logger = logging.getLogger(__name__)
 class GameService:
     """
     Service for game management operations.
-    
+
     Handles business logic related to creating, joining, and playing
     multiplayer trivia games.
     """
-    
+
     def __init__(
         self,
         game_session_repository: GameSessionRepository,
@@ -37,7 +37,7 @@ class GameService:
     ):
         """
         Initialize the service with required repositories.
-        
+
         Args:
             game_session_repository: Repository for game session operations
             game_participant_repository: Repository for game participant operations
@@ -50,9 +50,9 @@ class GameService:
         self.game_question_repo = game_question_repository
         self.question_repo = question_repository
         self.incorrect_answers_repo = incorrect_answers_repository
-    
+
     async def create_game_session(
-        self, 
+        self,
         host_user_id: str,
         pack_id: str,
         max_participants: int = 10,
@@ -61,24 +61,24 @@ class GameService:
     ) -> GameSession:
         """
         Create a new game session.
-        
+
         Args:
             host_user_id: ID of the user creating the game
             pack_id: ID of the question pack to use
             max_participants: Maximum number of participants allowed
             question_count: Number of questions to include
             time_limit_seconds: Time limit per question (0 for no limit)
-            
+
         Returns:
             Created GameSession object
         """
         # Ensure IDs are valid UUID strings
         host_user_id = ensure_uuid(host_user_id)
         pack_id = ensure_uuid(pack_id)
-        
+
         # Generate a unique game code
         game_code = await self._generate_unique_game_code()
-        
+
         # Create the game session
         game_session_data = GameSessionCreate(
             code=game_code,
@@ -89,50 +89,57 @@ class GameService:
             time_limit_seconds=time_limit_seconds,
             status=GameStatus.PENDING
         )
-        
+
         game_session = await self.game_session_repo.create(obj_in=game_session_data)
         logger.info(f"Created game session with ID: {game_session.id}, code: {game_session.code}")
-        
+
         # Add the host as a participant
+        # Attempt to get user info for display name - replace with actual logic if available
+        host_display_name = "Host"
+        try:
+            # Placeholder: Add logic here to fetch actual username if user service is available
+            # user_service = get_user_service() # hypothetical dependency
+            # host_user = await user_service.get_user(host_user_id)
+            # if host_user and host_user.displayname:
+            #    host_display_name = host_user.displayname
+            pass
+        except Exception:
+            logger.warning("Could not fetch host display name, using default 'Host'")
+
+
         host_participant_data = GameParticipantCreate(
             game_session_id=game_session.id,
             user_id=host_user_id,
-            display_name="Host",  # This would typically come from the user profile
+            display_name=host_display_name,
             is_host=True
         )
-        
+
         await self.game_participant_repo.create(obj_in=host_participant_data)
-        
+
         return game_session
-    
+
     async def _generate_unique_game_code(self, length: int = 6) -> str:
         """
         Generate a unique, easy-to-read game code.
-        
+
         Args:
             length: Length of the code to generate
-            
+
         Returns:
             Unique game code string
         """
-        # Characters that are easy to read and distinguish
         characters = string.ascii_uppercase + string.digits
-        # Exclude easily confused characters
         characters = characters.replace('O', '').replace('0', '').replace('I', '').replace('1', '')
-        
+
         max_attempts = 10
         for _ in range(max_attempts):
-            # Generate a random code
             code = ''.join(random.choice(characters) for _ in range(length))
-            
-            # Check if it's already in use
             existing_session = await self.game_session_repo.get_by_code(code)
             if not existing_session:
                 return code
-        
-        # If we couldn't generate a unique code in max_attempts, use a longer code
+
         return await self._generate_unique_game_code(length + 1)
-    
+
     async def join_game(
         self,
         game_code: str,
@@ -141,100 +148,93 @@ class GameService:
     ) -> Tuple[GameSession, GameParticipant]:
         """
         Join an existing game session.
-        
+
         Args:
             game_code: Code for the game to join
             user_id: ID of the user joining
             display_name: Display name to use in the game
-            
+
         Returns:
             Tuple of (GameSession, GameParticipant)
-            
+
         Raises:
             ValueError: If the game cannot be joined
         """
-        # Ensure user_id is a valid UUID string
         user_id = ensure_uuid(user_id)
-        
-        # Get the game session
         game_session = await self.game_session_repo.get_by_code(game_code)
         if not game_session:
             raise ValueError(f"Game with code {game_code} not found")
-        
-        # Check if the game is joinable
+
         if game_session.status != GameStatus.PENDING:
-            raise ValueError(f"Game with code {game_code} is not accepting new players")
-        
-        # Check if there's room for more participants
+            raise ValueError(f"Game with code {game_code} is not accepting new players (status: {game_session.status})")
+
         participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
         if len(participants) >= game_session.max_participants:
             raise ValueError(f"Game with code {game_code} is full")
-        
-        # Check if user is already a participant
+
         for participant in participants:
             if participant.user_id == user_id:
-                # User is already in this game
                 return game_session, participant
-        
-        # Add user as a participant
+
         participant_data = GameParticipantCreate(
             game_session_id=game_session.id,
             user_id=user_id,
             display_name=display_name,
             is_host=False
         )
-        
+
         participant = await self.game_participant_repo.create(obj_in=participant_data)
-        logger.info(f"User {user_id} joined game {game_code} as participant {participant.id}")
-        
+        logger.info(f"User {user_id} ({display_name}) joined game {game_code} as participant {participant.id}")
+
         return game_session, participant
-    
+
     async def start_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         """
         Start a game session.
-        
+
         Args:
             game_session_id: ID of the game to start
             host_user_id: ID of the user trying to start the game (must be host)
-            
+
         Returns:
             Updated GameSession object
-            
+
         Raises:
             ValueError: If the game cannot be started
         """
-        # Ensure IDs are valid UUID strings
         game_session_id = ensure_uuid(game_session_id)
         host_user_id = ensure_uuid(host_user_id)
-        
-        # Get the game session
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session:
             raise ValueError(f"Game with ID {game_session_id} not found")
-        
-        # Verify the user is the host
+
         if game_session.host_user_id != host_user_id:
             raise ValueError("Only the host can start the game")
-        
-        # Check if the game is in a valid state to start
+
         if game_session.status != GameStatus.PENDING:
             raise ValueError(f"Game cannot be started (current status: {game_session.status})")
-        
-        # Select questions for the game
+
         questions = await self._select_questions_for_game(
             pack_id=game_session.pack_id,
             count=game_session.question_count
         )
-        
-        if len(questions) < game_session.question_count:
+
+        actual_question_count = len(questions)
+        if actual_question_count < game_session.question_count:
             logger.warning(
-                f"Only {len(questions)} questions available for game {game_session_id}, " +
-                f"requested {game_session.question_count}"
+                f"Only {actual_question_count} questions available for game {game_session_id}, " +
+                f"requested {game_session.question_count}. Using available questions."
             )
-        
+            # Optionally update the game session's question count
+            game_session = await self.game_session_repo.update(
+                 id=game_session_id,
+                 obj_in=GameSessionUpdate(question_count=actual_question_count)
+             )
+
+
         if not questions:
             raise ValueError("No questions available for this game")
-        
+
         # Create game question records
         for index, question in enumerate(questions):
             question_data = GameQuestionCreate(
@@ -243,351 +243,319 @@ class GameService:
                 question_index=index
             )
             await self.game_question_repo.create(obj_in=question_data)
-        
+
         # Update game status to active
         updated_game = await self.game_session_repo.update_game_status(
             game_id=game_session_id,
             status=GameStatus.ACTIVE
         )
-        
+
         # Start the first question
         await self._advance_to_next_question(game_session_id, 0)
-        
+
         logger.info(f"Game {game_session_id} started with {len(questions)} questions")
-        
-        return updated_game
-    
+
+        # Fetch the game session again to return the latest state including the first question index update
+        return await self.game_session_repo.get_by_id(game_session_id)
+
+
     async def _select_questions_for_game(
-        self, 
-        pack_id: str, 
+        self,
+        pack_id: str,
         count: int
     ) -> List[Question]:
         """
         Select questions for a game from a pack.
-        
-        Args:
-            pack_id: ID of the pack to select questions from
-            count: Number of questions to select
-            
-        Returns:
-            List of Question objects
         """
-        # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
-        
-        # Get all questions for the pack
         all_questions = await self.question_repo.get_by_pack_id(pack_id)
-        
-        # If we don't have enough questions, use all available
+
+        if not all_questions:
+             logger.warning(f"No questions found in pack {pack_id}")
+             return []
+
         if len(all_questions) <= count:
+            logger.info(f"Using all {len(all_questions)} available questions for game.")
             return all_questions
-        
-        # Otherwise, select random questions
+
+        logger.info(f"Selecting {count} random questions from {len(all_questions)} available.")
         return random.sample(all_questions, count)
-    
+
     async def _advance_to_next_question(
-        self, 
-        game_session_id: str, 
+        self,
+        game_session_id: str,
         next_index: Optional[int] = None
     ) -> Optional[GameQuestion]:
         """
         Advance to the next question in a game.
-        
-        Args:
-            game_session_id: ID of the game session
-            next_index: Index of the next question (if None, current index + 1)
-            
-        Returns:
-            The next GameQuestion or None if game is complete
         """
-        # Ensure game_session_id is a valid UUID string
         game_session_id = ensure_uuid(game_session_id)
-        
-        # Get the game session
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session:
-            logger.error(f"Game session {game_session_id} not found")
+            logger.error(f"Game session {game_session_id} not found during advance")
             return None
-        
-        # Determine the next question index
+
         if next_index is None:
             next_index = game_session.current_question_index + 1
-        
-        # Get all game questions
-        game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
-        
-        # Check if we've reached the end of the game
-        if next_index >= len(game_questions):
-            # Game is complete
+
+        # Use the potentially updated question count from the game session
+        total_questions_in_game = game_session.question_count
+
+        if next_index >= total_questions_in_game:
             await self.game_session_repo.update_game_status(
                 game_id=game_session_id,
                 status=GameStatus.COMPLETED
             )
-            logger.info(f"Game {game_session_id} completed (all questions answered)")
+            logger.info(f"Game {game_session_id} completed ({total_questions_in_game} questions answered)")
             return None
-        
-        # Update the current question index
+
         await self.game_session_repo.update(
             id=game_session_id,
             obj_in=GameSessionUpdate(current_question_index=next_index)
         )
-        
-        # Get the next question
+
         next_question = await self.game_question_repo.get_by_game_session_and_index(
             game_session_id=game_session_id,
             question_index=next_index
         )
-        
+
         if next_question:
-            # Mark the question as started
             await self.game_question_repo.start_question(next_question.id)
-        
+            logger.info(f"Game {game_session_id} advanced to question {next_index}")
+        else:
+             logger.error(f"Game {game_session_id}: Failed to find game question at index {next_index}")
+
+
         return next_question
-    
+
     async def submit_answer(
-        self, 
-        game_session_id: str, 
-        participant_id: str, 
-        question_index: int, 
+        self,
+        game_session_id: str,
+        participant_id: str,
+        question_index: int,
         answer: str
     ) -> Dict[str, Any]:
         """
         Submit an answer for a question.
-        
+
         Args:
             game_session_id: ID of the game session
             participant_id: ID of the participant submitting the answer
             question_index: Index of the question being answered
             answer: The answer being submitted
-            
+
         Returns:
             Dictionary with result information
-            
+
         Raises:
             ValueError: If the answer cannot be submitted
         """
-        # Ensure IDs are valid UUID strings
         game_session_id = ensure_uuid(game_session_id)
         participant_id = ensure_uuid(participant_id)
-        
-        # Get the game session
+
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session:
             raise ValueError(f"Game with ID {game_session_id} not found")
-        
-        # Check if the game is active
+
         if game_session.status != GameStatus.ACTIVE:
             raise ValueError(f"Game is not active (status: {game_session.status})")
-        
-        # Verify the participant exists in this game
+
         participant = await self.game_participant_repo.get_by_id(participant_id)
         if not participant or participant.game_session_id != game_session_id:
             raise ValueError(f"Participant {participant_id} not found in game {game_session_id}")
-        
-        # Get the game question
+
         game_question = await self.game_question_repo.get_by_game_session_and_index(
             game_session_id=game_session_id,
             question_index=question_index
         )
-        
+
         if not game_question:
             raise ValueError(f"Question index {question_index} not found in game {game_session_id}")
-        
-        # Check if this is the current question
+
         if game_session.current_question_index != question_index:
             raise ValueError(
                 f"Cannot answer question {question_index}, " +
                 f"current question is {game_session.current_question_index}"
             )
-        
-        # Check if the question is still active (has start_time but no end_time)
+
         if not game_question.start_time:
             raise ValueError(f"Question {question_index} has not started yet")
-        
+
         if game_question.end_time:
             raise ValueError(f"Question {question_index} has already ended")
-        
+
+        # Check if participant already answered this question
+        if participant_id in game_question.participant_answers:
+             logger.warning(f"Participant {participant_id} already answered question {question_index}")
+             # Optionally return current status or raise error
+             # For now, let's prevent re-submission
+             raise ValueError("Answer already submitted for this question")
+
+
         # Record the participant's answer
         await self.game_question_repo.record_participant_answer(
             question_id=game_question.id,
             participant_id=participant_id,
             answer=answer
         )
-        
-        # Get the original question to check the answer
+
         original_question = await self.question_repo.get_by_id(game_question.question_id)
         if not original_question:
             logger.error(f"Original question {game_question.question_id} not found")
-            return {"success": False, "error": "Question not found"}
-        
-        # Check if the answer is correct
+            # Even if original question missing, record answer but return error status
+            return {"success": False, "is_correct": False, "correct_answer": "N/A", "score": 0, "total_score": participant.score, "error": "Original question data missing"}
+
+
         is_correct = answer.lower().strip() == original_question.answer.lower().strip()
-        
-        # Calculate score based on time taken (faster answers get more points)
+
         score = 0
         if is_correct:
             max_score = 1000
-            now = datetime.utcnow()
+            # --- FIX: Use timezone.utc ---
+            now = datetime.now(timezone.utc)
             start_time = game_question.start_time
-            
-            # Basic scoring: max_score if answered immediately, decreasing over time
+            # --- END FIX ---
+
             if start_time:
-                seconds_taken = (now - start_time).total_seconds()
-                time_factor = max(0, 1 - (seconds_taken / 30))  # 30 seconds to get minimum score
-                score = int(max_score * time_factor)
-                
-                # Ensure minimum score for correct answers
-                score = max(score, 100)
-        
-        # Record the participant's score
+                # --- FIX: Ensure start_time is timezone-aware ---
+                if start_time.tzinfo is None:
+                     logger.warning(f"Game question {game_question.id} start_time is timezone-naive. Assuming UTC.")
+                     start_time = start_time.replace(tzinfo=timezone.utc)
+                # --- END FIX ---
+
+                try:
+                     # Now subtraction should work
+                     seconds_taken = (now - start_time).total_seconds()
+                     time_factor = max(0, 1 - (seconds_taken / max(game_session.time_limit_seconds, 30))) # Use time limit or 30s default
+                     score = int(max_score * time_factor)
+                     score = max(score, 100) # Minimum score for correct answer
+                except TypeError as e:
+                     logger.error(f"Timezone subtraction error calculating score: {e}. Granting base score.")
+                     score = 100 # Grant base score if time calculation fails
+            else:
+                logger.warning(f"Question {question_index} start time not set. Granting base score.")
+                score = 100 # Grant base score if start time is missing
+
+        # Record score for this question
         await self.game_question_repo.record_participant_score(
             question_id=game_question.id,
             participant_id=participant_id,
             score=score
         )
-        
-        # Update the participant's total score
+
+        # Update total score
         new_total_score = participant.score + score
-        await self.game_participant_repo.update_score(
+        updated_participant = await self.game_participant_repo.update_score(
             participant_id=participant_id,
             new_score=new_total_score
         )
-        
-        # Return the result
+        # Use the score from the updated participant record for consistency
+        final_total_score = updated_participant.score if updated_participant else new_total_score
+
+
         return {
             "success": True,
             "is_correct": is_correct,
             "correct_answer": original_question.answer,
             "score": score,
-            "total_score": new_total_score
+            "total_score": final_total_score
         }
-    
+
     async def end_current_question(
-        self, 
-        game_session_id: str, 
+        self,
+        game_session_id: str,
         host_user_id: str
     ) -> Dict[str, Any]:
         """
         End the current question and advance to the next one.
-        
-        Args:
-            game_session_id: ID of the game session
-            host_user_id: ID of the host user (for permission check)
-            
-        Returns:
-            Dictionary with information about the next question
-            
-        Raises:
-            ValueError: If the question cannot be ended
         """
-        # Ensure IDs are valid UUID strings
         game_session_id = ensure_uuid(game_session_id)
         host_user_id = ensure_uuid(host_user_id)
-        
-        # Get the game session
+
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session:
             raise ValueError(f"Game with ID {game_session_id} not found")
-        
-        # Verify the user is the host
+
         if game_session.host_user_id != host_user_id:
             raise ValueError("Only the host can end the current question")
-        
-        # Check if the game is active
+
         if game_session.status != GameStatus.ACTIVE:
             raise ValueError(f"Game is not active (status: {game_session.status})")
-        
-        # Get the current question
+
         current_index = game_session.current_question_index
-        current_question = await self.game_question_repo.get_by_game_session_and_index(
+        current_game_question = await self.game_question_repo.get_by_game_session_and_index(
             game_session_id=game_session_id,
             question_index=current_index
         )
-        
-        if not current_question:
-            raise ValueError(f"Current question (index {current_index}) not found")
-        
-        # Mark the current question as ended
-        if current_question.start_time and not current_question.end_time:
-            await self.game_question_repo.end_question(current_question.id)
-        
-        # Advance to the next question
-        next_question = await self._advance_to_next_question(game_session_id)
-        
-        if next_question:
-            # Get the original question data for the next question
-            original_question = await self.question_repo.get_by_id(next_question.question_id)
+
+        if not current_game_question:
+            # This might happen if game just started and index is 0 but start_time not set yet?
+            # Or if index somehow got out of sync. Let's try advancing anyway.
+            logger.warning(f"Current game question (index {current_index}) not found, attempting to advance.")
+        elif current_game_question.start_time and not current_game_question.end_time:
+            await self.game_question_repo.end_question(current_game_question.id)
+        elif current_game_question.end_time:
+             logger.info(f"Question {current_index} already ended.")
+
+
+        next_game_question = await self._advance_to_next_question(game_session_id)
+
+        if next_game_question:
+            original_question = await self.question_repo.get_by_id(next_game_question.question_id)
             if not original_question:
-                logger.error(f"Original question {next_question.question_id} not found")
-                return {"game_complete": False, "error": "Question not found"}
-            
-            # Get incorrect answers for the question
-            incorrect_answers = await self.incorrect_answers_repo.get_by_question_id(next_question.question_id)
+                logger.error(f"Original question {next_game_question.question_id} for next game question not found")
+                # Attempt to skip this question? Or return error?
+                # For now, return an error state in the dictionary
+                return {"game_complete": False, "error": "Failed to load next question data"}
+
+
+            incorrect_answers = await self.incorrect_answers_repo.get_by_question_id(next_game_question.question_id)
             incorrect_options = incorrect_answers.incorrect_answers if incorrect_answers else []
-            
-            # Combine correct and incorrect answers and shuffle
+
             all_options = [original_question.answer] + incorrect_options
             random.shuffle(all_options)
-            
+
             return {
                 "game_complete": False,
                 "next_question": {
-                    "index": next_question.question_index,
+                    "index": next_game_question.question_index,
                     "question_text": original_question.question,
                     "options": all_options,
                     "time_limit": game_session.time_limit_seconds
                 }
             }
         else:
-            # Game is complete
-            results = await self.get_game_results(game_session_id)
+            # Game is complete, fetch final results
+            final_results = await self.get_game_results(game_session_id)
             return {
                 "game_complete": True,
-                "results": results
+                "results": final_results # Embed results directly
             }
-    
+
     async def get_game_results(self, game_session_id: str) -> Dict[str, Any]:
         """
         Get the results of a completed game.
-        
-        Args:
-            game_session_id: ID of the game session
-            
-        Returns:
-            Dictionary with game results
         """
-        # Ensure game_session_id is a valid UUID string
         game_session_id = ensure_uuid(game_session_id)
-        
-        # Get the game session
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session:
             raise ValueError(f"Game with ID {game_session_id} not found")
-        
-        # Get all participants
+
+        if game_session.status != GameStatus.COMPLETED:
+            logger.warning(f"Requesting results for game {game_session_id} which is not completed (status: {game_session.status})")
+            # Depending on requirements, could raise error or return partial results
+
         participants = await self.game_participant_repo.get_by_game_session_id(game_session_id)
-        
-        # Sort participants by score (descending)
         participants.sort(key=lambda p: p.score, reverse=True)
-        
-        # Get all game questions
+
         game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
-        
-        # Prepare question results
+
         question_results = []
         for gq in game_questions:
-            # Get the original question
             original_question = await self.question_repo.get_by_id(gq.question_id)
             if original_question:
-                # Count correct answers
-                correct_count = 0
-                total_answered = 0
-                
-                for participant_id, answer in gq.participant_answers.items():
-                    total_answered += 1
-                    if answer.lower().strip() == original_question.answer.lower().strip():
-                        correct_count += 1
-                
+                correct_count = sum(1 for pid, score in gq.participant_scores.items() if score > 0)
+                total_answered = len(gq.participant_answers)
                 question_results.append({
                     "index": gq.question_index,
                     "question_text": original_question.question,
@@ -596,8 +564,7 @@ class GameService:
                     "total_answered": total_answered,
                     "correct_percentage": (correct_count / total_answered * 100) if total_answered > 0 else 0
                 })
-        
-        # Prepare participant results
+
         participant_results = [
             {
                 "id": p.id,
@@ -608,7 +575,7 @@ class GameService:
             }
             for p in participants
         ]
-        
+
         return {
             "game_id": game_session_id,
             "game_code": game_session.code,
@@ -616,82 +583,60 @@ class GameService:
             "participants": participant_results,
             "questions": question_results,
             "total_questions": len(game_questions),
-            "completed_at": datetime.utcnow().isoformat()
+            "completed_at": datetime.now(timezone.utc) # Use current time as completion time
         }
-    
+
     async def cancel_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         """
         Cancel an active or pending game.
-        
-        Args:
-            game_session_id: ID of the game session
-            host_user_id: ID of the host user (for permission check)
-            
-        Returns:
-            Updated GameSession object
-            
-        Raises:
-            ValueError: If the game cannot be cancelled
         """
-        # Ensure IDs are valid UUID strings
         game_session_id = ensure_uuid(game_session_id)
         host_user_id = ensure_uuid(host_user_id)
-        
-        # Get the game session
+
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session:
             raise ValueError(f"Game with ID {game_session_id} not found")
-        
-        # Verify the user is the host
+
         if game_session.host_user_id != host_user_id:
             raise ValueError("Only the host can cancel the game")
-        
-        # Check if the game is in a state that can be cancelled
+
         if game_session.status not in [GameStatus.PENDING, GameStatus.ACTIVE]:
             raise ValueError(f"Game cannot be cancelled (current status: {game_session.status})")
-        
-        # Update game status to cancelled
+
         updated_game = await self.game_session_repo.update_game_status(
             game_id=game_session_id,
             status=GameStatus.CANCELLED
         )
-        
+
         logger.info(f"Game {game_session_id} cancelled by host {host_user_id}")
-        
+
         return updated_game
-    
+
     async def get_user_games(self, user_id: str, include_completed: bool = False) -> List[Dict[str, Any]]:
         """
         Get all games a user is participating in.
-        
-        Args:
-            user_id: ID of the user
-            include_completed: Whether to include completed games
-            
-        Returns:
-            List of dictionaries with game information
         """
-        # Ensure user_id is a valid UUID string
         user_id = ensure_uuid(user_id)
-        
-        # Get all participations for this user
         participations = await self.game_participant_repo.get_user_active_games(user_id)
-        
+
         results = []
+        processed_game_ids = set()
+
         for participation in participations:
-            # Get the game session
-            game_session = await self.game_session_repo.get_by_id(participation.game_session_id)
+            game_session_id = participation.game_session_id
+            if game_session_id in processed_game_ids:
+                 continue # Avoid processing the same game multiple times if user is in somehow > 1
+
+            game_session = await self.game_session_repo.get_by_id(game_session_id)
             if not game_session:
+                logger.warning(f"Game session {game_session_id} not found for participation {participation.id}")
                 continue
-                
-            # Skip completed/cancelled games if not requested
+
             if not include_completed and game_session.status in [GameStatus.COMPLETED, GameStatus.CANCELLED]:
                 continue
-                
-            # Get all participants for this game
+
             participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
-            
-            # Create a simplified game record
+
             game_info = {
                 "id": game_session.id,
                 "code": game_session.code,
@@ -701,10 +646,11 @@ class GameService:
                 "current_question": game_session.current_question_index,
                 "total_questions": game_session.question_count,
                 "is_host": participation.is_host,
-                "created_at": game_session.created_at.isoformat(),
-                "updated_at": game_session.updated_at.isoformat()
+                "created_at": game_session.created_at, # Return datetime object
+                "updated_at": game_session.updated_at  # Return datetime object
             }
-            
+
             results.append(game_info)
-            
+            processed_game_ids.add(game_session_id)
+
         return results

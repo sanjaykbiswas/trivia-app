@@ -1,6 +1,8 @@
+# backend/src/api/dependencies.py
 from fastapi import Depends, Request
 from supabase import AsyncClient
 
+# Ensure repositories are imported FIRST
 from ..repositories.pack_repository import PackRepository
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..repositories.question_repository import QuestionRepository
@@ -8,8 +10,9 @@ from ..repositories.incorrect_answers_repository import IncorrectAnswersReposito
 from ..repositories.game_session_repository import GameSessionRepository
 from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
-from ..repositories.user_repository import UserRepository
+from ..repositories.user_repository import UserRepository # Make sure this is imported
 
+# Services
 from ..services.pack_service import PackService
 from ..services.topic_service import TopicService
 from ..services.difficulty_service import DifficultyService
@@ -23,16 +26,16 @@ from ..services.user_service import UserService
 async def get_supabase_client(request: Request) -> AsyncClient:
     """
     Get Supabase client from request state.
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         AsyncClient: Supabase client
     """
     return request.app.state.supabase
 
-# Repository dependencies
+# --- Repository dependencies ---
 async def get_pack_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> PackRepository:
@@ -75,13 +78,14 @@ async def get_game_question_repository(
     """Get GameQuestionRepository instance."""
     return GameQuestionRepository(supabase)
 
+# Define get_user_repository before it's used by get_user_service
 async def get_user_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserRepository:
     """Get UserRepository instance."""
     return UserRepository(supabase)
 
-# Service dependencies
+# --- Service dependencies ---
 async def get_pack_service(
     pack_repository: PackRepository = Depends(get_pack_repository)
 ) -> PackService:
@@ -144,8 +148,9 @@ async def get_game_service(
         incorrect_answers_repository=incorrect_answers_repository
     )
 
+# Define get_user_service using the now-defined get_user_repository
 async def get_user_service(
-    user_repository: UserRepository = Depends(get_user_repository)
+    user_repository: UserRepository = Depends(get_user_repository) # Correct dependency
 ) -> UserService:
     """Get UserService instance."""
     return UserService(user_repository=user_repository)

@@ -2,6 +2,7 @@
 import uuid
 from typing import List, Optional
 from supabase import AsyncClient
+from datetime import datetime, timezone # Import datetime, timezone
 
 from ..models.game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
 from .base_repository_impl import BaseRepositoryImpl
@@ -18,23 +19,20 @@ class GameParticipantRepository(BaseRepositoryImpl[GameParticipant, GameParticip
 
     async def get_by_game_session_id(self, game_session_id: str) -> List[GameParticipant]:
         """Retrieve all participants for a specific game session."""
-        # Ensure game_session_id is a valid UUID string
         game_session_id_str = ensure_uuid(game_session_id)
-        
         query = (
             self.db.table(self.table_name)
             .select("*")
             .eq("game_session_id", game_session_id_str)
         )
         response = await self._execute_query(query)
-        return [self.model.parse_obj(item) for item in response.data]
+        # Use model_validate for Pydantic V2
+        return [self.model.model_validate(item) for item in response.data]
 
     async def get_by_user_and_game(self, user_id: str, game_session_id: str) -> Optional[GameParticipant]:
         """Retrieve a participant by user ID and game session ID."""
-        # Ensure UUIDs are valid UUID strings
         user_id_str = ensure_uuid(user_id)
         game_session_id_str = ensure_uuid(game_session_id)
-        
         query = (
             self.db.table(self.table_name)
             .select("*")
@@ -44,36 +42,39 @@ class GameParticipantRepository(BaseRepositoryImpl[GameParticipant, GameParticip
         )
         response = await self._execute_query(query)
         if response.data:
-            return self.model.parse_obj(response.data[0])
+            # Use model_validate for Pydantic V2
+            return self.model.model_validate(response.data[0])
         return None
 
     async def update_score(self, participant_id: str, new_score: int) -> Optional[GameParticipant]:
-        """Update a participant's score."""
-        # Ensure participant_id is a valid UUID string
+        """Update a participant's score and last activity time."""
         participant_id_str = ensure_uuid(participant_id)
-        
+
+        # --- FIX: Explicitly convert datetime to ISO string ---
+        # Get the current time in UTC and format it as ISO 8601 string
+        now_iso = datetime.now(timezone.utc).isoformat() + "Z" # Append 'Z' for UTC indicator
         update_data = {
             "score": new_score,
-            "last_activity": self._serialize_data_for_db({"last_activity": GameParticipantUpdate().last_activity})["last_activity"]
+            "last_activity": now_iso # Use the ISO string directly
         }
-        
+        # --- END FIX ---
+
         query = self.db.table(self.table_name).update(update_data).eq("id", participant_id_str)
-        await self._execute_query(query)
-        
-        # Fetch and return the updated object
-        return await self.get_by_id(participant_id)
+        await self._execute_query(query) # This should now work
+
+        # Fetch and return the updated object using the correct ID
+        return await self.get_by_id(participant_id_str) # Ensure correct ID type
 
     async def get_user_active_games(self, user_id: str) -> List[GameParticipant]:
-        """Retrieve all active games a user is participating in."""
-        # Ensure user_id is a valid UUID string
+        """Retrieve all game participations for a user."""
+        # Note: This currently returns *all* participations. Filtering by active game
+        # status would typically happen in the service layer by joining/checking game status.
         user_id_str = ensure_uuid(user_id)
-        
-        # This query will need to be joined with game_sessions in a real implementation
-        # For now, we'll just get all games the user is in and filter later in the service
         query = (
             self.db.table(self.table_name)
             .select("*")
             .eq("user_id", user_id_str)
         )
         response = await self._execute_query(query)
-        return [self.model.parse_obj(item) for item in response.data]
+        # Use model_validate for Pydantic V2
+        return [self.model.model_validate(item) for item in response.data]

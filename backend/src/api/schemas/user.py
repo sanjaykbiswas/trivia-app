@@ -1,5 +1,7 @@
+# backend/src/api/schemas/user.py
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field # Remove field_serializer import
+from datetime import datetime # Import datetime
 
 class UserCreateRequest(BaseModel):
     """Request schema for creating a new user."""
@@ -16,10 +18,15 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     is_temporary: bool
     auth_provider: Optional[str] = None
-    created_at: str
+    created_at: datetime # <<< CHANGE THIS LINE back to datetime
+
+    # Remove the custom serializer
+    # @field_serializer('created_at', when_used='json')
+    # def serialize_dt(self, dt: datetime):
+    #     ... (removed) ...
 
     class Config:
-        from_attributes = True
+        from_attributes = True # Use from_attributes for Pydantic v2
 
 class UserUpdateRequest(BaseModel):
     """Request schema for updating an existing user."""
