@@ -5,6 +5,9 @@ from ..repositories.pack_repository import PackRepository
 from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
+from ..repositories.game_session_repository import GameSessionRepository
+from ..repositories.game_participant_repository import GameParticipantRepository
+from ..repositories.game_question_repository import GameQuestionRepository
 
 from ..services.pack_service import PackService
 from ..services.topic_service import TopicService
@@ -12,6 +15,8 @@ from ..services.difficulty_service import DifficultyService
 from ..services.question_service import QuestionService
 from ..services.seed_question_service import SeedQuestionService
 from ..services.incorrect_answer_service import IncorrectAnswerService
+from ..services.game_service import GameService
+
 
 async def get_supabase_client(request: Request) -> AsyncClient:
     """
@@ -49,6 +54,24 @@ async def get_incorrect_answers_repository(
 ) -> IncorrectAnswersRepository:
     """Get IncorrectAnswersRepository instance."""
     return IncorrectAnswersRepository(supabase)
+
+async def get_game_session_repository(
+    supabase: AsyncClient = Depends(get_supabase_client)
+) -> GameSessionRepository:
+    """Get GameSessionRepository instance."""
+    return GameSessionRepository(supabase)
+
+async def get_game_participant_repository(
+    supabase: AsyncClient = Depends(get_supabase_client)
+) -> GameParticipantRepository:
+    """Get GameParticipantRepository instance."""
+    return GameParticipantRepository(supabase)
+
+async def get_game_question_repository(
+    supabase: AsyncClient = Depends(get_supabase_client)
+) -> GameQuestionRepository:
+    """Get GameQuestionRepository instance."""
+    return GameQuestionRepository(supabase)
 
 # Service dependencies
 async def get_pack_service(
@@ -93,6 +116,22 @@ async def get_incorrect_answer_service(
 ) -> IncorrectAnswerService:
     """Get IncorrectAnswerService instance."""
     return IncorrectAnswerService(
+        question_repository=question_repository,
+        incorrect_answers_repository=incorrect_answers_repository
+    )
+
+async def get_game_service(
+    game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
+    game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
+    game_question_repository: GameQuestionRepository = Depends(get_game_question_repository),
+    question_repository: QuestionRepository = Depends(get_question_repository),
+    incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
+) -> GameService:
+    """Get GameService instance."""
+    return GameService(
+        game_session_repository=game_session_repository,
+        game_participant_repository=game_participant_repository,
+        game_question_repository=game_question_repository,
         question_repository=question_repository,
         incorrect_answers_repository=incorrect_answers_repository
     )
