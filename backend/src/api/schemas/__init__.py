@@ -14,8 +14,11 @@ from .question import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
     CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse,
-    # --- ADDED IMPORTS for batch generation ---
-    TopicQuestionConfig, BatchQuestionGenerateRequest, BatchQuestionGenerateResponse
+    # --- ADDED/MODIFIED IMPORTS for batch generation ---
+    DifficultyConfig, # Added this new schema
+    TopicQuestionConfig, # This schema was modified
+    BatchQuestionGenerateRequest, # This schema uses the modified TopicQuestionConfig
+    BatchQuestionGenerateResponse
 )
 from .game import (
     GameSessionCreateRequest, GameSessionJoinRequest, GameSessionSubmitAnswerRequest,
@@ -56,10 +59,11 @@ __all__ = [
     "CustomInstructionsGenerateRequest",
     "CustomInstructionsInputRequest",
     "CustomInstructionsResponse",
-    # --- ADDED SCHEMAS for batch generation ---
-    "TopicQuestionConfig",
-    "BatchQuestionGenerateRequest",
-    "BatchQuestionGenerateResponse",
+    # --- ADDED/MODIFIED SCHEMAS for batch generation ---
+    "DifficultyConfig", # Added export
+    "TopicQuestionConfig", # Keep export (modified)
+    "BatchQuestionGenerateRequest", # Keep export
+    "BatchQuestionGenerateResponse", # Keep export
 
     # Game schemas
     "GameSessionCreateRequest",
@@ -71,7 +75,7 @@ __all__ = [
     "GameQuestionResponse",
     "QuestionResultResponse",
     "GameResultsResponse",
-    "GameStartResponse", # Added missing game start schema
+    "GameStartResponse",
 
     # User schemas
     "UserCreateRequest",

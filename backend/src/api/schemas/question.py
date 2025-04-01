@@ -1,15 +1,47 @@
 # backend/src/api/schemas/question.py
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 # Make sure the path to DifficultyLevel is correct for your structure
 from ...models.question import DifficultyLevel
 
+# --- NEW Schema for Difficulty Configuration ---
+class DifficultyConfig(BaseModel):
+    """Configuration for generating questions for a specific difficulty level."""
+    difficulty: DifficultyLevel = Field(..., description="The specific difficulty level for this batch")
+    num_questions: int = Field(5, description="Number of questions for this difficulty", ge=1, le=75)
+
+# --- MODIFIED Schema for Topic Configuration ---
+class TopicQuestionConfig(BaseModel):
+    """Configuration for generating questions for a single topic across multiple difficulties."""
+    topic: str = Field(..., description="The topic name")
+    # Changed from single difficulty/num_questions to a list of configurations
+    difficulty_configs: List[DifficultyConfig] = Field(..., description="List of difficulty configurations for this topic")
+    custom_instructions: Optional[str] = Field(None, description="Optional custom instructions override for this specific topic")
+
+# --- Batch Generation Request (uses updated TopicQuestionConfig) ---
+class BatchQuestionGenerateRequest(BaseModel):
+    """Request schema for batch question generation across multiple topics and difficulties."""
+    topic_configs: List[TopicQuestionConfig] = Field(..., description="List of topic configurations, each specifying difficulties and counts")
+    debug_mode: bool = Field(False, description="Enable verbose debug output globally for this batch")
+    # Example: global_custom_instructions: Optional[str] = Field(None, description="Global custom instructions for all topics")
+
+# --- Batch Generation Response (can be enhanced later) ---
+class BatchQuestionGenerateResponse(BaseModel):
+    """Response schema for batch question generation."""
+    pack_id: str
+    topics_processed: List[str] # Topics with at least one successful generation
+    total_questions_generated: int
+    status: str # e.g., "completed", "partial_failure", "failed"
+    errors: Optional[List[str]] = None # List of topic names where at least one difficulty failed
+
+# --- Other Schemas (remain largely the same) ---
+
 class QuestionGenerateRequest(BaseModel):
-    """Request schema for generating questions for a single topic."""
+    """Request schema for generating questions for a single topic/difficulty."""
     pack_topic: str = Field(..., description="Topic to generate questions for")
-    difficulty: DifficultyLevel = Field(DifficultyLevel.MIXED, description="Difficulty level for the questions (defaults to MIXED)")
+    difficulty: DifficultyLevel = Field(DifficultyLevel.MIXED, description="Difficulty level for the questions")
     num_questions: int = Field(5, description="Number of questions to generate", ge=1, le=75)
     custom_instructions: Optional[str] = Field(None, description="Optional custom instructions for question generation")
     debug_mode: bool = Field(False, description="Enable verbose debug output")
@@ -60,28 +92,3 @@ class CustomInstructionsInputRequest(BaseModel):
 class CustomInstructionsResponse(BaseModel):
     """Response schema for custom instructions."""
     custom_instructions: Optional[str] = Field(None, description="Custom instructions for question generation")
-
-# --- NEW Schemas for Batch Question Generation ---
-
-class TopicQuestionConfig(BaseModel):
-    """Configuration for generating questions for a single topic."""
-    topic: str = Field(..., description="The topic name")
-    num_questions: int = Field(5, description="Number of questions for this topic", ge=1, le=75)
-    difficulty: DifficultyLevel = Field(DifficultyLevel.MIXED, description="Difficulty for this topic")
-    custom_instructions: Optional[str] = Field(None, description="Optional custom instructions for this specific topic")
-
-class BatchQuestionGenerateRequest(BaseModel):
-    """Request schema for batch question generation across multiple topics."""
-    topic_configs: List[TopicQuestionConfig] = Field(..., description="List of topic configurations")
-    debug_mode: bool = Field(False, description="Enable verbose debug output globally for this batch")
-    # Example: global_custom_instructions: Optional[str] = Field(None, description="Global custom instructions for all topics")
-
-class BatchQuestionGenerateResponse(BaseModel):
-    """Response schema for batch question generation."""
-    pack_id: str
-    topics_processed: List[str]
-    total_questions_generated: int
-    status: str # e.g., "completed", "partial_failure", "failed"
-    errors: Optional[List[str]] = None # List of topics that failed
-
-# --- END NEW Schemas ---
