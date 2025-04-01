@@ -2,7 +2,7 @@
 import uuid
 from typing import List, Optional
 from supabase import AsyncClient
-from datetime import datetime # Import datetime
+from datetime import datetime, timezone # Import timezone
 
 from ..models.game_session import GameSession, GameSessionCreate, GameSessionUpdate, GameStatus
 from .base_repository_impl import BaseRepositoryImpl
@@ -57,16 +57,17 @@ class GameSessionRepository(BaseRepositoryImpl[GameSession, GameSessionCreate, G
         """Update the status of a game session."""
         game_id_str = ensure_uuid(game_id)
 
-        # --- FIX: Explicitly convert datetime to ISO string ---
-        now_iso = datetime.utcnow().isoformat() + "Z" # Add Z for UTC
+        # --- CORRECTED FIX: Use standard ISO format ---
+        # Use now() with timezone for consistency
+        now_iso = datetime.now(timezone.utc).isoformat() # REMOVED + "Z"
         update_data = {
             "status": status.value,
             "updated_at": now_iso # Use the ISO string directly
         }
-        # --- END FIX ---
+        # --- END CORRECTED FIX ---
 
         query = self.db.table(self.table_name).update(update_data).eq("id", game_id_str)
         await self._execute_query(query) # This should now work
 
         # Fetch and return the updated object
-        return await self.get_by_id(game_id) # get_by_id uses model_validate
+        return await self.get_by_id(game_id_str) # Use string ID

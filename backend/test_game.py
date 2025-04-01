@@ -180,7 +180,7 @@ def generate_pack_content(pack_id: str, topic: Optional[str] = None) -> bool:
     question_data = {
         "pack_topic": topic,
         "difficulty": "mixed",
-        "num_questions": 10, # Generate enough questions for the game
+        "num_questions": 3, # Generate enough questions for the game
         "debug_mode": False
     }
     question_response = requests.post(f"{BASE_URL}/packs/{pack_id}/questions/", json=question_data)

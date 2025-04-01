@@ -50,14 +50,15 @@ class GameParticipantRepository(BaseRepositoryImpl[GameParticipant, GameParticip
         """Update a participant's score and last activity time."""
         participant_id_str = ensure_uuid(participant_id)
 
-        # --- FIX: Explicitly convert datetime to ISO string ---
+        # --- CORRECTED FIX: Use standard ISO format ---
         # Get the current time in UTC and format it as ISO 8601 string
-        now_iso = datetime.now(timezone.utc).isoformat() + "Z" # Append 'Z' for UTC indicator
+        # The isoformat() method correctly includes the UTC offset (+00:00)
+        now_iso = datetime.now(timezone.utc).isoformat() # REMOVED + "Z"
         update_data = {
             "score": new_score,
             "last_activity": now_iso # Use the ISO string directly
         }
-        # --- END FIX ---
+        # --- END CORRECTED FIX ---
 
         query = self.db.table(self.table_name).update(update_data).eq("id", participant_id_str)
         await self._execute_query(query) # This should now work
