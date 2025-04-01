@@ -86,28 +86,30 @@ class CustomInstructionsCreator:
                 examples_text = "Here are some example questions and answers for this topic:\n\n" + "\n\n".join(examples)
         
         # Build the prompt
-        prompt = f"""Generate custom instructions for creating trivia questions about {pack_topic}.
+        prompt = f"""You are being given a trivia topic: '{pack_topic}' and a set of example trivia clues from that category. Your task is to analyze these clues and explain how the category works.
 
-Based on the the topic: {pack_topic} and the following question examples, come up with customized instructions to give an LLM to create additional questions.
+Write a clear, structured description that would help another AI generate new clues that match the same pattern. Your explanation should cover:
+- What kind of word or phrase is missing or being asked for in the answer (e.g., adjectives, names, titles, etc.)
+- What type of information the clue provides (e.g., plot summary, cultural references, wordplay)
+- How the clue leads the player to the answer
+- Any consistent patterns in clue phrasing or formatting
+- How difficulty seems to vary across the clues
+
+Avoid restating the actual example clues, but use them to extract the underlying logic of the category. Your description should be general enough to guide clue creation but specific enough to preserve the style of the category.
+
+Here are the examples:
 
 {examples_text}
 
-Your instructions should cover:
-1. The style and tone of questions (e.g., straightforward, playful, challenging)
-2. Formats or structures that work well for questions about this topic
-3. Any nuanced aspects of {pack_topic} to focus on.
-4. Potential pitfalls to avoid in question generation.
-
 Your instructions:
 1. Should not define specificity levels
-2. Should not Include references to difficulty levels or adjusting questions based on audience familiarity with a topic
+2. Should not include references to difficulty levels or adjusting questions based on audience familiarity with a topic
 3. Should not influence the length of the question
 4. Should not guide creation of questions towards styles that are not appropriate for trivia
 5. Should not guide creation towards hypotheticals or questions that are not factual
+6. Should not try to dissuade from obscurity
 
-The instructions should be specific to {pack_topic} and reflect the style of any example questions provided.  Do not let style or creativity override accuracy.
-
-Respond ONLY with the custom instructions in a clear, direct format. Do not include any other text.
+Do not let style or creativity override accuracy.  Respond ONLY with the custom instructions in a clear, direct format. Do not include any other text.
 """
         return prompt
     

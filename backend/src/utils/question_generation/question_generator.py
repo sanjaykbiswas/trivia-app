@@ -204,7 +204,7 @@ IMPORTANT:
 - Make sure each question has exactly ONE correct answer
 - Return ONLY the JSON array without any additional text
 - Ensure the JSON is properly formatted
-- Ensure the question length is at maximum 20 words, or 120 characters
+- Ensure the question length is between 10 and 20 words, or at maximum 125 characters
 - Each question should be appropriate for the {difficulty} difficulty level
 - Make the questions interesting and creative while maintaining accuracy
 """
