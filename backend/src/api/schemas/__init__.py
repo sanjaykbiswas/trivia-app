@@ -20,6 +20,11 @@ from .game import (
     GameQuestionResponse, QuestionResultResponse, GameResultsResponse
 )
 
+from .user import (
+    UserCreateRequest, UserResponse, UserUpdateRequest,
+    UserLoginRequest, UserAuthRequest, UserConvertRequest
+)
+
 __all__ = [
     # Pack schemas
     "PackCreateRequest",
@@ -58,4 +63,12 @@ __all__ = [
     "GameQuestionResponse",
     "QuestionResultResponse",
     "GameResultsResponse",
+
+    # User schemas
+    "UserCreateRequest",
+    "UserResponse",
+    "UserUpdateRequest",
+    "UserLoginRequest",
+    "UserAuthRequest",
+    "UserConvertRequest",
 ]

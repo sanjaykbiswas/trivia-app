@@ -16,6 +16,7 @@ from ..services.question_service import QuestionService
 from ..services.seed_question_service import SeedQuestionService
 from ..services.incorrect_answer_service import IncorrectAnswerService
 from ..services.game_service import GameService
+from ..services.user_service import UserService
 
 
 async def get_supabase_client(request: Request) -> AsyncClient:
@@ -135,3 +136,9 @@ async def get_game_service(
         question_repository=question_repository,
         incorrect_answers_repository=incorrect_answers_repository
     )
+
+async def get_user_service(
+    user_repository: UserRepository = Depends(get_user_repository)
+) -> UserService:
+    """Get UserService instance."""
+    return UserService(user_repository=user_repository)
