@@ -11,6 +11,7 @@ from ..repositories.game_session_repository import GameSessionRepository
 from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
 from ..repositories.user_repository import UserRepository # Make sure this is imported
+from ..repositories.topic_repository import TopicRepository 
 
 # Services
 from ..services.pack_service import PackService
@@ -84,6 +85,12 @@ async def get_user_repository(
 ) -> UserRepository:
     """Get UserRepository instance."""
     return UserRepository(supabase)
+
+async def get_topic_repository(
+    supabase: AsyncClient = Depends(get_supabase_client)
+) -> TopicRepository:
+    """Get TopicRepository instance."""
+    return TopicRepository(supabase) 
 
 # --- Service dependencies ---
 async def get_pack_service(
