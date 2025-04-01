@@ -622,7 +622,8 @@ async def generate_incorrect_answers(
             detail="Failed to generate incorrect answers"
         )
 
-@router.post("/pack/{pack_id}/incorrect-answers")
+# FIXED: Changed route path to avoid duplication with base prefix
+@router.post("/incorrect-answers/batch")
 async def generate_pack_incorrect_answers(
     pack_id: str = Path(..., description="ID of the pack"),
     num_answers: int = Query(3, ge=1, le=10, description="Number of incorrect answers per question"),
