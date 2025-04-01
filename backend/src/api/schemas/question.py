@@ -85,9 +85,10 @@ class CustomInstructionsGenerateRequest(BaseModel):
     """Request schema for generating custom instructions."""
     pack_topic: str = Field(..., description="Topic to base custom instructions on")
 
-class CustomInstructionsInputRequest(BaseModel):
-    """Request schema for manually inputting custom instructions."""
-    instructions: str = Field(..., description="Manually provided custom instructions")
+# --- REMOVED CustomInstructionsInputRequest ---
+# class CustomInstructionsInputRequest(BaseModel):
+#     """Request schema for manually inputting custom instructions."""
+#     instructions: str = Field(..., description="Manually provided custom instructions")
 
 class CustomInstructionsResponse(BaseModel):
     """Response schema for custom instructions."""

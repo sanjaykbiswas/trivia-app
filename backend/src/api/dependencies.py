@@ -11,7 +11,7 @@ from ..repositories.game_session_repository import GameSessionRepository
 from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
 from ..repositories.user_repository import UserRepository # Make sure this is imported
-from ..repositories.topic_repository import TopicRepository 
+from ..repositories.topic_repository import TopicRepository # <-- ADDED IMPORT
 
 # Services
 from ..services.pack_service import PackService
@@ -86,11 +86,13 @@ async def get_user_repository(
     """Get UserRepository instance."""
     return UserRepository(supabase)
 
+# --- ADDED get_topic_repository ---
 async def get_topic_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> TopicRepository:
     """Get TopicRepository instance."""
-    return TopicRepository(supabase) 
+    return TopicRepository(supabase)
+# --- END ADDED ---
 
 # --- Service dependencies ---
 async def get_pack_service(
@@ -99,22 +101,27 @@ async def get_pack_service(
     """Get PackService instance."""
     return PackService(pack_repository=pack_repository)
 
+# --- MODIFIED get_topic_service ---
 async def get_topic_service(
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository)
+    topic_repository: TopicRepository = Depends(get_topic_repository) # Added topic_repository
+    # pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository) # REMOVED
 ) -> TopicService:
     """Get TopicService instance."""
-    return TopicService(pack_creation_data_repository=pack_creation_data_repository)
+    return TopicService(topic_repository=topic_repository) # Pass topic_repository
+# --- END MODIFIED ---
 
 async def get_difficulty_service(
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository)
+    topic_service: TopicService = Depends(get_topic_service) # Added dependency on TopicService
 ) -> DifficultyService:
     """Get DifficultyService instance."""
-    return DifficultyService(pack_creation_data_repository=pack_creation_data_repository)
+    # DifficultyService now depends on TopicService to get topic names
+    return DifficultyService(topic_service=topic_service)
 
 # --- MODIFIED get_question_service ---
 async def get_question_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
     pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository),
+    topic_repository: TopicRepository = Depends(get_topic_repository) # <-- ADDED
     # REMOVED: incorrect_answers_repository is no longer needed here
     # incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
 ) -> QuestionService:
@@ -122,15 +129,22 @@ async def get_question_service(
     # REMOVED incorrect_answers_repository from the constructor call
     return QuestionService(
         question_repository=question_repository,
-        pack_creation_data_repository=pack_creation_data_repository
+        pack_creation_data_repository=pack_creation_data_repository,
+        topic_repository=topic_repository # <-- ADDED
     )
 # --- END MODIFICATION ---
 
+# --- MODIFIED get_seed_question_service ---
 async def get_seed_question_service(
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository)
+    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository),
+    topic_repository: TopicRepository = Depends(get_topic_repository) # <-- ADDED
 ) -> SeedQuestionService:
     """Get SeedQuestionService instance."""
-    return SeedQuestionService(pack_creation_data_repository=pack_creation_data_repository)
+    return SeedQuestionService(
+        pack_creation_data_repository=pack_creation_data_repository,
+        topic_repository=topic_repository # <-- ADDED
+        )
+# --- END MODIFICATION ---
 
 async def get_incorrect_answer_service(
     question_repository: QuestionRepository = Depends(get_question_repository),

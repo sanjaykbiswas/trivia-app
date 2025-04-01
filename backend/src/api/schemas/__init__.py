@@ -13,7 +13,8 @@ from .difficulty import DifficultyDescription, DifficultyGenerateRequest, Diffic
 from .question import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
-    CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse,
+    CustomInstructionsGenerateRequest, # Removed CustomInstructionsInputRequest import
+    CustomInstructionsResponse,
     # --- ADDED/MODIFIED IMPORTS for batch generation ---
     DifficultyConfig, # Added this new schema
     TopicQuestionConfig, # This schema was modified
@@ -57,7 +58,7 @@ __all__ = [
     "QuestionsResponse",
     "SeedQuestionsResponse",
     "CustomInstructionsGenerateRequest",
-    "CustomInstructionsInputRequest",
+    # "CustomInstructionsInputRequest", # <-- REMOVED
     "CustomInstructionsResponse",
     # --- ADDED/MODIFIED SCHEMAS for batch generation ---
     "DifficultyConfig", # Added export

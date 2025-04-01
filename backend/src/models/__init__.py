@@ -19,67 +19,74 @@ from .pack_creation_data import PackCreationData, PackCreationDataCreate, PackCr
 from .game_session import GameSession, GameSessionCreate, GameSessionUpdate, GameStatus
 from .game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
 from .game_question import GameQuestion, GameQuestionCreate, GameQuestionUpdate
+# Add new topic models
+from .topic import Topic, TopicCreate, TopicUpdate
 
 __all__ = [
     # Base schemas
     'BaseCreateSchema',
     'BaseUpdateSchema',
-    
+
     # Question models
     'Question',
     'DifficultyLevel',
     'QuestionCreate',
     'QuestionUpdate',
-    
+
     # Incorrect answers models
     'IncorrectAnswers',
     'IncorrectAnswersCreate',
     'IncorrectAnswersUpdate',
-    
+
     # Pack group models
     'PackGroup',
     'PackGroupCreate',
     'PackGroupUpdate',
-    
+
     # Pack models
     'Pack',
     'CreatorType',
     'PackCreate',
     'PackUpdate',
-    
+
     # User models
     'User',
     'UserCreate',
     'UserUpdate',
-    
+
     # User question history models
     'UserQuestionHistory',
     'UserQuestionHistoryCreate',
     'UserQuestionHistoryUpdate',
-    
+
     # User pack history models
     'UserPackHistory',
     'UserPackHistoryCreate',
     'UserPackHistoryUpdate',
-    
+
     # Pack creation data models
     'PackCreationData',
     'PackCreationDataCreate',
     'PackCreationDataUpdate',
-    
+
     # Game session models
     'GameSession',
     'GameSessionCreate',
     'GameSessionUpdate',
     'GameStatus',
-    
+
     # Game participant models
     'GameParticipant',
     'GameParticipantCreate',
     'GameParticipantUpdate',
-    
+
     # Game question models
     'GameQuestion',
     'GameQuestionCreate',
     'GameQuestionUpdate',
+
+    # Topic models
+    'Topic',
+    'TopicCreate',
+    'TopicUpdate',
 ]

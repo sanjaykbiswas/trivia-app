@@ -14,7 +14,7 @@ from ..dependencies import (
 from ..schemas import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
-    CustomInstructionsGenerateRequest, CustomInstructionsInputRequest, CustomInstructionsResponse,
+    CustomInstructionsGenerateRequest, CustomInstructionsResponse, # Removed CustomInstructionsInputRequest
     # --- Use the updated schemas ---
     BatchQuestionGenerateRequest, BatchQuestionGenerateResponse
 )
@@ -42,6 +42,7 @@ async def generate_questions(
 ):
     """
     Generate trivia questions for a SINGLE pack topic/difficulty and generate incorrect answers.
+    Topic-specific custom instructions are fetched automatically if they exist.
     """
     pack_id_uuid = ensure_uuid(pack_id)
 
@@ -52,14 +53,15 @@ async def generate_questions(
 
     try:
         # 2. Generate Questions for the single topic/difficulty
+        # Custom instructions are handled internally by the service now
         created_questions: List[Question] = await question_service.generate_and_store_questions(
             pack_id=pack_id_uuid,
             creation_name=pack.name,
             pack_topic=question_request.pack_topic,
             difficulty=question_request.difficulty,
             num_questions=question_request.num_questions,
-            debug_mode=question_request.debug_mode,
-            custom_instructions=question_request.custom_instructions
+            debug_mode=question_request.debug_mode
+            # custom_instructions=question_request.custom_instructions # Removed - Service fetches this
         )
 
         # 3. Generate Incorrect Answers for the newly created questions
@@ -68,8 +70,8 @@ async def generate_questions(
             try:
                 await incorrect_answer_service.generate_and_store_incorrect_answers(
                      questions=created_questions,
-                     num_incorrect_answers=3,
-                     batch_size=5,
+                     num_incorrect_answers=3, # Default or get from config
+                     batch_size=5, # Default or get from config
                      debug_mode=question_request.debug_mode
                  )
                 logger.info(f"Incorrect answer generation complete for topic '{question_request.pack_topic}'.")
@@ -89,7 +91,7 @@ async def generate_questions(
         raise HTTPException(status_code=500, detail=f"Error generating questions: {str(e)}")
 
 
-# --- Batch Question Generation Endpoint (MODIFIED Result Handling) ---
+# --- Batch Question Generation Endpoint ---
 @router.post("/batch-generate", response_model=BatchQuestionGenerateResponse)
 async def batch_generate_questions(
     pack_id: str = Path(..., description="ID of the pack"),
@@ -101,31 +103,32 @@ async def batch_generate_questions(
     """
     Generate questions for multiple topics *and* difficulties within a pack concurrently,
     followed by batch incorrect answer generation for all newly created questions.
+    Topic-specific custom instructions are fetched automatically if they exist,
+    but can be overridden per topic in the request.
     """
     pack_id_uuid = ensure_uuid(pack_id)
 
-    # 1. Verify Pack Exists (remains the same)
+    # 1. Verify Pack Exists
     pack = await pack_service.pack_repository.get_by_id(pack_id_uuid)
     if not pack:
         raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
 
     batch_results: Dict[str, Any] = {}
     final_status = "completed" # Default status
-    # Simplifed error list (just topic names where *any* difficulty failed)
     error_list: List[str] = []
 
     try:
         # 2. Call the batch question generation service method
+        # Service now handles fetching default instructions per topic if not overridden in request
         batch_results = await question_service.batch_generate_and_store_questions(
             pack_id=pack_id_uuid,
             creation_name=pack.name,
-            topic_configs=request.topic_configs, # Pass the new structure
+            topic_configs=request.topic_configs, # Pass the structure including overrides
             debug_mode=request.debug_mode
         )
-        error_list.extend(batch_results.get("failed_topics", [])) # Get simplified list of failed topics
+        error_list.extend(batch_results.get("failed_topics", []))
 
     except Exception as e_qg:
-        # Handle catastrophic failure during generation
         logger.error(f"Core batch question generation failed for pack {pack_id}: {str(e_qg)}", exc_info=True)
         final_status = "failed"
         error_list = list(set([tc.topic for tc in request.topic_configs]))
@@ -147,11 +150,17 @@ async def batch_generate_questions(
              logger.error(f"Partial failure during incorrect answer generation for batch in pack {pack_id}: {ia_error.message}")
              final_status = "partial_failure"
              failed_q_ids_set = set(ia_error.failed_question_ids)
-             failed_ia_topics = {q.pack_topics_item for q in newly_generated_questions if q.id in failed_q_ids_set and q.pack_topics_item}
+             # Find topics related to failed incorrect answer generations
+             failed_ia_topics = set()
+             for q in newly_generated_questions:
+                 if str(q.id) in failed_q_ids_set and q.pack_topics_item:
+                     failed_ia_topics.add(q.pack_topics_item)
              error_list.extend(list(failed_ia_topics))
          except Exception as e_ia:
              logger.error(f"Unexpected error during batch incorrect answer generation for pack {pack_id}: {e_ia}", exc_info=True)
              final_status = "partial_failure"
+             # Potentially add all topics associated with the batch as errors if IA fails catastrophically
+             error_list.extend(list(set([q.pack_topics_item for q in newly_generated_questions if q.pack_topics_item])))
     else:
          logger.warning("No new questions generated in the batch, skipping incorrect answer generation.")
 
@@ -159,7 +168,7 @@ async def batch_generate_questions(
     # 4. Determine final status and return summary
     successful_topics = batch_results.get("topics_processed", [])
     failed_topics_qg = batch_results.get("failed_topics", [])
-    if final_status != "partial_failure":
+    if final_status != "partial_failure": # Avoid overwriting IA failure status
         if not successful_topics and failed_topics_qg: final_status = "failed"
         elif failed_topics_qg: final_status = "partial_failure"
 
@@ -172,7 +181,7 @@ async def batch_generate_questions(
 # --- END Batch Endpoint ---
 
 
-# --- Other existing endpoints (Added Back In) ---
+# --- Other existing endpoints ---
 
 @router.get("/", response_model=QuestionsResponse)
 async def get_questions(
@@ -207,7 +216,6 @@ async def get_questions(
         total = len(questions)
         paginated_questions_data = questions[skip:skip + limit]
 
-        # Convert Question models to QuestionResponse models
         response_questions = [
              QuestionResponse.model_validate(q) for q in paginated_questions_data
         ]
@@ -247,8 +255,8 @@ async def store_seed_questions(
             from ...models.pack_creation_data import PackCreationDataCreate
             creation_data = PackCreationDataCreate(
                 pack_id=pack_id_uuid,
-                creation_name=pack.name,
-                pack_topics=[] # Initialize topics
+                creation_name=pack.name # Use pack name
+                # Removed pack_topics=[] initialization
             )
             await seed_question_service.pack_creation_repository.create(obj_in=creation_data)
 
@@ -299,7 +307,7 @@ async def extract_seed_questions(
         pack_creation_data = await seed_question_service.pack_creation_repository.get_by_pack_id(pack_id_uuid)
         if not pack_creation_data:
             from ...models.pack_creation_data import PackCreationDataCreate
-            creation_data = PackCreationDataCreate(pack_id=pack_id_uuid, creation_name=pack.name, pack_topics=[])
+            creation_data = PackCreationDataCreate(pack_id=pack_id_uuid, creation_name=pack.name) # Removed pack_topics
             await seed_question_service.pack_creation_repository.create(obj_in=creation_data)
 
         success = await seed_question_service.store_seed_questions(
@@ -350,63 +358,75 @@ async def get_seed_questions(
             detail=f"Error retrieving seed questions: {str(e)}"
         )
 
-# Custom Instructions Endpoints (remain unchanged)
+# --- Custom Instructions Endpoints (Modified) ---
 @router.post("/custom-instructions/generate", response_model=CustomInstructionsResponse)
 async def generate_custom_instructions(
     pack_id: str = Path(..., description="ID of the pack"),
-    request: CustomInstructionsGenerateRequest = Body(...),
+    request: CustomInstructionsGenerateRequest = Body(...), # Requires pack_topic
     seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
     pack_service: PackService = Depends(get_pack_service)
 ):
+    """
+    Generate and store custom instructions for a specific topic within the pack.
+    """
     pack_id_uuid = ensure_uuid(pack_id)
     pack = await pack_service.pack_repository.get_by_id(pack_id_uuid)
     if not pack: raise HTTPException(status_code=404, detail=f"Pack {pack_id} not found")
+
+    # Ensure the topic exists within the pack
+    topic = await seed_question_service.topic_repository.get_by_name_and_pack_id(request.pack_topic, pack_id_uuid)
+    if not topic:
+        raise HTTPException(status_code=404, detail=f"Topic '{request.pack_topic}' not found in pack {pack_id}")
+
     try:
-        custom_instructions = await seed_question_service.generate_custom_instructions(pack_id_uuid, request.pack_topic)
+        # Call the service method which now handles storing per-topic
+        custom_instructions = await seed_question_service.generate_custom_instructions(
+            pack_id_uuid,
+            request.pack_topic
+        )
         if custom_instructions is None: raise HTTPException(status_code=500, detail="Failed to generate instructions")
         return CustomInstructionsResponse(custom_instructions=custom_instructions)
     except Exception as e:
         logger.error(f"Error generating custom instructions: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error: {e}")
 
+# --- REMOVED /custom-instructions/input endpoint ---
+# @router.post("/custom-instructions/input", ...)
 
-@router.post("/custom-instructions/input", response_model=CustomInstructionsResponse)
-async def input_custom_instructions(
-    pack_id: str = Path(..., description="ID of the pack"),
-    request: CustomInstructionsInputRequest = Body(...),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
-    pack_service: PackService = Depends(get_pack_service)
-):
-    pack_id_uuid = ensure_uuid(pack_id)
-    pack = await pack_service.pack_repository.get_by_id(pack_id_uuid)
-    if not pack: raise HTTPException(status_code=404, detail=f"Pack {pack_id} not found")
-    try:
-        success = await seed_question_service.process_and_store_manual_instructions(pack_id_uuid, request.instructions)
-        if not success: raise HTTPException(status_code=500, detail="Failed to store instructions")
-        stored_instructions = await seed_question_service.get_custom_instructions(pack_id_uuid)
-        return CustomInstructionsResponse(custom_instructions=stored_instructions)
-    except Exception as e:
-        logger.error(f"Error processing custom instructions: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error: {e}")
-
-
+# --- MODIFIED GET /custom-instructions endpoint ---
 @router.get("/custom-instructions", response_model=CustomInstructionsResponse)
-async def get_custom_instructions(
+async def get_topic_custom_instructions(
     pack_id: str = Path(..., description="ID of the pack"),
+    topic_name: str = Query(..., description="Name of the topic to get instructions for"), # Added required query param
     seed_question_service: SeedQuestionService = Depends(get_seed_question_service),
     pack_service: PackService = Depends(get_pack_service)
 ):
+    """
+    Get the stored custom instructions for a specific topic within the pack.
+    """
     pack_id_uuid = ensure_uuid(pack_id)
     pack = await pack_service.pack_repository.get_by_id(pack_id_uuid)
     if not pack: raise HTTPException(status_code=404, detail=f"Pack {pack_id} not found")
+
     try:
-        custom_instructions = await seed_question_service.get_custom_instructions(pack_id_uuid)
+        # Use the new service method to get instruction for a specific topic
+        custom_instructions = await seed_question_service.get_topic_custom_instruction(
+            pack_id=pack_id_uuid,
+            topic_name=topic_name
+        )
+        # If topic exists but has no instruction, service returns None
+        if custom_instructions is None:
+            logger.info(f"No custom instructions found for topic '{topic_name}' in pack {pack_id}")
+            # Optionally raise 404 or return None/empty based on desired behavior
+            # Let's return None as per the schema
+            return CustomInstructionsResponse(custom_instructions=None)
+
         return CustomInstructionsResponse(custom_instructions=custom_instructions)
     except Exception as e:
-        logger.error(f"Error retrieving custom instructions: {e}", exc_info=True)
+        logger.error(f"Error retrieving custom instructions for topic '{topic_name}': {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Error: {e}")
 
-# Incorrect Answers Endpoints (remain unchanged)
+# --- Incorrect Answers Endpoints (remain unchanged) ---
 @router.post("/{question_id}/incorrect-answers")
 async def generate_single_question_incorrect_answers(
     pack_id: str = Path(..., description="ID of the pack"),
@@ -424,11 +444,17 @@ async def generate_single_question_incorrect_answers(
         result_map = await incorrect_answer_service.generate_and_store_incorrect_answers(
             questions=[question], num_incorrect_answers=num_answers, debug_mode=debug_mode
         )
-        if question_id_uuid in result_map:
-            return {"question_id": str(question_id_uuid), "incorrect_answers": result_map[question_id_uuid]}
+        # Key should be string representation of UUID
+        result_key = str(question_id_uuid)
+        if result_key in result_map:
+             return {"question_id": result_key, "incorrect_answers": result_map[result_key]}
         else:
-            # This case means generation/storage failed definitively within the service
-            raise HTTPException(status_code=500, detail="Failed to generate or store incorrect answers for this question.")
+             # Check if generation itself failed or just storage
+             if hasattr(result_map, 'get') and result_map.get('failed_ids') and result_key in result_map['failed_ids']:
+                 raise HTTPException(status_code=500, detail="Failed to generate incorrect answers for this question.")
+             else:
+                 raise HTTPException(status_code=500, detail="Failed to generate or store incorrect answers for this question.")
+
     except IncorrectAnswerGenerationError as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate incorrect answers: {e.message}")
     except Exception as e:

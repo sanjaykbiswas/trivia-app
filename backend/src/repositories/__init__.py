@@ -18,6 +18,8 @@ from .pack_creation_data_repository import PackCreationDataRepository
 from .game_session_repository import GameSessionRepository
 from .game_participant_repository import GameParticipantRepository
 from .game_question_repository import GameQuestionRepository
+# Add new topic repository
+from .topic_repository import TopicRepository
 
 __all__ = [
     "BaseRepository", # Exporting the base abstract class for type hinting
@@ -33,4 +35,6 @@ __all__ = [
     "GameSessionRepository",
     "GameParticipantRepository",
     "GameQuestionRepository",
+    # Add new topic repository
+    "TopicRepository",
 ]
