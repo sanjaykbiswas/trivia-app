@@ -1,6 +1,7 @@
-# backend/src/api/routes/pack.py
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import List, Optional
+import logging
+import traceback
 
 from ..dependencies import get_pack_service
 from ..schemas import PackCreateRequest, PackResponse, PackListResponse
@@ -8,9 +9,12 @@ from ...services.pack_service import PackService
 from ...models.pack import CreatorType
 from ...utils import ensure_uuid
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
-@router.post("/", response_model=PackResponse, status_code=201)
+@router.post("/", response_model=PackResponse, status_code=status.HTTP_201_CREATED)
 async def create_pack(
     pack_data: PackCreateRequest,
     pack_service: PackService = Depends(get_pack_service)
@@ -25,76 +29,40 @@ async def create_pack(
     Returns:
         Newly created pack
     """
-    # Check if a pack with this name already exists
-    exists, existing_id = await pack_service.validate_creation_name(pack_data.name)
-    
-    if exists:
-        raise HTTPException(
-            status_code=400,
-            detail=f"A pack with the name '{pack_data.name}' already exists"
+    try:
+        logger.info(f"Attempting to create pack with name: {pack_data.name}")
+        
+        # Check if a pack with this name already exists
+        exists, existing_id = await pack_service.validate_creation_name(pack_data.name)
+        
+        if exists:
+            logger.warning(f"Pack with name '{pack_data.name}' already exists")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"A pack with the name '{pack_data.name}' already exists"
+            )
+        
+        # Create the pack
+        logger.info(f"Creating new pack: {pack_data.name}")
+        pack, _ = await pack_service.get_or_create_pack(
+            pack_name=pack_data.name,
+            pack_description=pack_data.description,
+            price=pack_data.price,
+            creator_type=pack_data.creator_type
         )
-    
-    # Create the pack
-    pack, _ = await pack_service.get_or_create_pack(
-        pack_name=pack_data.name,
-        pack_description=pack_data.description,
-        price=pack_data.price,
-        creator_type=pack_data.creator_type
-    )
-    
-    return pack
-
-@router.get("/", response_model=PackListResponse)
-async def list_packs(
-    skip: int = Query(0, ge=0, description="Number of packs to skip"),
-    limit: int = Query(20, ge=1, le=100, description="Number of packs to return"),
-    creator_type: Optional[CreatorType] = Query(None, description="Filter by creator type"),
-    search: Optional[str] = Query(None, description="Search by pack name"),
-    pack_service: PackService = Depends(get_pack_service)
-):
-    """
-    List all packs with optional filtering.
-    
-    Args:
-        skip: Number of packs to skip (pagination)
-        limit: Number of packs to return (pagination)
-        creator_type: Optional filter by creator type
-        search: Optional search by pack name
-        pack_service: Pack service dependency
         
-    Returns:
-        List of packs matching the criteria
-    """
-    # This endpoint would require implementation in the pack_service
-    # For now, returning a placeholder implementation
-    
-    raise HTTPException(
-        status_code=501,
-        detail="This endpoint is not implemented yet"
-    )
-
-@router.get("/{pack_id}", response_model=PackResponse)
-async def get_pack(
-    pack_id: str,
-    pack_service: PackService = Depends(get_pack_service)
-):
-    """
-    Get a specific pack by ID.
-    
-    Args:
-        pack_id: ID of the pack to retrieve
-        pack_service: Pack service dependency
+        logger.info(f"Successfully created pack: {pack.name} with ID: {pack.id}")
+        return pack
         
-    Returns:
-        Pack details
-    """
-    # Ensure pack_id is a valid UUID string
-    pack_id = ensure_uuid(pack_id)
-    
-    # This endpoint would require implementation in the pack_service
-    # to get a pack by ID from the repository
-    
-    raise HTTPException(
-        status_code=501,
-        detail="This endpoint is not implemented yet"
-    )
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        logger.exception("HTTP exception while creating pack")
+        raise
+    except Exception as e:
+        # Log the full exception with traceback
+        logger.error(f"Unexpected error creating pack: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create pack: {str(e)}"
+        )

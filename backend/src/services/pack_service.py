@@ -1,9 +1,14 @@
 # backend/src/services/pack_service.py
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
+import logging
+import traceback
 
 from ..models.pack import Pack, PackCreate, PackUpdate, CreatorType
 from ..repositories.pack_repository import PackRepository
 from ..utils import ensure_uuid
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 class PackService:
     """
@@ -35,10 +40,10 @@ class PackService:
         # Import here to avoid circular imports
         from ..utils.document_processing.processors import normalize_text
         
-        # Convert to lowercase as specified in requirements
-        normalized_name = normalize_text(creation_name, lowercase=True)
-        
         try:
+            # Convert to lowercase as specified in requirements
+            normalized_name = normalize_text(creation_name, lowercase=True)
+            
             # Use the search_by_name method from the repository
             packs = await self.pack_repository.search_by_name(normalized_name)
             
@@ -51,9 +56,28 @@ class PackService:
             return False, None
                 
         except Exception as e:
-            # Log the error (in a real application you'd use a proper logger)
-            print(f"Error validating creation name: {str(e)}")
+            # Log the error with full traceback
+            logger.error(f"Error validating creation name: {str(e)}")
+            logger.error(traceback.format_exc())
             # Re-raise for proper error handling upstream
+            raise
+    
+    async def get_all_packs(self, skip: int = 0, limit: int = 100) -> List[Pack]:
+        """
+        Get all packs with pagination.
+        
+        Args:
+            skip: Number of packs to skip (pagination offset)
+            limit: Maximum number of packs to return
+            
+        Returns:
+            List of Pack objects
+        """
+        try:
+            return await self.pack_repository.get_all(skip=skip, limit=limit)
+        except Exception as e:
+            logger.error(f"Error retrieving all packs: {str(e)}")
+            logger.error(traceback.format_exc())
             raise
     
     async def get_or_create_pack(
@@ -79,30 +103,41 @@ class PackService:
                 - The existing or newly created Pack
                 - Boolean indicating if the pack was newly created (True) or existed (False)
         """
-        # Check if a pack with this name already exists
-        exists, existing_pack_id = await self.validate_creation_name(pack_name)
-        
-        if exists and existing_pack_id:
-            # Ensure existing_pack_id is a valid UUID string
-            existing_pack_id_str = ensure_uuid(existing_pack_id)
+        try:
+            # Check if a pack with this name already exists
+            exists, existing_pack_id = await self.validate_creation_name(pack_name)
             
-            # Pack exists, retrieve it
-            existing_pack = await self.pack_repository.get_by_id(existing_pack_id_str)
-            
-            # Optionally update the description if provided and different
-            if update_if_exists and pack_description and existing_pack.description != pack_description:
-                update_data = PackUpdate(description=pack_description)
-                existing_pack = await self.pack_repository.update(id=existing_pack_id_str, obj_in=update_data)
+            if exists and existing_pack_id:
+                # Ensure existing_pack_id is a valid UUID string
+                existing_pack_id_str = ensure_uuid(existing_pack_id)
                 
-            return existing_pack, False
+                logger.info(f"Found existing pack with ID: {existing_pack_id_str}")
+                
+                # Pack exists, retrieve it
+                existing_pack = await self.pack_repository.get_by_id(existing_pack_id_str)
+                
+                # Optionally update the description if provided and different
+                if update_if_exists and pack_description and existing_pack.description != pack_description:
+                    logger.info(f"Updating description for pack ID: {existing_pack_id_str}")
+                    update_data = PackUpdate(description=pack_description)
+                    existing_pack = await self.pack_repository.update(id=existing_pack_id_str, obj_in=update_data)
+                    
+                return existing_pack, False
+            
+            logger.info(f"Creating new pack: {pack_name}")
+            # Pack doesn't exist, create a new one
+            pack_data = PackCreate(
+                name=pack_name,
+                description=pack_description,
+                price=price,
+                creator_type=creator_type,
+            )
+            
+            new_pack = await self.pack_repository.create(obj_in=pack_data)
+            logger.info(f"Created new pack with ID: {new_pack.id}")
+            return new_pack, True
         
-        # Pack doesn't exist, create a new one
-        pack_data = PackCreate(
-            name=pack_name,
-            description=pack_description,
-            price=price,
-            creator_type=creator_type,
-        )
-        
-        new_pack = await self.pack_repository.create(obj_in=pack_data)
-        return new_pack, True
+        except Exception as e:
+            logger.error(f"Error in get_or_create_pack: {str(e)}")
+            logger.error(traceback.format_exc())
+            raise
