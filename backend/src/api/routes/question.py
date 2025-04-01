@@ -615,7 +615,7 @@ async def generate_incorrect_answers(
     
     # Check if we got results
     if question_id in result:
-        return result[question_id]
+        return {"question_id": question_id, "incorrect_answers": result[question_id]}
     else:
         raise HTTPException(
             status_code=500,

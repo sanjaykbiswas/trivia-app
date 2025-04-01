@@ -29,7 +29,8 @@ class QuestionService:
         question_repository: QuestionRepository,
         pack_creation_data_repository: Optional[PackCreationDataRepository] = None,
         question_generator: Optional[QuestionGenerator] = None,
-        incorrect_answer_generator: Optional[IncorrectAnswerGenerator] = None
+        incorrect_answer_generator: Optional[IncorrectAnswerGenerator] = None,
+        incorrect_answers_repository: Optional[Any] = None  # Using Any to avoid circular imports
     ):
         """
         Initialize the service with required repositories.
@@ -39,11 +40,13 @@ class QuestionService:
             pack_creation_data_repository: Optional repository for accessing pack metadata
             question_generator: Optional question generator utility
             incorrect_answer_generator: Optional incorrect answer generator utility
+            incorrect_answers_repository: Optional repository for incorrect answers operations
         """
         self.question_repository = question_repository
         self.pack_creation_data_repository = pack_creation_data_repository
         self.question_generator = question_generator or QuestionGenerator()
         self.incorrect_answer_generator = incorrect_answer_generator or IncorrectAnswerGenerator()
+        self.incorrect_answers_repository = incorrect_answers_repository
         self.debug_enabled = False
     
     async def generate_and_store_questions(
@@ -159,23 +162,23 @@ class QuestionService:
                         debug_mode=debug_mode
                     )
                     
-                    # Store the incorrect answers
-                    for question, incorrect_answers in incorrect_answers_results:
-                        # Create incorrect answers record
-                        if incorrect_answers:
-                            # Get incorrect_answers_repository
-                            incorrect_answers_repo = await self._get_incorrect_answers_repository()
-                            
-                            if incorrect_answers_repo:
+                    # Get incorrect_answers_repository
+                    incorrect_answers_repo = await self._get_incorrect_answers_repository()
+                    
+                    if incorrect_answers_repo:
+                        # Store the incorrect answers
+                        for question_id, incorrect_answers in incorrect_answers_results.items():
+                            # Create incorrect answers record
+                            if incorrect_answers:
                                 incorrect_answers_data = IncorrectAnswersCreate(
-                                    question_id=question.id,
+                                    question_id=question_id,
                                     incorrect_answers=incorrect_answers
                                 )
                                 
                                 await incorrect_answers_repo.create(obj_in=incorrect_answers_data)
                                 
                                 if self.debug_enabled:
-                                    print(f"Stored {len(incorrect_answers)} incorrect answers for question {question.id}")
+                                    print(f"Stored {len(incorrect_answers)} incorrect answers for question {question_id}")
                 except Exception as e:
                     logger.error(f"Error generating or storing incorrect answers: {str(e)}")
                     if self.debug_enabled:
@@ -361,7 +364,7 @@ class QuestionService:
         questions: List[Question],
         num_incorrect_answers: int = 3,
         debug_mode: bool = False
-    ) -> List[Tuple[Question, List[str]]]:
+    ) -> Dict[str, List[str]]:
         """
         Generate incorrect answers for questions.
         
@@ -371,12 +374,12 @@ class QuestionService:
             debug_mode: Enable verbose debug output
             
         Returns:
-            List of tuples containing (question, incorrect_answers_list)
+            Dictionary mapping question IDs to lists of incorrect answers
         """
         self.debug_enabled = debug_mode
         
         if not questions:
-            return []
+            return {}
         
         if self.debug_enabled:
             print(f"\n=== Generating Incorrect Answers for {len(questions)} Questions ===")
@@ -388,13 +391,10 @@ class QuestionService:
             debug_mode=debug_mode
         )
         
-        # Map results to questions
-        results = []
-        question_map = {q.id: q for q in questions}
-        
+        # Convert results to dictionary
+        results = {}
         for question_id, incorrect_answers in generation_results:
-            if question_id in question_map:
-                results.append((question_map[question_id], incorrect_answers))
+            results[question_id] = incorrect_answers
         
         return results
     
@@ -405,6 +405,10 @@ class QuestionService:
         Returns:
             IncorrectAnswersRepository instance or None if not available
         """
+        # If we already have an incorrect_answers_repository attribute, use that
+        if hasattr(self, 'incorrect_answers_repository') and self.incorrect_answers_repository:
+            return self.incorrect_answers_repository
+        
         try:
             # Import here to avoid circular imports
             from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
@@ -414,7 +418,8 @@ class QuestionService:
             supabase = await init_supabase_client()
             
             # Create the repository
-            return IncorrectAnswersRepository(supabase)
+            self.incorrect_answers_repository = IncorrectAnswersRepository(supabase)
+            return self.incorrect_answers_repository
         except Exception as e:
             logger.error(f"Error creating incorrect answers repository: {str(e)}")
             return None

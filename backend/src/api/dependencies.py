@@ -71,12 +71,14 @@ async def get_difficulty_service(
 
 async def get_question_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository)
+    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository),
+    incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
 ) -> QuestionService:
     """Get QuestionService instance."""
     return QuestionService(
         question_repository=question_repository,
-        pack_creation_data_repository=pack_creation_data_repository
+        pack_creation_data_repository=pack_creation_data_repository,
+        incorrect_answers_repository=incorrect_answers_repository
     )
 
 async def get_seed_question_service(

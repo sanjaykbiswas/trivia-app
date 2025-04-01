@@ -1,4 +1,4 @@
-pythonCopy# backend/src/utils/question_generation/incorrect_answer_generator.py
+# backend/src/utils/question_generation/incorrect_answer_generator.py
 """
 Utility for generating incorrect answers for trivia questions using LLM.
 """

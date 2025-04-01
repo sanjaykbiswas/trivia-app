@@ -44,7 +44,7 @@ class IncorrectAnswerService:
         num_incorrect_answers: int = 3,
         batch_size: int = 5,
         debug_mode: bool = False
-    ) -> Dict[str, IncorrectAnswers]:
+    ) -> Dict[str, List[str]]:
         """
         Generate incorrect answers for questions and store them in the database.
         
@@ -55,7 +55,7 @@ class IncorrectAnswerService:
             debug_mode: Enable verbose debug logging
             
         Returns:
-            Dictionary mapping question IDs to their stored IncorrectAnswers
+            Dictionary mapping question IDs to their incorrect answers
         """
         if not questions:
             logger.warning("No questions provided for incorrect answer generation")
@@ -87,7 +87,7 @@ class IncorrectAnswerService:
                 )
                 
                 if update_result:
-                    stored_answers[question_id] = update_result
+                    stored_answers[question_id] = incorrect_answers
                     logger.info(f"Updated incorrect answers for question {question_id}")
                 else:
                     logger.error(f"Failed to update incorrect answers for question {question_id}")
@@ -101,7 +101,7 @@ class IncorrectAnswerService:
                 created = await self.incorrect_answers_repository.create(obj_in=create_data)
                 
                 if created:
-                    stored_answers[question_id] = created
+                    stored_answers[question_id] = incorrect_answers
                     logger.info(f"Created incorrect answers for question {question_id}")
                 else:
                     logger.error(f"Failed to create incorrect answers for question {question_id}")
@@ -115,7 +115,7 @@ class IncorrectAnswerService:
         num_incorrect_answers: int = 3,
         batch_size: int = 5,
         debug_mode: bool = False
-    ) -> Dict[str, IncorrectAnswers]:
+    ) -> Dict[str, List[str]]:
         """
         Generate incorrect answers for all questions in a pack.
         
@@ -126,7 +126,7 @@ class IncorrectAnswerService:
             debug_mode: Enable verbose debug logging
             
         Returns:
-            Dictionary mapping question IDs to their stored IncorrectAnswers
+            Dictionary mapping question IDs to their incorrect answers
         """
         # Ensure pack_id is a valid UUID string
         pack_id = ensure_uuid(pack_id)
@@ -150,7 +150,7 @@ class IncorrectAnswerService:
     async def get_incorrect_answers(
         self,
         question_id: str
-    ) -> Optional[IncorrectAnswers]:
+    ) -> Optional[List[str]]:
         """
         Get incorrect answers for a specific question.
         
@@ -158,9 +158,10 @@ class IncorrectAnswerService:
             question_id: ID of the question
             
         Returns:
-            IncorrectAnswers object or None if not found
+            List of incorrect answers or None if not found
         """
         # Ensure question_id is a valid UUID string
         question_id = ensure_uuid(question_id)
         
-        return await self.incorrect_answers_repository.get_by_question_id(question_id)
+        result = await self.incorrect_answers_repository.get_by_question_id(question_id)
+        return result.incorrect_answers if result else None
