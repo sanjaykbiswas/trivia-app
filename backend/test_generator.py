@@ -198,7 +198,7 @@ def generate_questions(
     pack_id: str, 
     topic: str, 
     difficulty: str = "medium", 
-    num_questions: int = 5,
+    num_questions: int = 60,
     custom_instructions: Optional[str] = None,
     debug_mode: bool = False
 ) -> List[Dict[str, Any]]:
