@@ -1,4 +1,4 @@
-# backend/src/repositories/__init__.py
+# Update to backend/src/repositories/__init__.py
 """
 Repositories module providing data access layer implementations.
 
@@ -14,6 +14,10 @@ from .pack_repository import PackRepository
 from .user_question_history_repository import UserQuestionHistoryRepository
 from .user_pack_history_repository import UserPackHistoryRepository
 from .pack_creation_data_repository import PackCreationDataRepository
+# Add new game repositories
+from .game_session_repository import GameSessionRepository
+from .game_participant_repository import GameParticipantRepository
+from .game_question_repository import GameQuestionRepository
 
 __all__ = [
     "BaseRepository", # Exporting the base abstract class for type hinting
@@ -25,4 +29,8 @@ __all__ = [
     "UserQuestionHistoryRepository",
     "UserPackHistoryRepository",
     "PackCreationDataRepository",
+    # Add new game repositories
+    "GameSessionRepository",
+    "GameParticipantRepository",
+    "GameQuestionRepository",
 ]

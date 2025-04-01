@@ -1,4 +1,4 @@
-# backend/src/models/__init__.py
+# Update to backend/src/models/__init__.py
 """
 Models module containing all data models for the Trivia application.
 
@@ -15,6 +15,10 @@ from .user import User, UserCreate, UserUpdate
 from .user_question_history import UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate
 from .user_pack_history import UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate
 from .pack_creation_data import PackCreationData, PackCreationDataCreate, PackCreationDataUpdate
+# Add new game models
+from .game_session import GameSession, GameSessionCreate, GameSessionUpdate, GameStatus
+from .game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
+from .game_question import GameQuestion, GameQuestionCreate, GameQuestionUpdate
 
 __all__ = [
     # Base schemas
@@ -62,4 +66,20 @@ __all__ = [
     'PackCreationData',
     'PackCreationDataCreate',
     'PackCreationDataUpdate',
+    
+    # Game session models
+    'GameSession',
+    'GameSessionCreate',
+    'GameSessionUpdate',
+    'GameStatus',
+    
+    # Game participant models
+    'GameParticipant',
+    'GameParticipantCreate',
+    'GameParticipantUpdate',
+    
+    # Game question models
+    'GameQuestion',
+    'GameQuestionCreate',
+    'GameQuestionUpdate',
 ]

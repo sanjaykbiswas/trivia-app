@@ -1,4 +1,4 @@
-# backend/src/services/__init__.py
+# Update to backend/src/services/__init__.py
 """
 Services module for business logic operations.
 
@@ -12,6 +12,8 @@ from .topic_service import TopicService
 from .difficulty_service import DifficultyService
 from .seed_question_service import SeedQuestionService
 from .question_service import QuestionService
+# Add new game service
+from .game_service import GameService
 
 __all__ = [
     "PackService",
@@ -19,4 +21,6 @@ __all__ = [
     "DifficultyService",
     "SeedQuestionService",
     "QuestionService",
+    # Add new game service
+    "GameService",
 ]
