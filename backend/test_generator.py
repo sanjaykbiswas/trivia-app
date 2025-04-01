@@ -1,12 +1,12 @@
+# python3 test_generator.py --pack-name "Book Title Adjectives" --topic "Book Title Adjectives" --seed-questions seed_questions.txt --auto-generate-instructions
+
 #!/usr/bin/env python
 import requests
 import json
 import argparse
 import sys
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional
 import os
-import time
-from datetime import datetime
 
 # API base URL
 BASE_URL = "http://localhost:8000/api"
@@ -22,7 +22,6 @@ class Colors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-    GRAY = '\033[90m'
 
 def print_json(data: Any) -> None:
     """Pretty print JSON data."""
@@ -201,21 +200,15 @@ def generate_questions(
     difficulty: str = "medium", 
     num_questions: int = 5,
     custom_instructions: Optional[str] = None,
-    debug_mode: bool = False,
-    validator_debug_mode: bool = False
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
-    """Generate questions for a pack with custom instructions.
-    
-    Returns: 
-        Tuple of (raw unvalidated questions, final validated questions, full response data)
-    """
+    debug_mode: bool = False
+) -> List[Dict[str, Any]]:
+    """Generate questions for a pack with custom instructions."""
     # Prepare request data
     data = {
         "pack_topic": topic,
         "difficulty": difficulty,
         "num_questions": num_questions,
-        # Send both debug flags
-        "debug_mode": debug_mode or validator_debug_mode  # Either flag enables debug
+        "debug_mode": debug_mode
     }
     
     if custom_instructions:
@@ -229,30 +222,8 @@ def generate_questions(
     if response.status_code == 200:
         result = response.json()
         questions = result.get("questions", [])
-        total = result.get("total", 0)
-        
-        print(f"{Colors.GREEN}Successfully generated {total} questions{Colors.ENDC}")
-        
-        # Extract the raw questions from the debug output
-        raw_unvalidated_questions = []
-        
-        # Look for the debug output in console logs
-        if debug_mode and "last_processed_questions" in str(response.text):
-            try:
-                # Try to extract the raw questions from the debug output
-                debug_text = response.text
-                start_idx = debug_text.find('"last_processed_questions":')
-                if start_idx != -1:
-                    # Extract the JSON array of raw questions
-                    json_start = debug_text.find('[', start_idx)
-                    json_end = find_matching_bracket(debug_text, json_start)
-                    if json_start != -1 and json_end != -1:
-                        raw_json = debug_text[json_start:json_end+1]
-                        raw_unvalidated_questions = json.loads(raw_json)
-            except Exception as e:
-                print(f"{Colors.WARNING}Failed to extract raw unvalidated questions: {str(e)}{Colors.ENDC}")
-        
-        return raw_unvalidated_questions, questions, result
+        print(f"{Colors.GREEN}Successfully generated {len(questions)} questions{Colors.ENDC}")
+        return questions
     else:
         print(f"{Colors.FAIL}Failed to generate questions: {response.status_code}{Colors.ENDC}")
         try:
@@ -260,117 +231,15 @@ def generate_questions(
             print_json(error_data)
         except:
             print(response.text)
-        return [], [], {}
+        return []
 
-def find_matching_bracket(text: str, open_pos: int) -> int:
-    """Find the matching closing bracket for an opening bracket."""
-    if text[open_pos] != '[':
-        return -1
-        
-    depth = 0
-    for i in range(open_pos, len(text)):
-        if text[i] == '[':
-            depth += 1
-        elif text[i] == ']':
-            depth -= 1
-            if depth == 0:
-                return i
-    return -1
-
-def display_raw_questions(questions: List[Dict[str, Any]], title: str = "Raw Unvalidated Questions") -> None:
-    """Display the raw unvalidated questions."""
-    if not questions:
-        print(f"{Colors.WARNING}No raw questions to display{Colors.ENDC}")
-        return
-    
-    print(f"\n{Colors.HEADER}{title} ({len(questions)}):{Colors.ENDC}")
-    for i, q in enumerate(questions, 1):
-        question_text = q.get('question', 'N/A')
-        answer_text = q.get('answer', 'N/A')
-        
-        print(f"\n{Colors.BOLD}Question {i}:{Colors.ENDC}")
-        print(f"{Colors.BLUE}Q: {question_text}{Colors.ENDC}")
-        print(f"{Colors.GREEN}A: {answer_text}{Colors.ENDC}")
-
-def display_questions_comparison(
-    raw_questions: List[Dict[str, Any]], 
-    final_questions: List[Dict[str, Any]]
-) -> None:
-    """Display a comparison between raw unvalidated questions and final validated questions."""
-    if not raw_questions:
-        print(f"{Colors.WARNING}No raw questions to compare{Colors.ENDC}")
-        return
-        
-    if not final_questions:
-        print(f"{Colors.FAIL}All questions were filtered out by the validator!{Colors.ENDC}")
-        display_raw_questions(raw_questions, "Rejected Questions")
-        return
-        
-    # Create lookup dictionaries for faster comparison
-    raw_dict = {q.get('question', ''): q for q in raw_questions}
-    final_dict = {q.get('question', ''): q for q in final_questions}
-    
-    # Find questions that were removed by the validator
-    removed_questions = []
-    for q_text, q in raw_dict.items():
-        if q_text not in final_dict:
-            removed_questions.append(q)
-    
-    # Find questions that were modified by the validator
-    modified_questions = []
-    for q_text, final_q in final_dict.items():
-        # Check if there's a similar question in the raw questions
-        # This is a simplistic approach - might need improvement
-        for raw_q_text, raw_q in raw_dict.items():
-            # Use a similarity measure (here just check if 80% of the words match)
-            if similarity_score(q_text, raw_q_text) > 0.8:
-                # If the answer changed, consider it modified
-                if raw_q.get('answer', '') != final_q.get('answer', ''):
-                    modified_questions.append((raw_q, final_q))
-    
-    # Display counts and summaries
-    print(f"\n{Colors.HEADER}Question Validation Summary:{Colors.ENDC}")
-    print(f"Raw questions count: {len(raw_questions)}")
-    print(f"Final questions count: {len(final_questions)}")
-    print(f"Questions removed: {len(removed_questions)}")
-    print(f"Questions modified: {len(modified_questions)}")
-    
-    # Display removed questions
-    if removed_questions:
-        display_raw_questions(removed_questions, "Removed Questions")
-    
-    # Display modified questions
-    if modified_questions:
-        print(f"\n{Colors.HEADER}Modified Questions ({len(modified_questions)}):{Colors.ENDC}")
-        for i, (raw_q, final_q) in enumerate(modified_questions, 1):
-            print(f"\n{Colors.BOLD}Modified Question {i}:{Colors.ENDC}")
-            print(f"{Colors.BLUE}Original Q: {raw_q.get('question', 'N/A')}{Colors.ENDC}")
-            print(f"{Colors.BLUE}Final Q: {final_q.get('question', 'N/A')}{Colors.ENDC}")
-            print(f"{Colors.GREEN}Original A: {raw_q.get('answer', 'N/A')}{Colors.ENDC}")
-            print(f"{Colors.GREEN}Final A: {final_q.get('answer', 'N/A')}{Colors.ENDC}")
-
-def similarity_score(str1: str, str2: str) -> float:
-    """Calculate a simple similarity score between two strings.
-    
-    Returns a value between 0 (completely different) and 1 (identical).
-    """
-    # Simple implementation - counts common words
-    words1 = set(str1.lower().split())
-    words2 = set(str2.lower().split())
-    
-    if not words1 or not words2:
-        return 0.0
-        
-    common_words = words1.intersection(words2)
-    return len(common_words) / max(len(words1), len(words2))
-
-def display_formatted_questions(questions: List[Dict[str, Any]], title: str = "Generated Questions") -> None:
+def display_questions(questions: List[Dict[str, Any]]) -> None:
     """Display questions with answers and metadata."""
     if not questions:
         print(f"{Colors.WARNING}No questions to display{Colors.ENDC}")
         return
     
-    print(f"\n{Colors.HEADER}{title} ({len(questions)}):{Colors.ENDC}")
+    print(f"\n{Colors.HEADER}Generated Questions:{Colors.ENDC}")
     for i, q in enumerate(questions, 1):
         print(f"\n{Colors.BOLD}Question {i}:{Colors.ENDC}")
         print(f"{Colors.BLUE}Q: {q['question']}{Colors.ENDC}")
@@ -380,32 +249,15 @@ def display_formatted_questions(questions: List[Dict[str, Any]], title: str = "G
         print(f"{Colors.CYAN}Topic: {q.get('pack_topics_item', 'N/A')}{Colors.ENDC}")
         print(f"{Colors.CYAN}Difficulty: {q.get('difficulty_current', 'N/A')}{Colors.ENDC}")
 
-def save_questions_to_file(questions: List[Dict[str, Any]], filename: str) -> bool:
-    """Save questions to a JSON file."""
+def save_to_file(content: str, filename: str) -> bool:
+    """Save content to a file."""
     try:
         with open(filename, 'w') as f:
-            json.dump(questions, f, indent=2)
-        print(f"{Colors.GREEN}Successfully saved questions to {filename}{Colors.ENDC}")
+            f.write(content)
+        print(f"{Colors.GREEN}Successfully saved to {filename}{Colors.ENDC}")
         return True
     except Exception as e:
-        print(f"{Colors.FAIL}Error saving questions to file: {str(e)}{Colors.ENDC}")
-        return False
-
-def save_formatted_questions(questions: List[Dict[str, Any]], filename: str) -> bool:
-    """Save questions in a human-readable format."""
-    try:
-        with open(filename, 'w') as f:
-            f.write(f"Questions ({len(questions)})\n\n")
-            for i, q in enumerate(questions, 1):
-                f.write(f"Question {i}:\n")
-                f.write(f"Q: {q['question']}\n")
-                f.write(f"A: {q['answer']}\n")
-                f.write(f"Topic: {q.get('pack_topics_item', 'N/A')}\n")
-                f.write(f"Difficulty: {q.get('difficulty_current', 'N/A')}\n\n")
-        print(f"{Colors.GREEN}Successfully saved formatted questions to {filename}{Colors.ENDC}")
-        return True
-    except Exception as e:
-        print(f"{Colors.FAIL}Error saving formatted questions: {str(e)}{Colors.ENDC}")
+        print(f"{Colors.FAIL}Error saving to file: {str(e)}{Colors.ENDC}")
         return False
 
 def run_generator(
@@ -415,33 +267,24 @@ def run_generator(
     custom_instructions_file: str = None,
     auto_generate_instructions: bool = False,
     save_generated_instructions: Optional[str] = None,
-    save_raw_questions: Optional[str] = None,
-    save_final_questions: Optional[str] = None,
     difficulty: str = "medium",
     num_questions: int = 5,
-    debug_mode: bool = False,
-    validator_debug_mode: bool = False,
-    use_existing_pack: Optional[str] = None
+    debug_mode: bool = False
 ) -> None:
     """Run the full question generation pipeline."""
-    # Use existing pack ID or create a new one
-    if use_existing_pack:
-        pack_id = use_existing_pack
-        print(f"{Colors.HEADER}Using existing pack ID: {pack_id}{Colors.ENDC}")
-    else:
-        # Create the pack
-        pack_id = create_pack(pack_name)
-        if not pack_id:
-            return
-        
-        # Add the custom topic
-        if not add_topic(pack_id, custom_topic):
-            print(f"{Colors.WARNING}Failed to add custom topic, but continuing...{Colors.ENDC}")
-            return
-        
-        # Generate difficulty descriptions
-        if not generate_difficulties(pack_id):
-            print(f"{Colors.WARNING}Failed to generate difficulties, but continuing...{Colors.ENDC}")
+    # Create the pack
+    pack_id = create_pack(pack_name)
+    if not pack_id:
+        return
+    
+    # Add the custom topic
+    if not add_topic(pack_id, custom_topic):
+        print(f"{Colors.WARNING}Failed to add custom topic, but continuing...{Colors.ENDC}")
+        return
+    
+    # Generate difficulty descriptions
+    if not generate_difficulties(pack_id):
+        print(f"{Colors.WARNING}Failed to generate difficulties, but continuing...{Colors.ENDC}")
     
     # Process seed questions if provided
     seed_questions = {}
@@ -462,43 +305,17 @@ def run_generator(
         custom_instructions = load_custom_instructions(custom_instructions_file)
     
     # Generate questions with the custom topic
-    raw_questions, final_questions, result_data = generate_questions(
+    questions = generate_questions(
         pack_id=pack_id,
         topic=custom_topic,
         difficulty=difficulty,
         num_questions=num_questions,
         custom_instructions=custom_instructions,
-        debug_mode=debug_mode,
-        validator_debug_mode=validator_debug_mode
+        debug_mode=debug_mode
     )
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Save raw questions to file if requested
-    if raw_questions and save_raw_questions:
-        filename = f"{save_raw_questions}_{timestamp}.json" if "." not in save_raw_questions else save_raw_questions
-        save_questions_to_file(raw_questions, filename)
-        text_filename = filename.replace(".json", ".txt")
-        save_formatted_questions(raw_questions, text_filename)
-    
-    # Save final questions to file if requested
-    if final_questions and save_final_questions:
-        filename = f"{save_final_questions}_{timestamp}.json" if "." not in save_final_questions else save_final_questions
-        save_questions_to_file(final_questions, filename)
-        text_filename = filename.replace(".json", ".txt")
-        save_formatted_questions(final_questions, text_filename)
-    
-    # Display the raw unvalidated questions
-    if raw_questions:
-        display_raw_questions(raw_questions)
-    
     # Display the generated questions
-    if final_questions:
-        display_formatted_questions(final_questions, title="Final Validated Questions")
-    
-    # Compare raw and final questions if we have both
-    if raw_questions and final_questions:
-        display_questions_comparison(raw_questions, final_questions)
+    display_questions(questions)
     
     # Print summary
     print(f"\n{Colors.HEADER}Summary:{Colors.ENDC}")
@@ -507,20 +324,8 @@ def run_generator(
     print(f"Custom Topic: {custom_topic}")
     print(f"Seed Questions: {len(seed_questions)}")
     print(f"Used Custom Instructions: {'Yes' if custom_instructions else 'No'}")
-    print(f"Raw Unvalidated Questions: {len(raw_questions)}")
-    print(f"Final Validated Questions: {len(final_questions)}")
+    print(f"Generated Questions: {len(questions)}")
     print(f"\nYou can use this pack ID for future testing: {pack_id}")
-
-def save_to_file(content: str, filename: str) -> bool:
-    """Save content to a file."""
-    try:
-        with open(filename, 'w') as f:
-            f.write(content)
-        print(f"{Colors.GREEN}Successfully saved to {filename}{Colors.ENDC}")
-        return True
-    except Exception as e:
-        print(f"{Colors.FAIL}Error saving to file: {str(e)}{Colors.ENDC}")
-        return False
 
 def main():
     parser = argparse.ArgumentParser(description="Generate trivia questions with custom topic and options")
@@ -536,11 +341,6 @@ def main():
                       default="mixed", help="Difficulty level for questions")
     parser.add_argument("--num-questions", "-n", type=int, default=5, help="Number of questions to generate")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode for more detailed output")
-    parser.add_argument("--validator-debug", action="store_true", 
-                        help="Enable detailed debug output for the validator")
-    parser.add_argument("--save-raw", help="Save raw unvalidated questions to this file")
-    parser.add_argument("--save-final", help="Save final validated questions to this file")
-    parser.add_argument("--use-pack", help="Use an existing pack ID instead of creating a new one")
     
     args = parser.parse_args()
     
@@ -565,13 +365,9 @@ def main():
         custom_instructions_file=args.custom_instructions,
         auto_generate_instructions=args.auto_generate_instructions,
         save_generated_instructions=args.save_generated_instructions,
-        save_raw_questions=args.save_raw,
-        save_final_questions=args.save_final,
         difficulty=args.difficulty,
         num_questions=args.num_questions,
-        debug_mode=args.debug,
-        validator_debug_mode=args.validator_debug,
-        use_existing_pack=args.use_pack
+        debug_mode=args.debug
     )
 
 if __name__ == "__main__":

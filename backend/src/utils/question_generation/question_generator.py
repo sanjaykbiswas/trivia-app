@@ -11,7 +11,6 @@ from ...models.question import DifficultyLevel, Question
 from ..llm.llm_service import LLMService
 from ..llm.llm_parsing_utils import parse_json_from_llm
 from ..document_processing.processors import clean_text
-from .question_validator import QuestionValidator  # Import the new validator
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -29,7 +28,6 @@ class QuestionGenerator:
             llm_service: Service for LLM interactions. If None, creates a new instance.
         """
         self.llm_service = llm_service or LLMService()
-        self.validator = QuestionValidator(llm_service=self.llm_service)  # Initialize the validator
         self.debug_enabled = False
         self.last_raw_response = None
         self.last_processed_questions = None
@@ -88,7 +86,7 @@ class QuestionGenerator:
             print("==================================\n")
         
         try:
-            # Generate questions using LLM
+            # Generate questions using LLM (CHANGED: removed await)
             raw_response = self.llm_service.generate_content(
                 prompt=prompt,
                 temperature=0.7,  # Slightly higher temperature for creativity
@@ -112,30 +110,17 @@ class QuestionGenerator:
             
             self.last_processed_questions = processed_questions
             
-            # NEW: Validate and correct questions using the validator
             if self.debug_enabled:
-                print("\n=== Starting Question Validation ===")
-                print(f"Questions before validation: {len(processed_questions)}")
-            
-            validated_questions = await self.validator.validate_and_correct_questions(
-                questions=processed_questions,
-                debug_mode=debug_mode
-            )
-            
-            if self.debug_enabled:
-                print(f"Questions after validation: {len(validated_questions)}")
-                print("=== Question Validation Complete ===\n")
-                
                 print("\n=== Processed Questions ===")
                 # Use safe JSON serialization for debug output
                 try:
-                    print(json.dumps(validated_questions, indent=2))
+                    print(json.dumps(processed_questions, indent=2))
                 except Exception as e:
                     print(f"Error showing processed questions: {str(e)}")
-                    print(f"Raw processed questions: {validated_questions}")
+                    print(f"Raw processed questions: {processed_questions}")
                 print("===========================\n")
             
-            return validated_questions
+            return processed_questions
             
         except Exception as e:
             logger.error(f"Error generating questions: {str(e)}")
@@ -192,10 +177,10 @@ The questions should be at a {difficulty} difficulty level.
 
 Each question should:
 1. Be clear and unambiguous
-2. Have a single correct answer that is factually accurate
-3. Be specific to the topic of {pack_topic}
-4. Be at the appropriate difficulty level
-5. IMPORTANT: The answer should NOT appear within the question text E.g., "Question: Who is the main character of Harry Potter" is a bad question because the answer is "Harry Potter."
+2. Have a single correct answer that is factually accurate.  The question should also have factually correct elements.
+3. The answer to the question should not be stated in the question.  E.g., "Question: Who is the main character of Harry Potter" is a bad question because the answer is "Harry Potter."
+4. Be specific to the topic of {pack_topic}
+5. Be appropriate for the difficulty level
 """
 
         # Add custom instructions if provided
@@ -219,9 +204,9 @@ IMPORTANT:
 - Make sure each question has exactly ONE correct answer
 - Return ONLY the JSON array without any additional text
 - Ensure the JSON is properly formatted
+- Ensure the question length is at maximum 20 words, or 120 characters
 - Each question should be appropriate for the {difficulty} difficulty level
 - Make the questions interesting and creative while maintaining accuracy
-- NEVER include the answer within the question text
 """
         return prompt
     
@@ -255,11 +240,11 @@ Here are some example questions and answers for this pack and topic:
 {"\n\n".join(examples)}
 
 Use the instructions and example questions as inspiration, but create entirely new questions that play with wordplay, allusions, and clever phrasing that ties to the topic without being too on-the-nose.
-Ensure you follow all instructions listed.  Above all, the answer created must be correct.
+Ensure you follow all instructions listed.  Above all, the question and answer created must be correct.  Do not let style or creativity override accuracy.
 """
         return ""
     
-    async def _process_question_response(
+    async def _process_question_response(  # Kept as async because it calls parse_json_from_llm
         self,
         response: str,
         pack_id: str,
@@ -286,7 +271,7 @@ Ensure you follow all instructions listed.  Above all, the answer created must b
             logger.warning(f"Invalid difficulty level '{difficulty_str}', defaulting to MEDIUM")
             difficulty = DifficultyLevel.MEDIUM
         
-        # Parse the JSON response
+        # Parse the JSON response (KEPT: await since parse_json_from_llm is async)
         questions_data = await parse_json_from_llm(response, [])
         
         if self.debug_enabled:

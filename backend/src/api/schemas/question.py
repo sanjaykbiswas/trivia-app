@@ -9,7 +9,7 @@ class QuestionGenerateRequest(BaseModel):
     """Request schema for generating questions."""
     pack_topic: str = Field(..., description="Topic to generate questions for")
     difficulty: DifficultyLevel = Field(DifficultyLevel.MIXED, description="Difficulty level for the questions (defaults to MIXED)")
-    num_questions: int = Field(5, description="Number of questions to generate", ge=1, le=20)
+    num_questions: int = Field(5, description="Number of questions to generate", ge=1, le=75)
     custom_instructions: Optional[str] = Field(None, description="Optional custom instructions for question generation")
     debug_mode: bool = Field(False, description="Enable verbose debug output")
 
