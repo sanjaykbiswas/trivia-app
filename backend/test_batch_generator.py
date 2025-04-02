@@ -276,6 +276,7 @@ def trigger_batch_question_generation(pack_id: str, topic_configs: List[Dict], d
     print(f"{Colors.FAIL}Batch generation request failed. Status: {response.status_code if response else 'N/A'}{Colors.ENDC}")
     return None
 
+# --- FIXED: verify_questions_exist function ---
 def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_total_questions: int, batch_result: Optional[Dict]) -> bool:
     """Verify if questions were created, considering the batch status."""
     if not batch_result:
@@ -286,7 +287,7 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
     batch_status = batch_result.get('status', 'failed')
     actual_generated_count = batch_result.get('total_questions_generated', 0)
     processed_topics = batch_result.get('topics_processed', [])
-    failed_topics_reported = batch_result.get('errors', [])
+    failed_topics_reported = batch_result.get('errors') # Get errors, could be None
 
     print_step(f"Verifying question creation for pack {pack_id} (Batch Status: {batch_status})")
 
@@ -309,7 +310,13 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
     success = True
     expected_topics_lower = {t.lower() for t in expected_topics}
     processed_topics_lower = {t.lower() for t in processed_topics}
-    failed_topics_reported_lower = {t.lower() for t in failed_topics_reported}
+
+    # --- FIX: Handle None before iterating ---
+    failed_topics_reported_lower = set()
+    if failed_topics_reported is not None: # Check if it's not None
+        failed_topics_reported_lower = {t.lower() for t in failed_topics_reported}
+    # --- END FIX ---
+
 
     if batch_status == "completed":
         print("  Checking 'completed' status...")
@@ -324,9 +331,12 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         if missing_processed:
             success = False
             print(f"{Colors.FAIL}  Mismatch: Status 'completed' but expected topics missing from 'topics_processed': {missing_processed}{Colors.ENDC}")
-        if failed_topics_reported:
+
+        # --- FIX: Check if failed_topics_reported is None ---
+        if failed_topics_reported is not None: # Check for None explicitly
             success = False
-            print(f"{Colors.FAIL}  Mismatch: Status 'completed' but 'errors' list is not empty: {failed_topics_reported}{Colors.ENDC}")
+            print(f"{Colors.FAIL}  Mismatch: Status 'completed' but 'errors' list is not null/empty: {failed_topics_reported}{Colors.ENDC}")
+        # --- END FIX ---
 
     elif batch_status == "partial_failure":
         print("  Checking 'partial_failure' status...")
@@ -335,15 +345,15 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         elif actual_generated_count >= expected_total_questions:
              print(f"{Colors.WARNING}  Status 'partial_failure' but batch reported generating all/more ({actual_generated_count}) questions than expected ({expected_total_questions}).{Colors.ENDC}")
 
-        if not failed_topics_reported:
-             print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' but 'errors' list is empty.{Colors.ENDC}")
+        # --- FIX: Check if failed_topics_reported is None or empty ---
+        if failed_topics_reported is None: # Check for None explicitly
+             print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' but 'errors' list is null/missing.{Colors.ENDC}")
+        # --- END FIX ---
         if not processed_topics and actual_generated_count > 0:
              print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' with questions generated ({actual_generated_count}), but 'topics_processed' list is empty.{Colors.ENDC}")
 
-        # Check API count if possible
         if api_found_count != actual_generated_count:
             print(f"{Colors.WARNING}  API Count Mismatch: Batch reported {actual_generated_count} generated, but API found {api_found_count}.{Colors.ENDC}")
-
 
     elif batch_status == "failed":
         print("  Checking 'failed' status...")
@@ -367,7 +377,7 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         print(f"{Colors.FAIL}Verification check failed for batch status '{batch_status}'.{Colors.ENDC}")
 
     return success
-
+# --- END FIXED function ---
 
 # --- Main Test Flow ---
 def run_batch_test_flow(args: argparse.Namespace):
