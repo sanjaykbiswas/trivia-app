@@ -110,18 +110,18 @@ The topics should:
 
 IMPORTANT: Return the topics as a valid JSON array of strings in this exact format:
 [
-  "Topic 1",
-  "Topic 2",
-  "Topic 3"
+  "{pack_name}: Topic 1",
+  "{pack_name}: Topic 2",
+  "{pack_name}: Topic 3"
 ]
 
 For example, if the pack name was "World Geography", the response should be:
 [
-  "Mountain ranges across continents",
-  "Island nations and archipelagos",
-  "Capital cities of the world",
-  "Major rivers and watersheds",
-  "Desert ecosystems"
+  "World Geography: Mountain ranges across continents",
+  "World Geography: Island nations and archipelagos",
+  "World Geography: Capital cities of the world",
+  "World Geography: Major rivers and watersheds",
+  "World Geography: Desert ecosystems"
 ]
 
 DO NOT include any additional text, explanations, or markdown - ONLY return the JSON array.

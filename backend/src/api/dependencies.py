@@ -102,22 +102,7 @@ async def get_difficulty_service(
         pack_repository=pack_repository
     )
 
-# --- MODIFIED get_question_service ---
-async def get_question_service(
-    question_repository: QuestionRepository = Depends(get_question_repository),
-    pack_repository: PackRepository = Depends(get_pack_repository),
-    topic_repository: TopicRepository = Depends(get_topic_repository),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service) # <<< ADDED Dependency
-) -> QuestionService:
-    """Get QuestionService instance."""
-    return QuestionService(
-        question_repository=question_repository,
-        topic_repository=topic_repository,
-        pack_repository=pack_repository,
-        seed_question_service=seed_question_service # <<< ADDED Argument
-    )
-# --- END MODIFIED get_question_service ---
-
+# --- REORDERED: Moved get_seed_question_service definition UP ---
 async def get_seed_question_service(
     pack_repository: PackRepository = Depends(get_pack_repository),
     topic_repository: TopicRepository = Depends(get_topic_repository)
@@ -127,6 +112,25 @@ async def get_seed_question_service(
         pack_repository=pack_repository,
         topic_repository=topic_repository
         )
+# --- END REORDERED ---
+
+
+# --- MODIFIED get_question_service ---
+async def get_question_service(
+    question_repository: QuestionRepository = Depends(get_question_repository),
+    pack_repository: PackRepository = Depends(get_pack_repository),
+    topic_repository: TopicRepository = Depends(get_topic_repository),
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service) # <<< Now defined above
+) -> QuestionService:
+    """Get QuestionService instance."""
+    return QuestionService(
+        question_repository=question_repository,
+        topic_repository=topic_repository,
+        pack_repository=pack_repository,
+        seed_question_service=seed_question_service
+    )
+# --- END MODIFIED get_question_service ---
+
 
 async def get_incorrect_answer_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
