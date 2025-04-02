@@ -13,7 +13,7 @@ from .pack_group_repository import PackGroupRepository
 from .pack_repository import PackRepository
 from .user_question_history_repository import UserQuestionHistoryRepository
 from .user_pack_history_repository import UserPackHistoryRepository
-from .pack_creation_data_repository import PackCreationDataRepository
+# REMOVED: PackCreationDataRepository import
 # Add new game repositories
 from .game_session_repository import GameSessionRepository
 from .game_participant_repository import GameParticipantRepository
@@ -30,7 +30,7 @@ __all__ = [
     "PackRepository",
     "UserQuestionHistoryRepository",
     "UserPackHistoryRepository",
-    "PackCreationDataRepository",
+    # REMOVED: "PackCreationDataRepository",
     # Add new game repositories
     "GameSessionRepository",
     "GameParticipantRepository",

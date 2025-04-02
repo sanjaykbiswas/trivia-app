@@ -2,17 +2,22 @@
 import uuid
 from typing import List, Optional, Dict, Any
 from supabase import AsyncClient
+import logging # Added logging
 
 from ..models.pack import Pack, PackCreate, PackUpdate, CreatorType
 from .base_repository_impl import BaseRepositoryImpl
 from ..utils import ensure_uuid
 
+# Configure logger
+logger = logging.getLogger(__name__)
+
 class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
     """
     Repository for managing Pack data in Supabase.
+    Includes fields previously in PackCreationData.
     """
     def __init__(self, db: AsyncClient):
-        super().__init__(model=Pack, db=db, table_name="packs") # Table name: "packs"
+        super().__init__(model=Pack, db=db, table_name="packs")
 
     # Helper method to ensure enum values are properly serialized
     def _serialize_enum_values(self, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -24,32 +29,33 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
 
     async def get_by_pack_group_id(self, pack_group_id: str, *, skip: int = 0, limit: int = 100) -> List[Pack]:
         """Retrieve packs associated with a specific PackGroup ID (checks list)."""
-        # Ensure pack_group_id is a valid UUID string
         pack_group_id_str = ensure_uuid(pack_group_id)
-        
+
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .cs("pack_group_id", [pack_group_id_str])
+            .cs("pack_group_id", [pack_group_id_str]) # Use contains operator for array
             .offset(skip)
             .limit(limit)
             .order("created_at", desc=True)
         )
         response = await self._execute_query(query)
-        return [self.model.parse_obj(item) for item in response.data]
+        # Use model_validate for Pydantic V2
+        return [self.model.model_validate(item) for item in response.data]
 
     async def get_by_creator_type(self, creator_type: CreatorType, *, skip: int = 0, limit: int = 100) -> List[Pack]:
         """Retrieve packs by their creator type."""
         query = (
             self.db.table(self.table_name)
             .select("*")
-            .eq("creator_type", creator_type.value) # Properly use enum value
+            .eq("creator_type", creator_type.value)
             .offset(skip)
             .limit(limit)
             .order("created_at", desc=True)
         )
         response = await self._execute_query(query)
-        return [self.model.parse_obj(item) for item in response.data]
+        # Use model_validate for Pydantic V2
+        return [self.model.model_validate(item) for item in response.data]
 
     async def search_by_name(self, name_query: str, *, skip: int = 0, limit: int = 100) -> List[Pack]:
         """Search for packs by name (case-insensitive partial match)."""
@@ -61,52 +67,70 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
             .limit(limit)
         )
         response = await self._execute_query(query)
-        return [self.model.parse_obj(item) for item in response.data]
+        # Use model_validate for Pydantic V2
+        return [self.model.model_validate(item) for item in response.data]
 
     async def update_correct_answer_rate(self, pack_id: str, rate: float) -> Optional[Pack]:
         """Updates the correct answer rate for a given pack."""
-        # Ensure pack_id is a valid UUID string
         pack_id_str = ensure_uuid(pack_id)
-        
         update_data = {"correct_answer_rate": rate}
         query = self.db.table(self.table_name).update(update_data).eq("id", pack_id_str)
         await self._execute_query(query)
-        # Fetch and return the updated object
-        return await self.get_by_id(pack_id)
+        return await self.get_by_id(pack_id_str) # Fetch updated record
 
-    # Override base methods to handle enum serialization
+    # Override base methods to handle enum serialization and new fields if needed
     async def create(self, *, obj_in: PackCreate) -> Pack:
-        """Create a new pack with proper enum handling."""
-        insert_data = obj_in.dict(exclude_unset=False, by_alias=False)
-        insert_data = self._serialize_enum_values(insert_data)
-        
-        query = self.db.table(self.table_name).insert(insert_data)
-        response = await self._execute_query(query)
+        """Create a new pack with proper enum handling and new fields."""
+        # Use exclude_none=True to avoid inserting None for optional fields
+        # Ensure defaults from the model are used if not provided in obj_in
+        insert_data = obj_in.model_dump(exclude_unset=False, exclude_none=True, by_alias=False)
+        insert_data = self._serialize_enum_values(insert_data) # Handle enums
+        insert_data = self._serialize_data_for_db(insert_data) # Handle potential nested JSON
 
-        if response.data:
-            # Get the ID of the newly created record
-            new_id = response.data[0].get('id')
-            if new_id:
-                # Fetch the complete record
-                return await self.get_by_id(new_id)
-            return self.model.parse_obj(response.data[0])
+        # Set default values if not present
+        if 'seed_questions' not in insert_data:
+            insert_data['seed_questions'] = {}
+        if 'custom_difficulty_description' not in insert_data:
+            insert_data['custom_difficulty_description'] = {}
+
+        query = self.db.table(self.table_name).insert(insert_data).execute() # Removed await for sync execute
+
+        # Fetch the newly created record to get all fields including defaults
+        if query.data:
+             new_id = query.data[0].get('id')
+             if new_id:
+                 # Fetch the complete record
+                 logger.debug(f"Fetching newly created pack with ID: {new_id}")
+                 new_pack = await self.get_by_id(new_id)
+                 if new_pack:
+                      return new_pack
+                 else:
+                      logger.warning(f"Failed to fetch pack {new_id} after creation, attempting to parse insert response.")
+             # Fallback: parse insert response (might miss DB defaults)
+             try:
+                  return self.model.model_validate(query.data[0])
+             except Exception as e:
+                  logger.error(f"Failed to parse insert response: {e}")
+                  raise ValueError("Failed to create pack, could not retrieve or parse result.")
+
         else:
-            raise ValueError("Failed to create pack, no data returned.")
+            logger.error(f"Failed to create pack, no data returned from insert operation. Error: {getattr(query, 'error', 'Unknown error')}")
+            raise ValueError(f"Failed to create pack, no data returned. Error: {getattr(query, 'error', 'Unknown error')}")
+
 
     async def update(self, *, id: str, obj_in: PackUpdate) -> Optional[Pack]:
-        """Update an existing pack with proper enum handling."""
-        # Ensure id is a valid UUID string
+        """Update an existing pack with proper enum handling and new fields."""
         id_str = ensure_uuid(id)
-        
-        update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
-        
+        # Use exclude_unset=True for partial updates
+        update_data = obj_in.model_dump(exclude_unset=True, exclude_none=True, by_alias=False)
+
         if not update_data:
-            return await self.get_by_id(id)
-            
-        update_data = self._serialize_enum_values(update_data)
-        
+            return await self.get_by_id(id_str) # Return current if no update data
+
+        update_data = self._serialize_enum_values(update_data) # Handle enums
+        update_data = self._serialize_data_for_db(update_data) # Handle potential nested JSON
+
         query = self.db.table(self.table_name).update(update_data).eq("id", id_str)
         await self._execute_query(query)
 
-        # Fetch and return the updated object
-        return await self.get_by_id(id)
+        return await self.get_by_id(id_str) # Fetch and return updated record

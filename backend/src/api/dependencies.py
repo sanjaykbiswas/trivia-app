@@ -4,7 +4,7 @@ from supabase import AsyncClient
 
 # Ensure repositories are imported FIRST
 from ..repositories.pack_repository import PackRepository
-from ..repositories.pack_creation_data_repository import PackCreationDataRepository # Ensure this is imported
+# REMOVED: from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
 from ..repositories.game_session_repository import GameSessionRepository
@@ -25,15 +25,7 @@ from ..services.user_service import UserService
 
 
 async def get_supabase_client(request: Request) -> AsyncClient:
-    """
-    Get Supabase client from request state.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        AsyncClient: Supabase client
-    """
+    """Get Supabase client from request state."""
     return request.app.state.supabase
 
 # --- Repository dependencies ---
@@ -43,11 +35,7 @@ async def get_pack_repository(
     """Get PackRepository instance."""
     return PackRepository(supabase)
 
-async def get_pack_creation_data_repository(
-    supabase: AsyncClient = Depends(get_supabase_client)
-) -> PackCreationDataRepository:
-    """Get PackCreationDataRepository instance."""
-    return PackCreationDataRepository(supabase)
+# REMOVED: get_pack_creation_data_repository
 
 async def get_question_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
@@ -79,7 +67,6 @@ async def get_game_question_repository(
     """Get GameQuestionRepository instance."""
     return GameQuestionRepository(supabase)
 
-# Define get_user_repository before it's used by get_user_service
 async def get_user_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserRepository:
@@ -105,37 +92,35 @@ async def get_topic_service(
     """Get TopicService instance."""
     return TopicService(topic_repository=topic_repository)
 
-# --- CORRECTED get_difficulty_service ---
 async def get_difficulty_service(
     topic_service: TopicService = Depends(get_topic_service),
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository) # <<< ADDED DEPENDENCY
+    pack_repository: PackRepository = Depends(get_pack_repository) # <<< UPDATED Dependency
 ) -> DifficultyService:
     """Get DifficultyService instance."""
     return DifficultyService(
         topic_service=topic_service,
-        pack_creation_data_repository=pack_creation_data_repository # <<< PASS THE REPOSITORY
+        pack_repository=pack_repository # <<< UPDATED Argument
     )
-# --- END CORRECTION ---
 
 async def get_question_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository),
+    pack_repository: PackRepository = Depends(get_pack_repository), # <<< UPDATED Dependency
     topic_repository: TopicRepository = Depends(get_topic_repository)
 ) -> QuestionService:
     """Get QuestionService instance."""
     return QuestionService(
         question_repository=question_repository,
         topic_repository=topic_repository,
-        pack_creation_data_repository=pack_creation_data_repository
+        pack_repository=pack_repository # <<< UPDATED Argument
     )
 
 async def get_seed_question_service(
-    pack_creation_data_repository: PackCreationDataRepository = Depends(get_pack_creation_data_repository),
+    pack_repository: PackRepository = Depends(get_pack_repository), # <<< UPDATED Dependency
     topic_repository: TopicRepository = Depends(get_topic_repository)
 ) -> SeedQuestionService:
     """Get SeedQuestionService instance."""
     return SeedQuestionService(
-        pack_creation_data_repository=pack_creation_data_repository,
+        pack_repository=pack_repository, # <<< UPDATED Argument
         topic_repository=topic_repository
         )
 

@@ -2,9 +2,11 @@
 import logging
 from typing import Dict, Optional, List
 
-from ..models.pack_creation_data import PackCreationDataUpdate
-from ..repositories.pack_creation_data_repository import PackCreationDataRepository
-from ..repositories.topic_repository import TopicRepository # Import TopicRepository
+# --- UPDATED IMPORTS ---
+from ..models.pack import PackUpdate # Import PackUpdate
+from ..repositories.pack_repository import PackRepository # Import PackRepository
+# --- END UPDATED IMPORTS ---
+from ..repositories.topic_repository import TopicRepository
 from ..utils.question_generation.seed_question_processor import SeedQuestionProcessor
 from ..utils.question_generation.custom_instructions_creator import CustomInstructionsCreator
 from ..utils import ensure_uuid
@@ -14,30 +16,31 @@ logger = logging.getLogger(__name__)
 
 class SeedQuestionService:
     """
-    Service for managing seed questions and topic-specific custom instructions for trivia packs.
+    Service for managing seed questions (now stored in Pack) and
+    topic-specific custom instructions (stored in Topic).
     """
 
     def __init__(
         self,
-        pack_creation_data_repository: PackCreationDataRepository,
-        topic_repository: TopicRepository # Inject TopicRepository
+        pack_repository: PackRepository, # <<< CHANGED: Use PackRepository
+        topic_repository: TopicRepository
         ):
         """
         Initialize with required repositories.
 
         Args:
-            pack_creation_data_repository: Repository for pack creation data operations.
+            pack_repository: Repository for pack operations.
             topic_repository: Repository for topic operations.
         """
-        self.pack_creation_repository = pack_creation_data_repository
-        self.topic_repository = topic_repository # Store TopicRepository
-        self.seed_processor = SeedQuestionProcessor(llm_service=None)
+        self.pack_repository = pack_repository # <<< CHANGED: Store PackRepository
+        self.topic_repository = topic_repository
+        self.seed_processor = SeedQuestionProcessor(llm_service=None) # Assuming LLM not needed here
         self.custom_instructions_creator = CustomInstructionsCreator()
 
-    # --- Seed Question Methods (Unchanged) ---
+    # --- Seed Question Methods (Now use PackRepository) ---
     async def store_seed_questions(self, pack_id: str, seed_questions: Dict[str, str]) -> bool:
         """
-        Store seed questions in the pack_creation_data table.
+        Store seed questions in the packs table.
 
         Args:
             pack_id: ID of the pack.
@@ -48,15 +51,19 @@ class SeedQuestionService:
         """
         try:
             pack_id_uuid = ensure_uuid(pack_id)
-            existing_data = await self.pack_creation_repository.get_by_pack_id(pack_id_uuid)
+            existing_pack = await self.pack_repository.get_by_id(pack_id_uuid)
 
-            if existing_data:
-                update_data = PackCreationDataUpdate(seed_questions=seed_questions)
-                await self.pack_creation_repository.update(id=existing_data.id, obj_in=update_data)
-                logger.info(f"Stored seed questions for pack {pack_id_uuid}")
-                return True
+            if existing_pack:
+                update_data = PackUpdate(seed_questions=seed_questions)
+                updated_pack = await self.pack_repository.update(id=existing_pack.id, obj_in=update_data)
+                if updated_pack:
+                    logger.info(f"Stored seed questions for pack {pack_id_uuid}")
+                    return True
+                else:
+                    logger.error(f"Failed to update pack {pack_id_uuid} with seed questions.")
+                    return False
             else:
-                logger.warning(f"No existing pack creation data found for pack_id {pack_id_uuid} to store seed questions.")
+                logger.warning(f"Cannot store seed questions: Pack with ID {pack_id_uuid} not found.")
                 return False
         except Exception as e:
             logger.error(f"Error storing seed questions for pack {pack_id_uuid}: {str(e)}")
@@ -64,22 +71,22 @@ class SeedQuestionService:
 
     async def get_seed_questions(self, pack_id: str) -> Dict[str, str]:
         """
-        Retrieve seed questions for a pack.
+        Retrieve seed questions for a pack from the packs table.
 
         Args:
             pack_id: ID of the pack.
 
         Returns:
-            Dictionary of seed questions.
+            Dictionary of seed questions. Returns empty dict if not found or empty.
         """
         pack_id_uuid = ensure_uuid(pack_id)
-        creation_data = await self.pack_creation_repository.get_by_pack_id(pack_id_uuid)
+        pack = await self.pack_repository.get_by_id(pack_id_uuid)
 
-        if creation_data and hasattr(creation_data, 'seed_questions') and creation_data.seed_questions:
-            return creation_data.seed_questions
+        if pack and hasattr(pack, 'seed_questions') and isinstance(pack.seed_questions, dict):
+            return pack.seed_questions
         return {}
 
-    # --- Custom Instruction Methods (Refactored for per-topic) ---
+    # --- Custom Instruction Methods (Remain largely unchanged, operate on TopicRepository) ---
 
     async def store_topic_custom_instruction(self, pack_id: str, topic_name: str, custom_instruction: str) -> bool:
         """
@@ -166,6 +173,7 @@ class SeedQuestionService:
                                          pack_topic: str) -> Optional[str]:
         """
         Generate and store custom instructions for a specific topic.
+        Uses seed questions from the Pack object.
 
         Args:
             pack_id: ID of the pack.
@@ -176,7 +184,7 @@ class SeedQuestionService:
         """
         pack_id_uuid = ensure_uuid(pack_id)
         try:
-            # Get seed questions relevant to this topic if available
+            # Get seed questions relevant to this topic if available (now from pack repo)
             all_seed_questions = await self.get_seed_questions(pack_id_uuid)
             # Simple filtering: check if topic name is in the question text (case-insensitive)
             topic_seeds = {q: a for q, a in all_seed_questions.items() if pack_topic.lower() in q.lower()}
@@ -207,5 +215,3 @@ class SeedQuestionService:
         except Exception as e:
             logger.error(f"Error generating or storing custom instructions for topic '{pack_topic}' in pack {pack_id_uuid}: {str(e)}")
             return None
-
-    # Removed process_and_store_manual_instructions as it's ambiguous without a topic context.

@@ -14,12 +14,10 @@ from .pack import Pack, CreatorType, PackCreate, PackUpdate
 from .user import User, UserCreate, UserUpdate
 from .user_question_history import UserQuestionHistory, UserQuestionHistoryCreate, UserQuestionHistoryUpdate
 from .user_pack_history import UserPackHistory, UserPackHistoryCreate, UserPackHistoryUpdate
-from .pack_creation_data import PackCreationData, PackCreationDataCreate, PackCreationDataUpdate
-# Add new game models
+# REMOVED: PackCreationData import
 from .game_session import GameSession, GameSessionCreate, GameSessionUpdate, GameStatus
 from .game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
 from .game_question import GameQuestion, GameQuestionCreate, GameQuestionUpdate
-# Add new topic models
 from .topic import Topic, TopicCreate, TopicUpdate
 
 __all__ = [
@@ -64,10 +62,7 @@ __all__ = [
     'UserPackHistoryCreate',
     'UserPackHistoryUpdate',
 
-    # Pack creation data models
-    'PackCreationData',
-    'PackCreationDataCreate',
-    'PackCreationDataUpdate',
+    # REMOVED: Pack creation data models exports
 
     # Game session models
     'GameSession',

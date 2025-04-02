@@ -1,12 +1,17 @@
 # backend/src/api/routes/difficulty.py
 from fastapi import APIRouter, Depends, HTTPException, Path, Body
 import logging
+from typing import Dict # Import Dict for type hint
 
-from ..dependencies import get_difficulty_service, get_topic_service, get_pack_service
-from ..schemas import DifficultyGenerateRequest, DifficultyUpdateRequest, DifficultyResponse
+# --- UPDATED IMPORTS ---
+from ..dependencies import get_difficulty_service, get_pack_service # Removed get_topic_service as it's indirectly used by DifficultyService now
+from ..schemas import (
+    DifficultyGenerateRequest, DifficultyUpdateRequest, DifficultyResponse,
+    DifficultyDescription # Import DifficultyDescription for response construction if needed
+)
 from ...services.difficulty_service import DifficultyService
-from ...services.topic_service import TopicService
-from ...services.pack_service import PackService
+from ...services.pack_service import PackService # Keep PackService for validation
+# --- END UPDATED IMPORTS ---
 from ...utils import ensure_uuid
 
 # Configure logger
@@ -17,72 +22,36 @@ router = APIRouter()
 @router.post("/", response_model=DifficultyResponse)
 async def generate_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
-    difficulty_request: DifficultyGenerateRequest = Body(None),
+    # Use Optional[Body(None)] to handle cases where the request body is empty or omitted
+    difficulty_request: Optional[DifficultyGenerateRequest] = Body(None),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
-    topic_service: TopicService = Depends(get_topic_service),
     pack_service: PackService = Depends(get_pack_service)
 ):
     """
-    Generate difficulty descriptions for a pack.
-
-    Args:
-        pack_id: ID of the pack
-        difficulty_request: Request data for difficulty generation
-        difficulty_service: Difficulty service dependency
-        topic_service: Topic service dependency
-        pack_service: Pack service dependency
-
-    Returns:
-        Generated difficulty descriptions
+    Generate difficulty descriptions for a pack. Fetches pack name internally.
     """
-    # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
 
     # Set defaults if not provided
-    if difficulty_request is None:
-        difficulty_request = DifficultyGenerateRequest()
+    force_regenerate = difficulty_request.force_regenerate if difficulty_request else False
 
-    # First verify the pack exists
+    # Verify the pack exists first (no need to extract creation_name here)
     try:
-        pack_repo = pack_service.pack_repository
-        pack = await pack_repo.get_by_id(pack_id)
-
+        pack = await pack_service.pack_repository.get_by_id(pack_id)
         if not pack:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pack with ID {pack_id} not found"
-            )
-
-        # Use the pack name if creation_name is not provided
-        creation_name = difficulty_request.creation_name or pack.name
+            raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
     except Exception as e:
         logger.error(f"Error verifying pack existence: {str(e)}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Pack with ID {pack_id} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
 
     try:
-        # Get existing topics (still useful for the check below)
-        topics = await topic_service.get_existing_pack_topics(pack_id)
-
-        # --- Keep this check: Difficulty generation depends on topics ---
-        if not topics:
-            raise HTTPException(
-                status_code=400,
-                detail="Pack has no topics. Please generate topics first."
-            )
-        # --- End Check ---
-
-        # Generate difficulties - *** REMOVED pack_topics=topics from the call ***
-        difficulty_json = await difficulty_service.generate_and_handle_existing_difficulty_descriptions(
+        # Call the service method - it no longer needs creation_name or pack_topics
+        difficulty_dict: Dict[str, DifficultyDescription] = await difficulty_service.generate_and_handle_existing_difficulty_descriptions(
             pack_id=pack_id,
-            creation_name=creation_name,
-            # pack_topics=topics, # <<< REMOVED THIS LINE
-            force_regenerate=difficulty_request.force_regenerate
+            force_regenerate=force_regenerate
         )
 
-        return DifficultyResponse(descriptions=difficulty_json)
+        return DifficultyResponse(descriptions=difficulty_dict) # Ensure the response matches the schema
 
     except Exception as e:
         logger.error(f"Error generating difficulty descriptions: {str(e)}")
@@ -95,41 +64,24 @@ async def generate_difficulties(
 async def get_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
-    pack_service: PackService = Depends(get_pack_service)
+    pack_service: PackService = Depends(get_pack_service) # Keep for validation
 ):
     """
     Get existing difficulty descriptions for a pack.
-
-    Args:
-        pack_id: ID of the pack
-        difficulty_service: Difficulty service dependency
-        pack_service: Pack service dependency
-
-    Returns:
-        Existing difficulty descriptions
     """
-    # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
 
-    # First verify the pack exists
+    # Verify the pack exists
     try:
-        pack_repo = pack_service.pack_repository
-        pack = await pack_repo.get_by_id(pack_id)
-
+        pack = await pack_service.pack_repository.get_by_id(pack_id)
         if not pack:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pack with ID {pack_id} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
     except Exception as e:
         logger.error(f"Error verifying pack existence: {str(e)}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Pack with ID {pack_id} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
 
     try:
-        # Get existing difficulty descriptions
+        # Get existing difficulty descriptions directly from the service
         difficulties = await difficulty_service.get_existing_difficulty_descriptions(pack_id)
 
         return DifficultyResponse(descriptions=difficulties)
@@ -144,52 +96,28 @@ async def get_difficulties(
 @router.patch("/", response_model=DifficultyResponse)
 async def update_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
-    difficulty_request: DifficultyUpdateRequest = Body(...),
+    difficulty_request: DifficultyUpdateRequest = Body(...), # Request body is required
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
-    topic_service: TopicService = Depends(get_topic_service), # Keep topic_service dependency (though not directly used here)
-    pack_service: PackService = Depends(get_pack_service)
+    pack_service: PackService = Depends(get_pack_service) # Keep for validation
 ):
     """
-    Update specific difficulty descriptions.
-
-    Args:
-        pack_id: ID of the pack
-        difficulty_request: Request data for updating difficulties
-        difficulty_service: Difficulty service dependency
-        topic_service: Topic service dependency (Needed by DifficultyService internally if generating)
-        pack_service: Pack service dependency
-
-    Returns:
-        Updated difficulty descriptions
+    Update specific difficulty descriptions. Fetches pack name internally if needed by service.
     """
-    # Ensure pack_id is a valid UUID string
     pack_id = ensure_uuid(pack_id)
 
-    # First verify the pack exists
+    # Verify the pack exists
     try:
-        pack_repo = pack_service.pack_repository
-        pack = await pack_repo.get_by_id(pack_id)
-
+        pack = await pack_service.pack_repository.get_by_id(pack_id)
         if not pack:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Pack with ID {pack_id} not found"
-            )
-
-        # Use the pack name if creation_name is not provided
-        creation_name = difficulty_request.creation_name or pack.name
+            raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
     except Exception as e:
         logger.error(f"Error verifying pack existence: {str(e)}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Pack with ID {pack_id} not found"
-        )
+        raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
 
     try:
-        # Update specific difficulty descriptions
+        # Call service to update specific descriptions (no longer needs creation_name)
         updated_difficulties = await difficulty_service.update_specific_difficulty_descriptions(
             pack_id=pack_id,
-            creation_name=creation_name, # Pass creation_name
             difficulty_updates=difficulty_request.custom_descriptions
         )
 

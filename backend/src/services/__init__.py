@@ -1,9 +1,5 @@
 """
 Services module for business logic operations.
-
-This package contains service classes that handle business logic,
-orchestrate operations between repositories and utilities, and
-encapsulate database interactions.
 """
 
 from .pack_service import PackService
@@ -13,6 +9,8 @@ from .seed_question_service import SeedQuestionService
 from .question_service import QuestionService
 from .game_service import GameService
 from .user_service import UserService
+from .incorrect_answer_service import IncorrectAnswerService # Add export for IncorrectAnswerService
+
 
 __all__ = [
     "PackService",
@@ -22,4 +20,5 @@ __all__ = [
     "QuestionService",
     "GameService",
     "UserService",
+    "IncorrectAnswerService" 
 ]

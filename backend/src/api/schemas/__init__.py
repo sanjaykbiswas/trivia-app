@@ -1,9 +1,6 @@
 # backend/src/api/schemas/__init__.py
 """
 API schemas for request and response models.
-
-This package contains Pydantic models that define the structure
-of request bodies and response payloads for the API.
 """
 
 # Import schemas from individual files
@@ -13,12 +10,12 @@ from .difficulty import DifficultyDescription, DifficultyGenerateRequest, Diffic
 from .question import (
     QuestionGenerateRequest, SeedQuestionRequest, SeedQuestionTextRequest,
     QuestionResponse, QuestionsResponse, SeedQuestionsResponse,
-    CustomInstructionsGenerateRequest, # Removed CustomInstructionsInputRequest import
+    CustomInstructionsGenerateRequest,
     CustomInstructionsResponse,
     # --- ADDED/MODIFIED IMPORTS for batch generation ---
-    DifficultyConfig, # Added this new schema
-    TopicQuestionConfig, # This schema was modified
-    BatchQuestionGenerateRequest, # This schema uses the modified TopicQuestionConfig
+    DifficultyConfig,
+    TopicQuestionConfig,
+    BatchQuestionGenerateRequest,
     BatchQuestionGenerateResponse
 )
 from .game import (
@@ -58,13 +55,12 @@ __all__ = [
     "QuestionsResponse",
     "SeedQuestionsResponse",
     "CustomInstructionsGenerateRequest",
-    # "CustomInstructionsInputRequest", # <-- REMOVED
     "CustomInstructionsResponse",
     # --- ADDED/MODIFIED SCHEMAS for batch generation ---
-    "DifficultyConfig", # Added export
-    "TopicQuestionConfig", # Keep export (modified)
-    "BatchQuestionGenerateRequest", # Keep export
-    "BatchQuestionGenerateResponse", # Keep export
+    "DifficultyConfig",
+    "TopicQuestionConfig",
+    "BatchQuestionGenerateRequest",
+    "BatchQuestionGenerateResponse",
 
     # Game schemas
     "GameSessionCreateRequest",

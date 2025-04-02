@@ -3,17 +3,18 @@ import uuid
 import logging
 import json
 import traceback
-import asyncio # Import asyncio
+import asyncio
 from typing import List, Dict, Any, Optional, Union, Tuple
 
+# --- UPDATED IMPORTS ---
+from ..models.pack import Pack # Import Pack model
 from ..models.question import Question, QuestionCreate, QuestionUpdate, DifficultyLevel
 from ..repositories.question_repository import QuestionRepository
-from ..repositories.pack_creation_data_repository import PackCreationDataRepository
-from ..repositories.topic_repository import TopicRepository # <-- ADDED IMPORT
+from ..repositories.pack_repository import PackRepository # Import PackRepository
+from ..repositories.topic_repository import TopicRepository
+# --- END UPDATED IMPORTS ---
 from ..utils.question_generation.question_generator import QuestionGenerator
-# --- Import the new/modified schemas ---
 from ..api.schemas.question import TopicQuestionConfig, DifficultyConfig
-# --- End Import ---
 from ..utils import ensure_uuid
 
 # Configure logger
@@ -34,30 +35,31 @@ class QuestionService:
 
     Handles business logic related to creating, retrieving,
     and managing trivia questions. Fetches topic-specific instructions.
+    Relies on PackRepository for seed questions and difficulty descriptions.
     Does NOT handle incorrect answer generation.
     """
 
     def __init__(
         self,
         question_repository: QuestionRepository,
-        topic_repository: TopicRepository, # <-- ADDED
-        pack_creation_data_repository: Optional[PackCreationDataRepository] = None,
+        topic_repository: TopicRepository,
+        pack_repository: PackRepository, # <<< CHANGED: Use PackRepository
         question_generator: Optional[QuestionGenerator] = None,
     ):
         """
         Initialize the service with required repositories.
         """
         self.question_repository = question_repository
-        self.topic_repository = topic_repository # <-- ADDED
-        self.pack_creation_data_repository = pack_creation_data_repository
+        self.topic_repository = topic_repository
+        self.pack_repository = pack_repository # <<< CHANGED: Store PackRepository
         self.question_generator = question_generator or QuestionGenerator()
-        self.debug_enabled = False # Instance variable for debug mode
+        self.debug_enabled = False
 
     async def _create_question(self, question_data: Dict[str, Any]) -> Optional[Question]:
         """
         Helper method to create a single question in the database.
         Validates data and uses the repository.
-        (Unchanged from previous step)
+        (Unchanged)
         """
         try:
             if self.debug_enabled:
@@ -73,7 +75,6 @@ class QuestionService:
             difficulty_current_val = question_data.get("difficulty_current")
 
             try:
-                # Handle if value is already an enum or a string
                 if isinstance(difficulty_initial_val, DifficultyLevel):
                      difficulty_initial_enum = difficulty_initial_val
                 else:
@@ -95,7 +96,7 @@ class QuestionService:
                 pack_id=pack_id_uuid,
                 pack_topics_item=question_data.get("pack_topics_item"),
                 difficulty_initial=difficulty_initial_enum,
-                difficulty_current=difficulty_current_enum or difficulty_initial_enum,
+                difficulty_current=difficulty_current_enum or difficulty_initial_enum, # Default current to initial if current is None
                 correct_answer_rate=question_data.get("correct_answer_rate", 0.0)
             )
 
@@ -117,31 +118,34 @@ class QuestionService:
                 print(traceback.format_exc())
             return None
 
-    # --- MODIFIED Helper for batch ---
     async def _generate_questions_for_topic_difficulty(
         self,
-        pack_id: str,
-        creation_name: str,
+        pack: Pack, # Pass the whole Pack object now
         topic: str,
         difficulty_config: DifficultyConfig,
-        difficulty_descriptions: Dict,
-        seed_questions: Dict,
-        # Removed custom_instructions from parameters - it will be fetched
+        # difficulty_descriptions, seed_questions removed - get from pack
         debug_mode: bool
     ) -> List[Question]:
         """
         Internal helper to generate and store questions for ONE topic-difficulty pair.
-        Fetches topic-specific custom instructions before generation.
+        Fetches topic-specific custom instructions. Reads seeds/diffs from Pack object.
         Returns the list of successfully created Question objects.
         """
-        pack_id_uuid = ensure_uuid(pack_id)
+        pack_id_uuid = ensure_uuid(pack.id)
         target_difficulty = difficulty_config.difficulty
         num_questions = difficulty_config.num_questions
 
+        # Get seeds and difficulty descriptions from the pack object
+        difficulty_descriptions = pack.custom_difficulty_description or {}
+        all_seeds = pack.seed_questions or {}
+        # Filter seeds per topic
+        topic_seeds = {q: a for q, a in all_seeds.items() if topic.lower() in q.lower()}
+
         if debug_mode:
             print(f"\n  Starting generation for topic: '{topic}' (Difficulty: {target_difficulty.value}, Count: {num_questions})")
+            print(f"    Using {len(topic_seeds)} seed questions for this topic.")
 
-        # --- Fetch topic-specific custom instructions ---
+        # Fetch topic-specific custom instructions
         custom_instructions_for_topic: Optional[str] = None
         try:
             topic_record = await self.topic_repository.get_by_name_and_pack_id(topic, pack_id_uuid)
@@ -154,20 +158,19 @@ class QuestionService:
         except Exception as e_fetch:
              logger.error(f"Error fetching custom instruction for topic '{topic}', pack '{pack_id_uuid}': {e_fetch}")
              if debug_mode: print(f"    Error fetching custom instruction: {e_fetch}")
-        # --- End Fetch ---
 
         try:
-            # Call the QuestionGenerator, now passing the fetched instruction
+            # Call the QuestionGenerator
             question_data_list: List[Dict] = await self.question_generator.generate_questions(
                 pack_id=pack_id_uuid,
-                creation_name=creation_name,
+                creation_name=pack.name, # Use pack name
                 pack_topic=topic,
                 difficulty=target_difficulty,
-                difficulty_descriptions=difficulty_descriptions,
-                seed_questions=seed_questions,
+                difficulty_descriptions=difficulty_descriptions, # Pass descriptions from pack
+                seed_questions=topic_seeds, # Pass filtered seeds from pack
                 num_questions=num_questions,
                 debug_mode=debug_mode,
-                custom_instructions=custom_instructions_for_topic # <-- Pass fetched instruction
+                custom_instructions=custom_instructions_for_topic
             )
 
             if debug_mode:
@@ -179,6 +182,7 @@ class QuestionService:
             for q_data in question_data_list:
                 if "pack_id" not in q_data: q_data["pack_id"] = pack_id_uuid
                 if "pack_topics_item" not in q_data: q_data["pack_topics_item"] = topic
+                # Ensure difficulty is set based on target
                 q_data["difficulty_initial"] = target_difficulty
                 q_data["difficulty_current"] = target_difficulty
 
@@ -197,111 +201,83 @@ class QuestionService:
                 print(f"  ERROR generating for '{topic}' ({target_difficulty.value}): {str(e)}")
                 print(traceback.format_exc())
             return []
-    # --- END MODIFIED Helper ---
 
-    # --- MODIFIED generate_and_store_questions (single topic) ---
     async def generate_and_store_questions(
         self,
         pack_id: str,
-        creation_name: str,
+        # creation_name removed
         pack_topic: str,
         difficulty: DifficultyLevel,
         num_questions: int = 5,
         debug_mode: bool = False
-        # Removed custom_instructions parameter - will be fetched internally
     ) -> List[Question]:
         """
         Generate questions for a SINGLE topic and SINGLE difficulty and store them.
-        Fetches topic-specific instructions internally.
+        Fetches topic-specific instructions internally. Reads context from Pack object.
         """
-        self.debug_enabled = debug_mode # Set instance variable
+        self.debug_enabled = debug_mode
         pack_id_uuid = ensure_uuid(pack_id)
+
+        # Retrieve the Pack object ONCE
+        pack = await self.pack_repository.get_by_id(pack_id_uuid)
+        if not pack:
+             logger.error(f"Cannot generate questions: Pack {pack_id_uuid} not found.")
+             return []
 
         if self.debug_enabled:
             print(f"\n=== Starting Single Topic/Difficulty Question Generation (Service) ===")
-            print(f"Pack ID: {pack_id_uuid}, Topic: {pack_topic}, Difficulty: {difficulty.value}, Count: {num_questions}")
-
-        # Retrieve shared data (difficulty descriptions, seed questions)
-        difficulty_descriptions = {}
-        seed_questions = {}
-        if self.pack_creation_data_repository:
-            try:
-                creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id_uuid)
-                if creation_data:
-                    difficulty_descriptions = creation_data.custom_difficulty_description or {}
-                    all_seeds = creation_data.seed_questions or {}
-                    # Simple topic filtering for seeds
-                    seed_questions = {q: a for q, a in all_seeds.items() if pack_topic.lower() in q.lower()}
-                    if debug_mode:
-                        print(f"  Loaded {len(seed_questions)} seed questions for topic '{pack_topic}'.")
-            except Exception as e:
-                logger.error(f"Error retrieving pack creation data for single generation: {e}")
+            print(f"Pack ID: {pack_id_uuid}, Name: {pack.name}, Topic: {pack_topic}, Difficulty: {difficulty.value}, Count: {num_questions}")
 
         difficulty_config = DifficultyConfig(
             difficulty=difficulty,
             num_questions=num_questions
         )
 
-        # Use the specific helper for topic/difficulty pair
-        # It will fetch the custom instructions internally now
+        # Use the specific helper, passing the Pack object
         created_questions = await self._generate_questions_for_topic_difficulty(
-            pack_id=pack_id_uuid,
-            creation_name=creation_name,
+            pack=pack,
             topic=pack_topic,
             difficulty_config=difficulty_config,
-            difficulty_descriptions=difficulty_descriptions,
-            seed_questions=seed_questions,
             debug_mode=debug_mode
-            # custom_instructions is no longer passed here
         )
         return created_questions
-    # --- END MODIFIED ---
 
-    # --- MODIFIED batch generation method ---
     async def batch_generate_and_store_questions(
         self,
         pack_id: str,
-        creation_name: str,
-        topic_configs: List[TopicQuestionConfig], # Uses the NEW schema
+        # creation_name removed
+        topic_configs: List[TopicQuestionConfig],
         debug_mode: bool = False
     ) -> Dict[str, Any]:
         """
         Generate questions concurrently for multiple topics AND multiple difficulties.
         Fetches topic-specific custom instructions before generation.
+        Reads context (seeds, diff descriptions) from the Pack object.
         Returns a summary dictionary including the list of created Question objects.
         """
-        self.debug_enabled = debug_mode # Set instance variable
+        self.debug_enabled = debug_mode
         pack_id_uuid = ensure_uuid(pack_id)
         logger.info(f"Starting batch generation for pack {pack_id_uuid} across multiple topics/difficulties.")
+
+        # 1. Fetch the Pack object ONCE
+        pack = await self.pack_repository.get_by_id(pack_id_uuid)
+        if not pack:
+             logger.error(f"Cannot start batch generation: Pack {pack_id_uuid} not found.")
+             # Return a failure structure compatible with the expected response
+             return {
+                 "topics_processed": [],
+                 "failed_topics": [tc.topic for tc in topic_configs],
+                 "total_generated": 0,
+                 "generated_questions": []
+             }
+
         if debug_mode:
             print(f"\n=== Starting Batch Question Generation (Service) ===")
-            print(f"Pack ID: {pack_id_uuid}")
+            print(f"Pack ID: {pack_id_uuid}, Name: {pack.name}")
             print(f"Total Topic Configs: {len(topic_configs)}")
+            print(f"  Pack has {len(pack.seed_questions)} seed questions.")
+            print(f"  Pack has custom difficulty descriptions: {'Yes' if pack.custom_difficulty_description else 'No'}")
 
-        # 1. Fetch shared data ONCE (difficulty descriptions, all seeds)
-        difficulty_descriptions = {}
-        all_seed_questions = {}
-        if self.pack_creation_data_repository:
-            try:
-                creation_data = await self.pack_creation_data_repository.get_by_pack_id(pack_id_uuid)
-                if creation_data:
-                    difficulty_descriptions = creation_data.custom_difficulty_description or {}
-                    all_seed_questions = creation_data.seed_questions or {}
-                    if debug_mode: print("  Fetched pack creation data (descriptions, seeds).")
-            except Exception as e:
-                logger.error(f"Error retrieving pack creation data for batch generation: {e}")
-                if debug_mode: print("  Error fetching pack creation data.")
-
-        # --- Fetch ALL topic instructions for the pack ONCE ---
-        topic_instructions_map: Dict[str, Optional[str]] = {}
-        try:
-            topic_records = await self.topic_repository.get_by_pack_id(pack_id_uuid)
-            topic_instructions_map = {t.name: t.custom_instruction for t in topic_records}
-            if debug_mode: print(f"  Fetched custom instructions for {len(topic_instructions_map)} topics.")
-        except Exception as e_fetch_all:
-            logger.error(f"Error fetching all topic instructions for pack {pack_id_uuid}: {e_fetch_all}")
-            if debug_mode: print("  Error fetching all topic instructions.")
-        # --- End Fetch ---
 
         # 2. Create concurrent tasks for EACH topic-difficulty pair
         tasks = []
@@ -309,27 +285,20 @@ class QuestionService:
         total_tasks = 0
         for topic_config in topic_configs:
             topic = topic_config.topic
-            # Filter seeds per topic
-            topic_seeds = {q: a for q, a in all_seed_questions.items() if topic.lower() in q.lower()}
-            # --- Get specific custom instructions from map ---
-            # Use topic_config.custom_instructions as an override if provided in the request
-            topic_custom_instruction_override = topic_config.custom_instructions
-            custom_instruction_to_use = topic_custom_instruction_override if topic_custom_instruction_override is not None else topic_instructions_map.get(topic)
-            # --- End Get ---
+            # Custom instructions override from the request (if any)
+            # The helper _generate_questions_for_topic_difficulty fetches topic-specific default if override is None
+            # topic_custom_instruction_override = topic_config.custom_instructions # This is handled inside the helper now
 
             for difficulty_config in topic_config.difficulty_configs:
-                # Pass the determined instruction to the helper
-                # NOTE: _generate_questions_for_topic_difficulty has been modified to fetch internally,
-                # so we don't pass custom_instructions here anymore. The logic above fetches them,
-                # and the helper fetches them again. This is slightly redundant but keeps the helper self-contained.
-                # A potential optimization would be to pass the instruction map to the helper.
+                # Pass the whole pack object to the helper
                 task = asyncio.create_task(
                     self._generate_questions_for_topic_difficulty(
-                        pack_id=pack_id_uuid, creation_name=creation_name, topic=topic,
-                        difficulty_config=difficulty_config, difficulty_descriptions=difficulty_descriptions,
-                        seed_questions=topic_seeds,
-                        # custom_instructions=custom_instruction_to_use, # <-- REMOVED, helper fetches it
+                        pack=pack, # Pass pack object
+                        topic=topic,
+                        difficulty_config=difficulty_config,
                         debug_mode=debug_mode
+                        # Removed seeds, descriptions, creation_name - they are in pack object
+                        # Removed custom_instructions override - helper handles fetching
                     ), name=f"Generate_{topic}_{difficulty_config.difficulty.value}"
                 )
                 tasks.append(task)
@@ -342,7 +311,7 @@ class QuestionService:
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
         if debug_mode: print("  Tasks completed.")
 
-        # 4. Process results (Unchanged from previous step)
+        # 4. Process results (Unchanged - logic remains the same)
         all_generated_questions: List[Question] = []
         successful_topics: set[str] = set()
         failed_configs: List[Dict[str, Any]] = []
@@ -385,44 +354,34 @@ class QuestionService:
             "topics_processed": list(successful_topics),
             "failed_topics": failed_topic_names,
             "total_generated": total_generated_count,
-            "generated_questions": all_generated_questions
+            "generated_questions": all_generated_questions # Return the actual Question objects
         }
-    # --- END MODIFIED ---
 
     # --- OTHER METHODS (Retrieval and Update - Unchanged) ---
     async def get_questions_by_pack_id(self, pack_id: str) -> List[Question]:
-        """
-        Retrieve all questions for a specific pack.
-        """
+        """Retrieve all questions for a specific pack."""
         pack_id_uuid = ensure_uuid(pack_id)
         return await self.question_repository.get_by_pack_id(pack_id_uuid)
 
     async def get_questions_by_topic(self, pack_id: str, topic: str) -> List[Question]:
-        """
-        Retrieve questions for a specific pack filtered by topic.
-        """
+        """Retrieve questions for a specific pack filtered by topic."""
         pack_id_uuid = ensure_uuid(pack_id)
         all_questions = await self.question_repository.get_by_pack_id(pack_id_uuid)
         topic_lower = topic.lower()
-        # Ensure pack_topics_item exists before lowercasing
         return [q for q in all_questions if q.pack_topics_item and q.pack_topics_item.lower() == topic_lower]
-
 
     async def update_question_statistics(
         self,
         question_id: str,
         correct: bool
     ) -> Optional[Question]:
-        """
-        Update question statistics based on user answer.
-        """
+        """Update question statistics based on user answer."""
         question_id_uuid = ensure_uuid(question_id)
         question = await self.question_repository.get_by_id(question_id_uuid)
-        if not question:
-            return None
+        if not question: return None
 
-        weight = 0.1 # Simple moving average weight
-        current_rate = question.correct_answer_rate if question.correct_answer_rate is not None else 0.5 # Default if None
+        weight = 0.1
+        current_rate = question.correct_answer_rate if question.correct_answer_rate is not None else 0.5
         new_rate = current_rate * (1 - weight) + (1.0 if correct else 0.0) * weight
 
         new_difficulty = self._adjust_difficulty_based_on_rate(
@@ -432,24 +391,21 @@ class QuestionService:
         )
 
         update_data = QuestionUpdate(correct_answer_rate=new_rate)
-        # Only update difficulty if it actually changed
         if new_difficulty != question.difficulty_current:
              update_data.difficulty_current = new_difficulty
 
-        # Make sure update_data is not empty before calling update
         if update_data.model_dump(exclude_unset=True):
              return await self.question_repository.update(id=question_id_uuid, obj_in=update_data)
         else:
-            return question # Return original if no changes were made
+            return question
 
     def _adjust_difficulty_based_on_rate(
         self,
         current_difficulty: Optional[DifficultyLevel],
         correct_rate: float,
-        initial_difficulty: Optional[DifficultyLevel] # Keep initial for reference if needed
+        initial_difficulty: Optional[DifficultyLevel]
     ) -> Optional[DifficultyLevel]:
         """Adjust difficulty based on correct answer rate."""
-        # Thresholds can be tuned
         EASY_UPPER = 0.90
         MEDIUM_UPPER = 0.85
         MEDIUM_LOWER = 0.40
@@ -457,18 +413,14 @@ class QuestionService:
         HARD_LOWER = 0.35
         EXPERT_LOWER = 0.30
 
-        if not current_difficulty: return None # Cannot adjust if not set
+        if not current_difficulty: return None
 
-        # Promote based on high success rate
         if current_difficulty == DifficultyLevel.EASY and correct_rate > EASY_UPPER: return DifficultyLevel.MEDIUM
         if current_difficulty == DifficultyLevel.MEDIUM and correct_rate > MEDIUM_UPPER: return DifficultyLevel.HARD
         if current_difficulty == DifficultyLevel.HARD and correct_rate > HARD_UPPER: return DifficultyLevel.EXPERT
-        # No promotion from Expert based on rate alone in this simple model
 
-        # Demote based on low success rate
         if current_difficulty == DifficultyLevel.MEDIUM and correct_rate < MEDIUM_LOWER: return DifficultyLevel.EASY
         if current_difficulty == DifficultyLevel.HARD and correct_rate < HARD_LOWER: return DifficultyLevel.MEDIUM
         if current_difficulty == DifficultyLevel.EXPERT and correct_rate < EXPERT_LOWER: return DifficultyLevel.HARD
-        # No demotion from Easy based on rate alone
 
-        return current_difficulty # No change if no thresholds met
+        return current_difficulty

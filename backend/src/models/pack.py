@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Dict, Any # Added Dict, Any
 from pydantic import BaseModel, Field
 
 from .base_schema import BaseCreateSchema, BaseUpdateSchema
@@ -27,6 +27,8 @@ class Pack(BaseModel):
         creator_type: Whether this pack was created by the system or a user
         correct_answer_rate: Average rate of correct answers for this pack's questions
         created_at: When this pack was created
+        seed_questions: Optional dictionary of seed questions and answers
+        custom_difficulty_description: Optional dictionary of custom difficulty descriptions
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
@@ -36,9 +38,13 @@ class Pack(BaseModel):
     creator_type: CreatorType
     correct_answer_rate: Optional[float] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # --- ADDED FIELDS ---
+    seed_questions: Dict[str, str] = Field(default_factory=dict)
+    custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
+    # --- END ADDED FIELDS ---
 
     class Config:
-        from_attributes = True  # Updated from orm_mode = True
+        from_attributes = True
 
 
 class PackCreate(BaseCreateSchema):
@@ -49,6 +55,10 @@ class PackCreate(BaseCreateSchema):
     pack_group_id: Optional[List[str]] = None
     creator_type: CreatorType
     correct_answer_rate: Optional[float] = None
+    # --- ADDED FIELDS (Optional on create) ---
+    seed_questions: Optional[Dict[str, str]] = None
+    custom_difficulty_description: Optional[Dict[str, Any]] = None
+    # --- END ADDED FIELDS ---
 
 
 class PackUpdate(BaseUpdateSchema):
@@ -59,3 +69,7 @@ class PackUpdate(BaseUpdateSchema):
     pack_group_id: Optional[List[str]] = None
     creator_type: Optional[CreatorType] = None
     correct_answer_rate: Optional[float] = None
+    # --- ADDED FIELDS (Optional on update) ---
+    seed_questions: Optional[Dict[str, str]] = None
+    custom_difficulty_description: Optional[Dict[str, Any]] = None
+    # --- END ADDED FIELDS ---
