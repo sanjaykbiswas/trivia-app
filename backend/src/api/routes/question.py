@@ -56,7 +56,7 @@ async def generate_questions(
         # Custom instructions are handled internally by the service now
         created_questions: List[Question] = await question_service.generate_and_store_questions(
             pack_id=pack_id_uuid,
-            creation_name=pack.name,
+            pack_name=pack.name, # Pass pack name
             pack_topic=question_request.pack_topic,
             difficulty=question_request.difficulty,
             num_questions=question_request.num_questions,
@@ -122,7 +122,7 @@ async def batch_generate_questions(
         # Service now handles fetching default instructions per topic if not overridden in request
         batch_results = await question_service.batch_generate_and_store_questions(
             pack_id=pack_id_uuid,
-            creation_name=pack.name,
+            pack_name=pack.name, # Pass pack name
             topic_configs=request.topic_configs, # Pass the structure including overrides
             debug_mode=request.debug_mode
         )
@@ -249,16 +249,9 @@ async def store_seed_questions(
         raise HTTPException(status_code=404, detail=f"Pack with ID {pack_id} not found")
 
     try:
-        pack_creation_data = await seed_question_service.pack_creation_repository.get_by_pack_id(pack_id_uuid)
-        if not pack_creation_data:
-            # Ensure pack creation data exists before storing seeds
-            from ...models.pack_creation_data import PackCreationDataCreate
-            creation_data = PackCreationDataCreate(
-                pack_id=pack_id_uuid,
-                creation_name=pack.name # Use pack name
-                # Removed pack_topics=[] initialization
-            )
-            await seed_question_service.pack_creation_repository.create(obj_in=creation_data)
+        # --- REMOVED OBSOLETE PackCreationData CHECK ---
+        # No need to check or create PackCreationData here anymore
+        # --- END REMOVED BLOCK ---
 
         success = await seed_question_service.store_seed_questions(
             pack_id=pack_id_uuid,
@@ -304,11 +297,9 @@ async def extract_seed_questions(
         if not extracted_questions:
             raise HTTPException(status_code=400, detail="No questions could be extracted")
 
-        pack_creation_data = await seed_question_service.pack_creation_repository.get_by_pack_id(pack_id_uuid)
-        if not pack_creation_data:
-            from ...models.pack_creation_data import PackCreationDataCreate
-            creation_data = PackCreationDataCreate(pack_id=pack_id_uuid, creation_name=pack.name) # Removed pack_topics
-            await seed_question_service.pack_creation_repository.create(obj_in=creation_data)
+        # --- REMOVED OBSOLETE PackCreationData CHECK ---
+        # No need to check or create PackCreationData here anymore
+        # --- END REMOVED BLOCK ---
 
         success = await seed_question_service.store_seed_questions(
             pack_id=pack_id_uuid,
@@ -439,7 +430,8 @@ async def generate_single_question_incorrect_answers(
     pack_id_uuid = ensure_uuid(pack_id)
     question = await question_service.question_repository.get_by_id(question_id_uuid)
     if not question: raise HTTPException(status_code=404, detail=f"Question {question_id} not found")
-    if str(question.pack_id) != pack_id_uuid: raise HTTPException(status_code=400, detail=f"Question {question_id} not in pack {pack_id}")
+    # Ensure pack_id is compared as strings
+    if str(question.pack_id) != str(pack_id_uuid): raise HTTPException(status_code=400, detail=f"Question {question_id} not in pack {pack_id}")
     try:
         result_map = await incorrect_answer_service.generate_and_store_incorrect_answers(
             questions=[question], num_incorrect_answers=num_answers, debug_mode=debug_mode

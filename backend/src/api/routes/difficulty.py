@@ -1,7 +1,8 @@
 # backend/src/api/routes/difficulty.py
 from fastapi import APIRouter, Depends, HTTPException, Path, Body
 import logging
-from typing import Dict # Import Dict for type hint
+# --- MODIFIED LINE: Added Optional ---
+from typing import Dict, Optional # Import Optional for type hint
 
 # --- UPDATED IMPORTS ---
 from ..dependencies import get_difficulty_service, get_pack_service # Removed get_topic_service as it's indirectly used by DifficultyService now
@@ -23,6 +24,7 @@ router = APIRouter()
 async def generate_difficulties(
     pack_id: str = Path(..., description="ID of the pack"),
     # Use Optional[Body(None)] to handle cases where the request body is empty or omitted
+    # --- THIS LINE CAUSED THE ERROR - FIX IS THE IMPORT ABOVE ---
     difficulty_request: Optional[DifficultyGenerateRequest] = Body(None),
     difficulty_service: DifficultyService = Depends(get_difficulty_service),
     pack_service: PackService = Depends(get_pack_service)
@@ -32,7 +34,7 @@ async def generate_difficulties(
     """
     pack_id = ensure_uuid(pack_id)
 
-    # Set defaults if not provided
+    # Set defaults if not provided or request body is missing
     force_regenerate = difficulty_request.force_regenerate if difficulty_request else False
 
     # Verify the pack exists first (no need to extract creation_name here)

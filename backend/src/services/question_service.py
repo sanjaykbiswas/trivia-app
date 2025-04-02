@@ -163,7 +163,7 @@ class QuestionService:
             # Call the QuestionGenerator
             question_data_list: List[Dict] = await self.question_generator.generate_questions(
                 pack_id=pack_id_uuid,
-                creation_name=pack.name, # Use pack name
+                pack_name=pack.name, # Use pack name
                 pack_topic=topic,
                 difficulty=target_difficulty,
                 difficulty_descriptions=difficulty_descriptions, # Pass descriptions from pack
@@ -202,10 +202,11 @@ class QuestionService:
                 print(traceback.format_exc())
             return []
 
+    # --- UPDATED METHOD SIGNATURE ---
     async def generate_and_store_questions(
         self,
         pack_id: str,
-        # creation_name removed
+        pack_name: str, # <<< ADDED pack_name parameter
         pack_topic: str,
         difficulty: DifficultyLevel,
         num_questions: int = 5,
@@ -215,18 +216,24 @@ class QuestionService:
         Generate questions for a SINGLE topic and SINGLE difficulty and store them.
         Fetches topic-specific instructions internally. Reads context from Pack object.
         """
+        # --- END UPDATED SIGNATURE ---
         self.debug_enabled = debug_mode
         pack_id_uuid = ensure_uuid(pack_id)
 
         # Retrieve the Pack object ONCE
-        pack = await self.pack_repository.get_by_id(pack_id_uuid)
-        if not pack:
-             logger.error(f"Cannot generate questions: Pack {pack_id_uuid} not found.")
-             return []
+        # No need to fetch again, pack_name is passed in
+        # pack = await self.pack_repository.get_by_id(pack_id_uuid)
+        # if not pack:
+        #      logger.error(f"Cannot generate questions: Pack {pack_id_uuid} not found.")
+        #      return []
+        pack_object = await self.pack_repository.get_by_id(pack_id_uuid) # Still need pack object for seeds/descriptions
+        if not pack_object:
+            logger.error(f"Cannot generate questions: Pack {pack_id_uuid} not found.")
+            return []
 
         if self.debug_enabled:
             print(f"\n=== Starting Single Topic/Difficulty Question Generation (Service) ===")
-            print(f"Pack ID: {pack_id_uuid}, Name: {pack.name}, Topic: {pack_topic}, Difficulty: {difficulty.value}, Count: {num_questions}")
+            print(f"Pack ID: {pack_id_uuid}, Name: {pack_name}, Topic: {pack_topic}, Difficulty: {difficulty.value}, Count: {num_questions}")
 
         difficulty_config = DifficultyConfig(
             difficulty=difficulty,
@@ -235,17 +242,18 @@ class QuestionService:
 
         # Use the specific helper, passing the Pack object
         created_questions = await self._generate_questions_for_topic_difficulty(
-            pack=pack,
+            pack=pack_object, # Use the fetched pack object
             topic=pack_topic,
             difficulty_config=difficulty_config,
             debug_mode=debug_mode
         )
         return created_questions
 
+    # --- UPDATED METHOD SIGNATURE ---
     async def batch_generate_and_store_questions(
         self,
         pack_id: str,
-        # creation_name removed
+        pack_name: str, # <<< ADDED pack_name parameter
         topic_configs: List[TopicQuestionConfig],
         debug_mode: bool = False
     ) -> Dict[str, Any]:
@@ -255,15 +263,16 @@ class QuestionService:
         Reads context (seeds, diff descriptions) from the Pack object.
         Returns a summary dictionary including the list of created Question objects.
         """
+        # --- END UPDATED SIGNATURE ---
         self.debug_enabled = debug_mode
         pack_id_uuid = ensure_uuid(pack_id)
         logger.info(f"Starting batch generation for pack {pack_id_uuid} across multiple topics/difficulties.")
 
         # 1. Fetch the Pack object ONCE
-        pack = await self.pack_repository.get_by_id(pack_id_uuid)
-        if not pack:
+        # No need to fetch again, pack_name is passed in
+        pack_object = await self.pack_repository.get_by_id(pack_id_uuid) # Still need pack object for seeds/descriptions
+        if not pack_object:
              logger.error(f"Cannot start batch generation: Pack {pack_id_uuid} not found.")
-             # Return a failure structure compatible with the expected response
              return {
                  "topics_processed": [],
                  "failed_topics": [tc.topic for tc in topic_configs],
@@ -273,10 +282,10 @@ class QuestionService:
 
         if debug_mode:
             print(f"\n=== Starting Batch Question Generation (Service) ===")
-            print(f"Pack ID: {pack_id_uuid}, Name: {pack.name}")
+            print(f"Pack ID: {pack_id_uuid}, Name: {pack_name}")
             print(f"Total Topic Configs: {len(topic_configs)}")
-            print(f"  Pack has {len(pack.seed_questions)} seed questions.")
-            print(f"  Pack has custom difficulty descriptions: {'Yes' if pack.custom_difficulty_description else 'No'}")
+            print(f"  Pack has {len(pack_object.seed_questions)} seed questions.")
+            print(f"  Pack has custom difficulty descriptions: {'Yes' if pack_object.custom_difficulty_description else 'No'}")
 
 
         # 2. Create concurrent tasks for EACH topic-difficulty pair
@@ -293,7 +302,7 @@ class QuestionService:
                 # Pass the whole pack object to the helper
                 task = asyncio.create_task(
                     self._generate_questions_for_topic_difficulty(
-                        pack=pack, # Pass pack object
+                        pack=pack_object, # Pass pack object
                         topic=topic,
                         difficulty_config=difficulty_config,
                         debug_mode=debug_mode

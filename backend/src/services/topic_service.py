@@ -80,7 +80,7 @@ class TopicService:
             return []
 
     async def generate_or_use_topics(self, pack_id: str,
-                                 creation_name: str,
+                                 pack_name: str, # <<< CHANGED: Expect pack_name
                                  num_topics: int = 5,
                                  predefined_topic: Optional[str] = None) -> List[str]:
         """
@@ -88,7 +88,7 @@ class TopicService:
 
         Args:
             pack_id: ID of the pack.
-            creation_name: The name of the trivia pack (used for generation context).
+            pack_name: The name of the trivia pack (used for generation context). # <<< CHANGED
             num_topics: Number of topics to generate (if no predefined topic).
             predefined_topic: Optional predefined topic to use instead of generation.
 
@@ -102,10 +102,10 @@ class TopicService:
             topic_names_to_store = [predefined_topic.strip()]
             logger.info(f"Using predefined topic for pack {pack_id_uuid}: {predefined_topic}")
         else:
-            logger.info(f"Generating {num_topics} topics for pack {pack_id_uuid} ('{creation_name}')")
+            logger.info(f"Generating {num_topics} topics for pack {pack_id_uuid} ('{pack_name}')") # <<< CHANGED
             # Generate topic names using LLM
             topic_names_to_store = await self.topic_creator.create_pack_topics(
-                creation_name=creation_name,
+                pack_name=pack_name, # <<< CHANGED: Pass pack_name
                 num_topics=num_topics
             )
 
@@ -118,7 +118,7 @@ class TopicService:
             return []
 
     async def add_additional_topics(self, pack_id: str,
-                                  creation_name: str,
+                                  pack_name: str, # <<< CHANGED: Expect pack_name
                                   num_additional_topics: int = 3,
                                   predefined_topic: Optional[str] = None) -> List[str]:
         """
@@ -126,7 +126,7 @@ class TopicService:
 
         Args:
             pack_id: ID of the pack.
-            creation_name: The name of the trivia pack (used for generation context).
+            pack_name: The name of the trivia pack (used for generation context). # <<< CHANGED
             num_additional_topics: Number of new topics to generate/add.
             predefined_topic: Optional predefined topic to add directly.
 
@@ -151,7 +151,7 @@ class TopicService:
             logger.info(f"Generating {num_additional_topics} additional topics for pack {pack_id_uuid}")
             new_topic_names_to_store = await self.topic_creator.create_additional_topics(
                 existing_topics=existing_topic_names,
-                creation_name=creation_name,
+                pack_name=pack_name, # <<< CHANGED: Pass pack_name
                 num_additional_topics=num_additional_topics
             )
 

@@ -47,7 +47,7 @@ async def generate_topics(
         # Call service method - requires pack_name from the fetched pack
         topics = await topic_service.generate_or_use_topics(
             pack_id=pack_id,
-            creation_name=pack_name, # Pass pack name
+            pack_name=pack_name, # <<< CHANGED: Pass pack_name instead of creation_name
             num_topics=num_topics,
             predefined_topic=predefined_topic
         )
@@ -123,7 +123,7 @@ async def add_topics(
         # Call service method - requires pack_name
         all_topics = await topic_service.add_additional_topics(
             pack_id=pack_id,
-            creation_name=pack_name, # Pass pack name
+            pack_name=pack_name, # <<< CHANGED: Pass pack_name instead of creation_name
             num_additional_topics=num_additional_topics,
             predefined_topic=predefined_topic
         )

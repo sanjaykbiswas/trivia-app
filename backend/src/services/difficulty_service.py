@@ -174,7 +174,7 @@ class DifficultyService:
         else:
             # Generate custom descriptions using the utility and pack name
             custom_descriptions = await self.difficulty_creator.generate_difficulty_descriptions(
-                creation_name=pack.name, # Use pack name
+                pack_name=pack.name, # <<< CHANGED: Use pack_name
                 pack_topics=pack_topics
             )
             # Convert to JSON structure
@@ -264,7 +264,7 @@ class DifficultyService:
 
         # Generate all difficulty descriptions temporarily using pack name
         all_descriptions = await self.difficulty_creator.generate_difficulty_descriptions(
-            creation_name=pack.name, # Use pack name
+            pack_name=pack.name, # <<< CHANGED: Use pack_name
             pack_topics=pack_topics
         )
 

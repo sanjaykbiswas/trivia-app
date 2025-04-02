@@ -93,11 +93,15 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
         if 'custom_difficulty_description' not in insert_data:
             insert_data['custom_difficulty_description'] = {}
 
-        query = self.db.table(self.table_name).insert(insert_data).execute() # Removed await for sync execute
+        # --- MODIFIED LINE: Reinstate await ---
+        query_result = await self.db.table(self.table_name).insert(insert_data).execute()
+        # --- END MODIFIED LINE ---
 
         # Fetch the newly created record to get all fields including defaults
-        if query.data:
-             new_id = query.data[0].get('id')
+        # --- MODIFIED LINE: Use query_result instead of query ---
+        if query_result.data:
+             # --- MODIFIED LINE: Use query_result instead of query ---
+             new_id = query_result.data[0].get('id')
              if new_id:
                  # Fetch the complete record
                  logger.debug(f"Fetching newly created pack with ID: {new_id}")
@@ -108,14 +112,16 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
                       logger.warning(f"Failed to fetch pack {new_id} after creation, attempting to parse insert response.")
              # Fallback: parse insert response (might miss DB defaults)
              try:
-                  return self.model.model_validate(query.data[0])
+                  # --- MODIFIED LINE: Use query_result instead of query ---
+                  return self.model.model_validate(query_result.data[0])
              except Exception as e:
                   logger.error(f"Failed to parse insert response: {e}")
                   raise ValueError("Failed to create pack, could not retrieve or parse result.")
 
         else:
-            logger.error(f"Failed to create pack, no data returned from insert operation. Error: {getattr(query, 'error', 'Unknown error')}")
-            raise ValueError(f"Failed to create pack, no data returned. Error: {getattr(query, 'error', 'Unknown error')}")
+            # --- MODIFIED LINE: Use query_result instead of query ---
+            logger.error(f"Failed to create pack, no data returned from insert operation. Error: {getattr(query_result, 'error', 'Unknown error')}")
+            raise ValueError(f"Failed to create pack, no data returned. Error: {getattr(query_result, 'error', 'Unknown error')}")
 
 
     async def update(self, *, id: str, obj_in: PackUpdate) -> Optional[Pack]:
@@ -131,6 +137,6 @@ class PackRepository(BaseRepositoryImpl[Pack, PackCreate, PackUpdate, str]):
         update_data = self._serialize_data_for_db(update_data) # Handle potential nested JSON
 
         query = self.db.table(self.table_name).update(update_data).eq("id", id_str)
-        await self._execute_query(query)
+        await self._execute_query(query) # Base implementation handles await correctly
 
         return await self.get_by_id(id_str) # Fetch and return updated record
