@@ -2,7 +2,7 @@
 # Example (topics provided, auto-instructions per topic):
 # python3 test_batch_generator.py -p "World Geography Batch" -t "Capital Cities" "Major Rivers" -n 4 --difficulty easy medium -a -g geo_instructions_map.json -v
 # Example (topics generated, auto-instructions per topic):
-# python3 test_batch_generator.py -p "Random History Batch" --num-generated-topics 3 -n 5 -a -v
+# python3 test_batch_generator.py -p "Random History Batch" --num-generated-topics 3 -n 5 --difficulty medium hard -v
 # Example (disable auto-instructions):
 # python3 test_batch_generator.py -p "SciFi Books Batch" --num-generated-topics 2 -n 3 --no-auto-instructions --difficulty easy hard expert -v
 

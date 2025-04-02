@@ -32,7 +32,6 @@ class PackDifficultyCreation:
             "Mixed": "A mix of difficulties spanning easy all the way to obscure or specialized questions that are genuinely difficult.  See the above descriptions for easy, medium, hard, and expert."
         }
 
-    # --- UPDATED METHOD SIGNATURE ---
     async def generate_difficulty_descriptions(self, pack_name: str, pack_topics: List[str]) -> Dict[str, str]:
         """
         Generate custom difficulty descriptions for all levels including mixed.
@@ -44,7 +43,6 @@ class PackDifficultyCreation:
         Returns:
             Dictionary with difficulty levels as keys and custom descriptions as values.
         """
-        # --- END UPDATED SIGNATURE ---
         # Clean and normalize inputs
         pack_name = normalize_text(pack_name, lowercase=False) # Use pack_name
         cleaned_topics = [clean_text(topic) for topic in pack_topics]
@@ -128,8 +126,10 @@ class PackDifficultyCreation:
                 match = re.search(pattern, response_text, re.IGNORECASE | re.DOTALL)
                 if match:
                     description = match.group(1).strip()
-                    # Further clean description: remove potential leading/trailing markdown, quotes etc.
-                    description = re.sub(r'^["\'`*-\s]+|["\'`*-\s]+$', '', description)
+                    # --- FIX: Corrected regex for cleaning ---
+                    # Move hyphen to the end of the character set [] or escape it \-
+                    description = re.sub(r'^["\'`*\s-]+|["\'`*\s-]+$', '', description)
+                    # --- END FIX ---
                     if description:
                         difficulty_descriptions[level] = description
 
@@ -140,8 +140,6 @@ class PackDifficultyCreation:
 
         return difficulty_descriptions
 
-
-    # --- UPDATED METHOD SIGNATURE ---
     def _build_difficulty_prompt(self, pack_name: str, pack_topics: List[str]) -> str:
         """
         Build the prompt for difficulty description generation.
@@ -153,7 +151,6 @@ class PackDifficultyCreation:
         Returns:
             Formatted prompt string.
         """
-        # --- END UPDATED SIGNATURE ---
         # Use split_into_chunks if the topics text might be too long
         topics_text = "\n".join([f"- {topic}" for topic in pack_topics])
 
