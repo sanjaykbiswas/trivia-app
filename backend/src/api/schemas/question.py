@@ -24,6 +24,9 @@ class TopicQuestionConfig(BaseModel):
 class BatchQuestionGenerateRequest(BaseModel):
     """Request schema for batch question generation across multiple topics and difficulties."""
     topic_configs: List[TopicQuestionConfig] = Field(..., description="List of topic configurations, each specifying difficulties and counts")
+    # --- ADDED regenerate_instructions flag ---
+    regenerate_instructions: bool = Field(False, description="Whether to force regeneration of topic custom instructions even if they exist.")
+    # --- END ADDED flag ---
     debug_mode: bool = Field(False, description="Enable verbose debug output globally for this batch")
     # Example: global_custom_instructions: Optional[str] = Field(None, description="Global custom instructions for all topics")
 

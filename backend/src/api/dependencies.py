@@ -94,33 +94,37 @@ async def get_topic_service(
 
 async def get_difficulty_service(
     topic_service: TopicService = Depends(get_topic_service),
-    pack_repository: PackRepository = Depends(get_pack_repository) # <<< UPDATED Dependency
+    pack_repository: PackRepository = Depends(get_pack_repository)
 ) -> DifficultyService:
     """Get DifficultyService instance."""
     return DifficultyService(
         topic_service=topic_service,
-        pack_repository=pack_repository # <<< UPDATED Argument
+        pack_repository=pack_repository
     )
 
+# --- MODIFIED get_question_service ---
 async def get_question_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
-    pack_repository: PackRepository = Depends(get_pack_repository), # <<< UPDATED Dependency
-    topic_repository: TopicRepository = Depends(get_topic_repository)
+    pack_repository: PackRepository = Depends(get_pack_repository),
+    topic_repository: TopicRepository = Depends(get_topic_repository),
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service) # <<< ADDED Dependency
 ) -> QuestionService:
     """Get QuestionService instance."""
     return QuestionService(
         question_repository=question_repository,
         topic_repository=topic_repository,
-        pack_repository=pack_repository # <<< UPDATED Argument
+        pack_repository=pack_repository,
+        seed_question_service=seed_question_service # <<< ADDED Argument
     )
+# --- END MODIFIED get_question_service ---
 
 async def get_seed_question_service(
-    pack_repository: PackRepository = Depends(get_pack_repository), # <<< UPDATED Dependency
+    pack_repository: PackRepository = Depends(get_pack_repository),
     topic_repository: TopicRepository = Depends(get_topic_repository)
 ) -> SeedQuestionService:
     """Get SeedQuestionService instance."""
     return SeedQuestionService(
-        pack_repository=pack_repository, # <<< UPDATED Argument
+        pack_repository=pack_repository,
         topic_repository=topic_repository
         )
 

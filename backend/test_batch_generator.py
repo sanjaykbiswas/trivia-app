@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # Example (topics provided, auto-instructions per topic):
-# python3 test_batch_generator.py -p "World Geography Batch" -t "Capital Cities" "Major Rivers" -n 4 --difficulty easy medium -a -g geo_instructions_map.json -v
+# python3 test_batch_generator.py -p "World Geography Batch" -t "Capital Cities" "Major Rivers" -n 4 --difficulty easy medium -v
 # Example (topics generated, auto-instructions per topic):
 # python3 test_batch_generator.py -p "Random History Batch" --num-generated-topics 3 -n 5 --difficulty medium hard -v
 # Example (disable auto-instructions):
@@ -33,7 +33,7 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 # --- Helper Functions (print_step, print_json, make_request, create_or_get_pack, add_provided_topics_to_pack, generate_api_topics, generate_difficulties, process_seed_questions) ---
-# (These helpers remain largely unchanged from the previous version, ensure they use global args for verbose printing)
+# (These helpers remain largely unchanged)
 
 def print_step(message: str):
     print(f"\n{Colors.HEADER}--- {message} ---{Colors.ENDC}")
@@ -203,67 +203,21 @@ def process_seed_questions(pack_id: str, seed_questions_file: Optional[str]) -> 
     return False
 
 
-# --- UPDATED handle_custom_instructions ---
-def handle_custom_instructions(pack_id: str, args: argparse.Namespace, topics_to_use: List[str]) -> Dict[str, Optional[str]]:
-    """
-    Generate custom instructions per topic if enabled (default).
-    Saves the map of topic -> instruction (or None if failed).
-    """
-    instructions_map: Dict[str, Optional[str]] = {}
-
-    if not args.auto_generate_instructions:
-        print(f"{Colors.CYAN}Auto-generation of custom instructions disabled (--no-auto-instructions). Skipping.{Colors.ENDC}")
-        return instructions_map # Return empty map
-
-    print_step(f"Auto-generating custom instructions for each topic (Default Behavior)")
-    if not topics_to_use:
-        print(f"{Colors.WARNING}Cannot auto-generate instructions without topics. Skipping.{Colors.ENDC}")
-        return instructions_map
-
-    successful_generations = 0
-    for topic in topics_to_use:
-        print(f"  Generating instructions for topic: '{topic}'...")
-        data = {"pack_topic": topic}
-        # Make individual API call for this topic's instruction generation
-        response = make_request("POST", f"/packs/{pack_id}/questions/custom-instructions/generate", json_data=data)
-        time.sleep(0.5) # Add a slightly longer delay between LLM calls
-
-        if response and response.status_code == 200:
-            custom_instructions = response.json().get("custom_instructions")
-            if custom_instructions:
-                 print(f"    {Colors.GREEN}Success.{Colors.ENDC}")
-                 instructions_map[topic] = custom_instructions # Store generated instruction
-                 successful_generations += 1
-                 if args.verbose: print(f"{Colors.CYAN}{custom_instructions}{Colors.ENDC}\n")
-            else:
-                 print(f"    {Colors.WARNING}API returned success but no instructions content.{Colors.ENDC}")
-                 instructions_map[topic] = None # Store None to indicate empty response
-        else:
-            print(f"    {Colors.FAIL}Failed to auto-generate instructions for topic '{topic}'.{Colors.ENDC}")
-            instructions_map[topic] = None # Store None for failed topics
-
-    print(f"{Colors.GREEN}Finished generating instructions for {successful_generations}/{len(topics_to_use)} topics.{Colors.ENDC}")
-
-    # Save the entire map if requested
-    if args.save_generated_instructions:
-        print_step(f"Saving generated instructions map to {args.save_generated_instructions}")
-        try:
-            with open(args.save_generated_instructions, 'w') as f:
-                json.dump(instructions_map, f, indent=2)
-            print(f"{Colors.GREEN}Successfully saved instructions map.{Colors.ENDC}")
-        except Exception as e:
-            print(f"{Colors.FAIL}Failed to save generated instructions map: {e}{Colors.ENDC}")
-            print(traceback.format_exc())
-
-    return instructions_map
-# --- END UPDATED handle_custom_instructions ---
+# --- REMOVED handle_custom_instructions function ---
+# This logic is now handled within the QuestionService
 
 
-def trigger_batch_question_generation(pack_id: str, topic_configs: List[Dict], debug_mode: bool) -> Optional[Dict[str, Any]]:
+def trigger_batch_question_generation(pack_id: str, topic_configs: List[Dict], regenerate_instructions: bool, debug_mode: bool) -> Optional[Dict[str, Any]]:
     """Trigger the batch question generation and incorrect answer process."""
     num_configs = sum(len(tc.get("difficulty_configs", [])) for tc in topic_configs)
     print_step(f"Triggering batch question generation for {len(topic_configs)} topics across {num_configs} difficulty configs")
-    data = {"topic_configs": topic_configs, "debug_mode": debug_mode}
+    # --- MODIFIED Data payload ---
+    data = {
+        "topic_configs": topic_configs,
+        "regenerate_instructions": regenerate_instructions, # Pass flag
+        "debug_mode": debug_mode
+        }
+    # --- END MODIFIED Data ---
     response = make_request("POST", f"/packs/{pack_id}/questions/batch-generate", json_data=data, timeout=900) # Increased timeout further
     if response and response.status_code == 200:
         result = response.json()
@@ -276,7 +230,7 @@ def trigger_batch_question_generation(pack_id: str, topic_configs: List[Dict], d
     print(f"{Colors.FAIL}Batch generation request failed. Status: {response.status_code if response else 'N/A'}{Colors.ENDC}")
     return None
 
-# --- FIXED: verify_questions_exist function ---
+# --- verify_questions_exist function remains unchanged ---
 def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_total_questions: int, batch_result: Optional[Dict]) -> bool:
     """Verify if questions were created, considering the batch status."""
     if not batch_result:
@@ -311,11 +265,9 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
     expected_topics_lower = {t.lower() for t in expected_topics}
     processed_topics_lower = {t.lower() for t in processed_topics}
 
-    # --- FIX: Handle None before iterating ---
     failed_topics_reported_lower = set()
     if failed_topics_reported is not None: # Check if it's not None
         failed_topics_reported_lower = {t.lower() for t in failed_topics_reported}
-    # --- END FIX ---
 
 
     if batch_status == "completed":
@@ -332,11 +284,9 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
             success = False
             print(f"{Colors.FAIL}  Mismatch: Status 'completed' but expected topics missing from 'topics_processed': {missing_processed}{Colors.ENDC}")
 
-        # --- FIX: Check if failed_topics_reported is None ---
         if failed_topics_reported is not None: # Check for None explicitly
             success = False
             print(f"{Colors.FAIL}  Mismatch: Status 'completed' but 'errors' list is not null/empty: {failed_topics_reported}{Colors.ENDC}")
-        # --- END FIX ---
 
     elif batch_status == "partial_failure":
         print("  Checking 'partial_failure' status...")
@@ -345,10 +295,8 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         elif actual_generated_count >= expected_total_questions:
              print(f"{Colors.WARNING}  Status 'partial_failure' but batch reported generating all/more ({actual_generated_count}) questions than expected ({expected_total_questions}).{Colors.ENDC}")
 
-        # --- FIX: Check if failed_topics_reported is None or empty ---
         if failed_topics_reported is None: # Check for None explicitly
              print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' but 'errors' list is null/missing.{Colors.ENDC}")
-        # --- END FIX ---
         if not processed_topics and actual_generated_count > 0:
              print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' with questions generated ({actual_generated_count}), but 'topics_processed' list is empty.{Colors.ENDC}")
 
@@ -377,7 +325,6 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         print(f"{Colors.FAIL}Verification check failed for batch status '{batch_status}'.{Colors.ENDC}")
 
     return success
-# --- END FIXED function ---
 
 # --- Main Test Flow ---
 def run_batch_test_flow(args: argparse.Namespace):
@@ -400,16 +347,16 @@ def run_batch_test_flow(args: argparse.Namespace):
     if not generate_difficulties(pack_id): print(f"{Colors.WARNING}Failed generating difficulties, continuing cautiously...{Colors.ENDC}")
     process_seed_questions(pack_id, args.seed_questions)
 
-    # Handle custom instructions (generate per topic if enabled)
-    topic_instructions_map = handle_custom_instructions(pack_id, args, topics_to_use)
+    # --- REMOVED Pre-generation of custom instructions ---
+    # topic_instructions_map = handle_custom_instructions(pack_id, args, topics_to_use)
 
     # Prepare topic configurations for the batch request
     topic_configs = []
     expected_total_questions = 0
     for topic in topics_to_use:
         difficulty_configs = []
-        # Retrieve topic-specific instruction from the map generated earlier
-        topic_instructions = topic_instructions_map.get(topic) # Will be None if generation failed/disabled
+        # --- REMOVED fetching instruction from pre-generated map ---
+        # topic_instructions = topic_instructions_map.get(topic)
 
         for diff_level in args.difficulty:
             difficulty_configs.append({"difficulty": diff_level, "num_questions": args.num_questions_per_difficulty})
@@ -418,11 +365,19 @@ def run_batch_test_flow(args: argparse.Namespace):
         topic_configs.append({
             "topic": topic,
             "difficulty_configs": difficulty_configs,
-            "custom_instructions": topic_instructions # Pass instruction as override (can be None)
+            # --- REMOVED passing instruction override here ---
+            # custom_instructions": topic_instructions # Let service handle fetching/generation
         })
 
     # Trigger batch generation
-    batch_result = trigger_batch_question_generation(pack_id, topic_configs, args.debug)
+    # --- Pass regenerate_instructions flag ---
+    batch_result = trigger_batch_question_generation(
+        pack_id,
+        topic_configs,
+        args.regenerate_instructions, # Pass flag
+        args.debug
+        )
+    # --- END Pass flag ---
 
     # Verify results based on batch status
     verification_passed = verify_questions_exist(pack_id, topics_to_use, expected_total_questions, batch_result)
@@ -451,9 +406,10 @@ def run_batch_test_flow(args: argparse.Namespace):
     print(f"  Topics Used: {topics_to_use}")
     print(f"  Difficulties Tested per Topic: {args.difficulty}")
     print(f"  Expected Total Questions: {expected_total_questions}")
-    print(f"  Auto-Generated Instructions: {'YES (per topic)' if args.auto_generate_instructions else 'NO'}")
-    if args.save_generated_instructions and args.auto_generate_instructions:
-        print(f"  Saved Instructions Map To: {args.save_generated_instructions}")
+    # --- MODIFIED Summary Output ---
+    print(f"  Custom Instructions: {'Generated within batch call' if args.auto_generate_instructions else 'Disabled'}")
+    print(f"    Forced Regeneration: {'YES' if args.regenerate_instructions else 'NO'}")
+    # --- END MODIFIED Summary Output ---
     if batch_result:
         print(f"  Batch Request Status: {batch_result.get('status', 'N/A')}")
         print(f"  Reported Questions Generated: {batch_result.get('total_questions_generated', 'N/A')}")
@@ -472,12 +428,14 @@ def main():
     parser.add_argument("--num-questions-per-difficulty", "-n", type=int, default=3,
                       help="Number of questions per difficulty level per topic")
     parser.add_argument("--seed-questions", "-s", help="Path to a file containing seed questions")
-    # Updated help text for instruction flags
+    # --- REMOVED save_generated_instructions flag ---
+    # --- UPDATED instruction flags ---
     parser.add_argument("--no-auto-instructions", action="store_false", dest="auto_generate_instructions",
-                        help="Disable automatic generation of custom instructions per topic (ON by default)")
-    parser.set_defaults(auto_generate_instructions=True)
-    parser.add_argument("--save-generated-instructions", "-g",
-                        help="Save map of auto-generated instructions (topic->instruction) to this JSON file")
+                        help="Disable automatic generation of custom instructions per topic (default: ON within batch call)")
+    parser.add_argument("--regenerate-instructions", action="store_true",
+                        help="Force regeneration of custom instructions during the batch call, even if they exist.")
+    parser.set_defaults(auto_generate_instructions=True, regenerate_instructions=False)
+    # --- END UPDATED instruction flags ---
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output for API calls")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode in the API request payload")
 
