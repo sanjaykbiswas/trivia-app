@@ -17,10 +17,8 @@ class PackCreationData(BaseModel):
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
-    # pack_topics: List[str] # REMOVED
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
     seed_questions: Dict[str, str] = Field(default_factory=dict)
-    # custom_question_instructions: Optional[str] = None # REMOVED
     is_temporal: bool = False
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -34,10 +32,8 @@ class PackCreationDataCreate(BaseCreateSchema):
     creation_name: str
     is_pow: Optional[bool] = False
     pow_analysis: Optional[str] = None
-    # pack_topics: List[str] # REMOVED
     custom_difficulty_description: Dict[str, Any] = Field(default_factory=dict)
     seed_questions: Dict[str, str] = Field(default_factory=dict)
-    # custom_question_instructions: Optional[str] = None # REMOVED
     is_temporal: bool = False
 
 
@@ -46,8 +42,6 @@ class PackCreationDataUpdate(BaseUpdateSchema):
     creation_name: Optional[str] = None
     is_pow: Optional[bool] = None
     pow_analysis: Optional[str] = None
-    # pack_topics: Optional[List[str]] = None # REMOVED
     custom_difficulty_description: Optional[Dict[str, Any]] = None
     seed_questions: Optional[Dict[str, str]] = None
-    # custom_question_instructions: Optional[str] = None # REMOVED
     is_temporal: Optional[bool] = None
