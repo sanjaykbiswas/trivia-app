@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # Example (topics provided, auto-instructions per topic):
-# python3 test_batch_generator.py -p "World Geography Batch" -t "Capital Cities" "Major Rivers" -n 4 --difficulty easy medium -v
+# python3 tests/test_batch_generator.py -p "World Geography Batch" -t "Capital Cities" "Major Rivers" -n 4 --difficulty easy medium -v
 # Example (topics generated, auto-instructions per topic):
-# python3 test_batch_generator.py -p "Random History Batch" --num-generated-topics 3 -n 5 --difficulty medium hard -v
+# python3 tests/test_batch_generator.py -p "Random History Batch" --num-generated-topics 3 -n 5 --difficulty medium hard -v
 # Example (disable auto-instructions):
-# python3 test_batch_generator.py -p "SciFi Books Batch" --num-generated-topics 2 -n 3 --no-auto-instructions --difficulty easy hard expert -v
+# python3 tests/test_batch_generator.py -p "SciFi Books Batch" --num-generated-topics 2 -n 3 --no-auto-instructions --difficulty easy hard expert -v
 
 import requests
 import json
@@ -15,7 +15,17 @@ import time
 from typing import Dict, List, Any, Optional
 import os
 import traceback
-import asyncio # Import asyncio
+import asyncio
+from pathlib import Path # Added Path
+
+# --- ADD THIS BLOCK ---
+# Add the project root (backend/) to the Python path
+script_path = Path(__file__).resolve()
+project_root = script_path.parent.parent
+sys.path.insert(0, str(project_root))
+# --- END ADDED BLOCK ---
+
+# Imports from src should now work (if any were needed)
 
 # API base URL
 BASE_URL = "http://localhost:8000/api"
@@ -188,7 +198,14 @@ def process_seed_questions(pack_id: str, seed_questions_file: Optional[str]) -> 
 
     print_step(f"Processing seed questions from {seed_questions_file}")
     try:
-        with open(seed_questions_file, 'r') as f: seed_content = f.read()
+        # Construct the correct path relative to the script location
+        script_dir = Path(__file__).parent
+        absolute_seed_path = script_dir.parent / seed_questions_file # Assumes seed file is in backend/
+        if not absolute_seed_path.exists():
+             print(f"{Colors.FAIL}Seed file not found at expected location: {absolute_seed_path}{Colors.ENDC}")
+             return False
+
+        with open(absolute_seed_path, 'r') as f: seed_content = f.read()
         data = {"text_content": seed_content}
         response = make_request("POST", f"/packs/{pack_id}/questions/seed/extract", json_data=data)
         if response and response.status_code == 200:
@@ -203,22 +220,16 @@ def process_seed_questions(pack_id: str, seed_questions_file: Optional[str]) -> 
     return False
 
 
-# --- REMOVED handle_custom_instructions function ---
-# This logic is now handled within the QuestionService
-
-
 def trigger_batch_question_generation(pack_id: str, topic_configs: List[Dict], regenerate_instructions: bool, debug_mode: bool) -> Optional[Dict[str, Any]]:
     """Trigger the batch question generation and incorrect answer process."""
     num_configs = sum(len(tc.get("difficulty_configs", [])) for tc in topic_configs)
     print_step(f"Triggering batch question generation for {len(topic_configs)} topics across {num_configs} difficulty configs")
-    # --- MODIFIED Data payload ---
     data = {
         "topic_configs": topic_configs,
-        "regenerate_instructions": regenerate_instructions, # Pass flag
+        "regenerate_instructions": regenerate_instructions,
         "debug_mode": debug_mode
         }
-    # --- END MODIFIED Data ---
-    response = make_request("POST", f"/packs/{pack_id}/questions/batch-generate", json_data=data, timeout=900) # Increased timeout further
+    response = make_request("POST", f"/packs/{pack_id}/questions/batch-generate", json_data=data, timeout=900)
     if response and response.status_code == 200:
         result = response.json()
         print(f"{Colors.GREEN}Batch generation request completed.{Colors.ENDC}")
@@ -230,7 +241,6 @@ def trigger_batch_question_generation(pack_id: str, topic_configs: List[Dict], r
     print(f"{Colors.FAIL}Batch generation request failed. Status: {response.status_code if response else 'N/A'}{Colors.ENDC}")
     return None
 
-# --- verify_questions_exist function remains unchanged ---
 def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_total_questions: int, batch_result: Optional[Dict]) -> bool:
     """Verify if questions were created, considering the batch status."""
     if not batch_result:
@@ -241,12 +251,12 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
     batch_status = batch_result.get('status', 'failed')
     actual_generated_count = batch_result.get('total_questions_generated', 0)
     processed_topics = batch_result.get('topics_processed', [])
-    failed_topics_reported = batch_result.get('errors') # Get errors, could be None
+    failed_topics_reported = batch_result.get('errors')
 
     print_step(f"Verifying question creation for pack {pack_id} (Batch Status: {batch_status})")
 
     # Fetch questions from API to double-check
-    params = {"limit": expected_total_questions + 50} # Fetch more than expected
+    params = {"limit": expected_total_questions + 50}
     response = make_request("GET", f"/packs/{pack_id}/questions/", params=params)
     api_found_questions = []
     api_found_topics = set()
@@ -260,15 +270,13 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
     else:
         print(f"{Colors.WARNING}  API check failed to retrieve questions. Relying solely on batch response.{Colors.ENDC}")
 
-    # --- Verification Logic ---
+    # Verification Logic
     success = True
     expected_topics_lower = {t.lower() for t in expected_topics}
     processed_topics_lower = {t.lower() for t in processed_topics}
-
     failed_topics_reported_lower = set()
-    if failed_topics_reported is not None: # Check if it's not None
+    if failed_topics_reported is not None:
         failed_topics_reported_lower = {t.lower() for t in failed_topics_reported}
-
 
     if batch_status == "completed":
         print("  Checking 'completed' status...")
@@ -278,13 +286,12 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         if api_found_count != actual_generated_count:
              print(f"{Colors.WARNING}  API Count Mismatch: Batch reported {actual_generated_count} generated, but API found {api_found_count}.{Colors.ENDC}")
 
-        # All expected topics should be in processed_topics
         missing_processed = expected_topics_lower - processed_topics_lower
         if missing_processed:
             success = False
             print(f"{Colors.FAIL}  Mismatch: Status 'completed' but expected topics missing from 'topics_processed': {missing_processed}{Colors.ENDC}")
 
-        if failed_topics_reported is not None: # Check for None explicitly
+        if failed_topics_reported is not None:
             success = False
             print(f"{Colors.FAIL}  Mismatch: Status 'completed' but 'errors' list is not null/empty: {failed_topics_reported}{Colors.ENDC}")
 
@@ -295,7 +302,7 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         elif actual_generated_count >= expected_total_questions:
              print(f"{Colors.WARNING}  Status 'partial_failure' but batch reported generating all/more ({actual_generated_count}) questions than expected ({expected_total_questions}).{Colors.ENDC}")
 
-        if failed_topics_reported is None: # Check for None explicitly
+        if failed_topics_reported is None:
              print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' but 'errors' list is null/missing.{Colors.ENDC}")
         if not processed_topics and actual_generated_count > 0:
              print(f"{Colors.WARNING}  Mismatch: Status 'partial_failure' with questions generated ({actual_generated_count}), but 'topics_processed' list is empty.{Colors.ENDC}")
@@ -313,11 +320,9 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
         if processed_topics:
             success = False
             print(f"{Colors.FAIL}  Mismatch: Status 'failed' but 'topics_processed' is not empty: {processed_topics}{Colors.ENDC}")
-
-    else: # Unknown status
+    else:
         success = False
         print(f"{Colors.FAIL}  Unknown batch status reported: '{batch_status}'. Verification failed.{Colors.ENDC}")
-
 
     if success:
         print(f"{Colors.GREEN}Verification check passed for batch status '{batch_status}'.{Colors.ENDC}")
@@ -326,7 +331,7 @@ def verify_questions_exist(pack_id: str, expected_topics: List[str], expected_to
 
     return success
 
-# --- Main Test Flow ---
+# Main Test Flow
 def run_batch_test_flow(args: argparse.Namespace):
     """Orchestrate the batch test steps."""
     pack_id = create_or_get_pack(args.pack_name)
@@ -347,42 +352,28 @@ def run_batch_test_flow(args: argparse.Namespace):
     if not generate_difficulties(pack_id): print(f"{Colors.WARNING}Failed generating difficulties, continuing cautiously...{Colors.ENDC}")
     process_seed_questions(pack_id, args.seed_questions)
 
-    # --- REMOVED Pre-generation of custom instructions ---
-    # topic_instructions_map = handle_custom_instructions(pack_id, args, topics_to_use)
-
     # Prepare topic configurations for the batch request
     topic_configs = []
     expected_total_questions = 0
     for topic in topics_to_use:
         difficulty_configs = []
-        # --- REMOVED fetching instruction from pre-generated map ---
-        # topic_instructions = topic_instructions_map.get(topic)
-
         for diff_level in args.difficulty:
             difficulty_configs.append({"difficulty": diff_level, "num_questions": args.num_questions_per_difficulty})
             expected_total_questions += args.num_questions_per_difficulty
-
-        topic_configs.append({
-            "topic": topic,
-            "difficulty_configs": difficulty_configs,
-            # --- REMOVED passing instruction override here ---
-            # custom_instructions": topic_instructions # Let service handle fetching/generation
-        })
+        topic_configs.append({"topic": topic, "difficulty_configs": difficulty_configs})
 
     # Trigger batch generation
-    # --- Pass regenerate_instructions flag ---
     batch_result = trigger_batch_question_generation(
         pack_id,
         topic_configs,
-        args.regenerate_instructions, # Pass flag
+        args.regenerate_instructions,
         args.debug
         )
-    # --- END Pass flag ---
 
     # Verify results based on batch status
     verification_passed = verify_questions_exist(pack_id, topics_to_use, expected_total_questions, batch_result)
 
-    # --- Final Summary ---
+    # Final Summary
     print("\n" + "="*30 + " Batch Test Flow Summary " + "="*30)
     final_outcome = Colors.FAIL + "FAILED" + Colors.ENDC
     if batch_result:
@@ -390,15 +381,12 @@ def run_batch_test_flow(args: argparse.Namespace):
         if status == "completed" and verification_passed:
             final_outcome = Colors.GREEN + "SUCCESS" + Colors.ENDC
         elif status == "partial_failure" and verification_passed:
-             # Partial failure is acceptable if verification aligns
              final_outcome = Colors.WARNING + "PARTIAL SUCCESS (Verification OK)" + Colors.ENDC
         elif status == "failed" and verification_passed:
-             # Failed status verified (e.g., 0 questions generated)
              final_outcome = Colors.GREEN + "SUCCESS (Failed status verified)" + Colors.ENDC
         elif not verification_passed:
              final_outcome = Colors.FAIL + f"FAILED (Verification Mismatch for Status '{status}')" + Colors.ENDC
-        # Add case for unknown status if needed
-    else: # Batch request itself failed
+    else:
          final_outcome = Colors.FAIL + "FAILED (Batch Request Error)" + Colors.ENDC
 
     print(f"Overall Test Result: {final_outcome}")
@@ -406,10 +394,8 @@ def run_batch_test_flow(args: argparse.Namespace):
     print(f"  Topics Used: {topics_to_use}")
     print(f"  Difficulties Tested per Topic: {args.difficulty}")
     print(f"  Expected Total Questions: {expected_total_questions}")
-    # --- MODIFIED Summary Output ---
     print(f"  Custom Instructions: {'Generated within batch call' if args.auto_generate_instructions else 'Disabled'}")
     print(f"    Forced Regeneration: {'YES' if args.regenerate_instructions else 'NO'}")
-    # --- END MODIFIED Summary Output ---
     if batch_result:
         print(f"  Batch Request Status: {batch_result.get('status', 'N/A')}")
         print(f"  Reported Questions Generated: {batch_result.get('total_questions_generated', 'N/A')}")
@@ -428,27 +414,31 @@ def main():
     parser.add_argument("--num-questions-per-difficulty", "-n", type=int, default=3,
                       help="Number of questions per difficulty level per topic")
     parser.add_argument("--seed-questions", "-s", help="Path to a file containing seed questions")
-    # --- REMOVED save_generated_instructions flag ---
-    # --- UPDATED instruction flags ---
     parser.add_argument("--no-auto-instructions", action="store_false", dest="auto_generate_instructions",
                         help="Disable automatic generation of custom instructions per topic (default: ON within batch call)")
     parser.add_argument("--regenerate-instructions", action="store_true",
                         help="Force regeneration of custom instructions during the batch call, even if they exist.")
     parser.set_defaults(auto_generate_instructions=True, regenerate_instructions=False)
-    # --- END UPDATED instruction flags ---
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output for API calls")
     parser.add_argument("--debug", action="store_true", help="Enable debug mode in the API request payload")
 
-    # Access args globally for make_request logging
     global args
     args = parser.parse_args()
 
-    # Validation
     if not args.topics and args.num_generated_topics <= 0: parser.error("If --topics not provided, --num-generated-topics must be > 0.")
-    if not args.difficulty: args.difficulty = ["medium"] # Ensure default if user provides empty list
+    if not args.difficulty: args.difficulty = ["medium"]
 
-    # File existence checks
-    if args.seed_questions and not os.path.exists(args.seed_questions): print(f"{Colors.FAIL}Seed questions file not found: {args.seed_questions}{Colors.ENDC}"); sys.exit(1)
+    # --- Modified: Path handling for seed file ---
+    seed_file_path = None
+    if args.seed_questions:
+         # Assume the seed file path is relative to the 'backend' directory
+         backend_dir = Path(__file__).resolve().parent.parent
+         seed_file_path = backend_dir / args.seed_questions
+         if not seed_file_path.exists():
+             print(f"{Colors.FAIL}Seed questions file not found at: {seed_file_path}{Colors.ENDC}")
+             sys.exit(1)
+         args.seed_questions = str(seed_file_path) # Use the absolute path
+    # --- End Modified ---
 
     run_batch_test_flow(args)
 
