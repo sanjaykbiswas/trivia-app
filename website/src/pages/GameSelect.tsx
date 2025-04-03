@@ -1,6 +1,10 @@
+// website/src/pages/GameSelect.tsx
+// --- START OF FILE ---
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen, Globe, Lightbulb, Film, Dices, Users, Copy, Search, Music, Map, Trophy, Utensils, BriefcaseMedical, Building2, PenTool, Landmark, Languages, LucideIcon, Ship, BookText } from 'lucide-react';
+import {
+  ArrowLeft, BookOpen, Globe, Lightbulb, Film, Dices, Users, Copy, Search, Music, Map, Trophy, Utensils, BriefcaseMedical, Building2, PenTool, Landmark, Languages, LucideIcon, Ship, BookText, Loader2, AlertCircle // Added Loader2, AlertCircle
+} from 'lucide-react';
 import Header from '@/components/Header';
 import PirateButton from '@/components/PirateButton';
 import { Card } from '@/components/ui/card';
@@ -8,7 +12,35 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import GameSettings from '@/components/GameSettings';
+import { createGameSession } from '@/services/gameApi';
+import { fetchPacks } from '@/services/packApi'; // <<< NEW: Import fetchPacks
+import { ApiPackResponse, GameCreationPayload, ApiGameSessionResponse } from '@/types/apiTypes'; // <<< NEW: Import ApiPackResponse
+
+// --- NEW: Icon Mapping ---
+// Helper to get an icon based on pack name (case-insensitive partial match)
+const getIconForPack = (packName: string): React.ReactNode => {
+    const lowerName = packName.toLowerCase();
+    if (lowerName.includes("history")) return <BookOpen className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("science")) return <Lightbulb className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("entertainment")) return <Film className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("music")) return <Music className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("geography")) return <Map className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("sport")) return <Trophy className="h-6 w-6 text-pirate-navy" />; // Match "sports" or "sport"
+    if (lowerName.includes("food") || lowerName.includes("drink")) return <Utensils className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("medicine")) return <BriefcaseMedical className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("architecture")) return <Building2 className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("art")) return <PenTool className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("politic")) return <Landmark className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("language")) return <Languages className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("maritime") || lowerName.includes("ship") || lowerName.includes("pirate")) return <Ship className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("literature") || lowerName.includes("book")) return <BookText className="h-6 w-6 text-pirate-navy" />;
+    if (lowerName.includes("random") || lowerName.includes("mix")) return <Dices className="h-6 w-6 text-pirate-navy" />;
+    // Default icon
+    return <Globe className="h-6 w-6 text-pirate-navy" />;
+};
+// --- END Icon Mapping ---
 
 interface CategoryCardProps {
   title: string;
@@ -17,6 +49,7 @@ interface CategoryCardProps {
   onClick: () => void;
 }
 
+// CategoryCard component remains the same
 const CategoryCard: React.FC<CategoryCardProps> = ({ title, icon, description, onClick }) => {
   return (
     <div onClick={onClick} className="cursor-pointer">
@@ -25,19 +58,14 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ title, icon, description, o
           {icon}
         </div>
         <h3 className="font-pirate text-xl text-pirate-navy mb-2">{title}</h3>
-        <p className="text-pirate-navy/70 text-sm">{description}</p>
+        <p className="text-pirate-navy/70 text-sm">{description || "Test your knowledge in this category!"}</p> {/* Added default desc */}
       </Card>
     </div>
   );
 };
 
-interface Category {
-  title: string;
-  icon: React.ReactNode;
-  description: string;
-  slug: string;
-  focuses: string[];
-}
+
+// <<< REMOVED the hardcoded Category interface >>>
 
 interface GameSelectProps {
   mode: 'solo' | 'crew';
@@ -46,24 +74,61 @@ interface GameSelectProps {
 const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
   const { role } = useParams<{ role?: string }>();
   const [searchParams] = useSearchParams();
-  const gameCode = searchParams.get('gameCode');
+  const gameCodeFromUrl = searchParams.get('gameCode');
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  
+  // --- NEW State Variables ---
+  const [availablePacks, setAvailablePacks] = useState<ApiPackResponse[]>([]);
+  const [selectedPack, setSelectedPack] = useState<ApiPackResponse | null>(null); // Store the whole selected pack object
+  const [isLoadingPacks, setIsLoadingPacks] = useState(true); // Loading state for fetching packs
+  const [fetchPacksError, setFetchPacksError] = useState<string | null>(null); // Error state for fetching packs
+  const [isCreatingGame, setIsCreatingGame] = useState(false); // Renamed from isLoading
+  // --- END NEW State ---
+
+  // Placeholder User ID - Replace with actual user auth logic later
+  const hostUserId = "a1b2c3d4-e5f6-7890-1234-567890abcdef"; // Example static UUID
+
+  // --- NEW: Fetch Packs useEffect ---
   useEffect(() => {
-    if (mode === 'crew' && (!role || !gameCode)) {
+    const loadPacks = async () => {
+      setIsLoadingPacks(true);
+      setFetchPacksError(null);
+      try {
+        const response = await fetchPacks();
+        setAvailablePacks(response.packs);
+      } catch (error) {
+        console.error("Failed to fetch packs:", error);
+        const errorMsg = error instanceof Error ? error.message : "Could not load categories.";
+        setFetchPacksError(errorMsg);
+        toast.error("Failed to Load Categories", { description: errorMsg });
+      } finally {
+        setIsLoadingPacks(false);
+      }
+    };
+
+    loadPacks();
+  }, []); // Empty dependency array means run once on mount
+  // --- END Fetch Packs useEffect ---
+
+
+  useEffect(() => {
+    // Navigation logic remains the same
+    if (mode === 'crew' && (!role || !gameCodeFromUrl)) {
       navigate('/crew');
     }
-  }, [mode, role, gameCode, navigate]);
+  }, [mode, role, gameCodeFromUrl, navigate]);
 
-  const getPageTitle = () => {
+  // getPageTitle, getPageDescription, getBackLink, copyGameCodeToClipboard remain the same...
+   const getPageTitle = () => {
     if (mode === 'solo') return 'Solo Journey';
-    return '';
+    // Title for captain creating game
+    if (mode === 'crew' && role === 'captain') return 'Chart Your Course, Captain!';
+    return ''; // No title needed if scallywag joins via code
   };
 
   const getPageDescription = () => {
     if (mode === 'solo') return 'Test your knowledge on a solo adventure!';
+    if (mode === 'crew' && role === 'captain') return 'Select a category and configure the rules for your crew.';
     return '';
   };
 
@@ -72,200 +137,117 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
     return '/crew';
   };
 
-  const copyGameCodeToClipboard = () => {
-    if (gameCode) {
-      navigator.clipboard.writeText(gameCode)
+   const copyGameCodeToClipboard = () => {
+    if (gameCodeFromUrl) {
+      navigator.clipboard.writeText(gameCodeFromUrl)
         .then(() => {
-          toast('Copied to clipboard', {
-            description: 'Game code copied successfully!',
-          });
+          toast('Copied to clipboard', { description: 'Game code copied successfully!' });
         })
         .catch(() => {
-          toast('Failed to copy', {
-            description: 'Please try copying manually',
-          });
+          toast('Failed to copy', { description: 'Please try copying manually' });
         });
     }
   };
 
-  const handleCategorySelect = (category: Category) => {
-    setSelectedCategory(category);
+  // --- UPDATED Handlers ---
+  const handlePackSelect = (pack: ApiPackResponse) => {
+    setSelectedPack(pack);
   };
 
   const handleBackToCategories = () => {
-    setSelectedCategory(null);
+    setSelectedPack(null);
   };
 
-  const navigateToWaitingRoom = (gameSettings: {
+  const handleGameSettingsSubmit = async (gameSettings: {
     numberOfQuestions: number;
     timePerQuestion: number;
-    focus: string;
+    focus: string; // Focus might be used later for selecting specific questions
   }) => {
-    if (selectedCategory) {
-      navigate(
-        `/${mode}/waiting${role ? `/${role}` : ''}?gameCode=${gameCode || ''}&category=${selectedCategory.slug}&questions=${gameSettings.numberOfQuestions}&time=${gameSettings.timePerQuestion}&focus=${gameSettings.focus}`
-      );
+    if (!selectedPack) return; // Use selectedPack now
+
+    setIsCreatingGame(true); // Start loading
+
+    // --- Use ACTUAL pack_id ---
+    const payload: GameCreationPayload = {
+      pack_id: selectedPack.id, // <<< Use the ID from the fetched pack
+      max_participants: 10, // Keep default or allow configuration
+      question_count: gameSettings.numberOfQuestions,
+      time_limit_seconds: gameSettings.timePerQuestion,
+    };
+    // --- END ---
+
+    try {
+      console.log("Calling createGameSession with:", payload, hostUserId);
+      const createdGame: ApiGameSessionResponse = await createGameSession(payload, hostUserId);
+      console.log("Game created successfully:", createdGame);
+
+      const newGameCode = createdGame.code;
+      // Pass selected pack info if needed by WaitingRoom, otherwise just navigate
+      const targetPath = mode === 'solo'
+        ? `/solo/waiting?gameCode=${newGameCode}`
+        : `/crew/waiting/${role}?gameCode=${newGameCode}`;
+
+      navigate(targetPath, {
+        state: {
+          gameSession: createdGame,
+          categoryName: selectedPack.name, // Pass name instead of slug
+          questionCount: createdGame.question_count,
+          timeLimit: createdGame.time_limit_seconds,
+        }
+      });
+
+    } catch (error) {
+      console.error("Failed to create game:", error);
+      toast.error("Failed to Create Game", {
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
+      });
+    } finally {
+      setIsCreatingGame(false); // Stop loading
     }
   };
+  // --- END UPDATED Handlers ---
 
-  const categories: Category[] = [
-    {
-      title: "General Knowledge",
-      icon: <Globe className="h-6 w-6 text-pirate-navy" />,
-      description: "Test your knowledge across a variety of subjects.",
-      slug: "general",
-      focuses: ["General", "Trivia", "Facts", "World Records"]
-    },
-    {
-      title: "History",
-      icon: <BookOpen className="h-6 w-6 text-pirate-navy" />,
-      description: "Voyage through time with historical questions.",
-      slug: "history",
-      focuses: ["General", "Ancient Civilizations", "World Wars", "Modern History", "American History"]
-    },
-    {
-      title: "Science",
-      icon: <Lightbulb className="h-6 w-6 text-pirate-navy" />,
-      description: "Discover the mysteries of science and nature.",
-      slug: "science",
-      focuses: ["General", "Biology", "Chemistry", "Physics", "Astronomy"]
-    },
-    {
-      title: "Entertainment",
-      icon: <Film className="h-6 w-6 text-pirate-navy" />,
-      description: "Questions about movies, TV, music, and more.",
-      slug: "entertainment",
-      focuses: ["General", "Movies", "Television", "Video Games", "Theater"]
-    },
-    {
-      title: "Music",
-      icon: <Music className="h-6 w-6 text-pirate-navy" />,
-      description: "Test your knowledge of songs, artists, and melodies.",
-      slug: "music",
-      focuses: ["General", "Classical", "Rock", "Pop", "Hip-Hop", "Jazz"]
-    },
-    {
-      title: "Geography",
-      icon: <Map className="h-6 w-6 text-pirate-navy" />,
-      description: "Navigate the world with questions about locations and landmarks.",
-      slug: "geography",
-      focuses: ["General", "Countries", "Capitals", "Landmarks", "Oceans & Rivers"]
-    },
-    {
-      title: "Sports",
-      icon: <Trophy className="h-6 w-6 text-pirate-navy" />,
-      description: "Compete with questions about athletes, teams, and events.",
-      slug: "sports",
-      focuses: ["General", "Football", "Basketball", "Baseball", "Soccer", "Olympics"]
-    },
-    {
-      title: "Food & Drink",
-      icon: <Utensils className="h-6 w-6 text-pirate-navy" />,
-      description: "Savor questions about culinary delights and beverages.",
-      slug: "food",
-      focuses: ["General", "Cuisine", "Drinks", "Cooking Techniques", "Famous Chefs"]
-    },
-    {
-      title: "Medicine",
-      icon: <BriefcaseMedical className="h-6 w-6 text-pirate-navy" />,
-      description: "Diagnose your knowledge of health and medicine.",
-      slug: "medicine",
-      focuses: ["General", "Anatomy", "Diseases", "Medical History", "Treatments"]
-    },
-    {
-      title: "Architecture",
-      icon: <Building2 className="h-6 w-6 text-pirate-navy" />,
-      description: "Build your knowledge of famous structures and designs.",
-      slug: "architecture",
-      focuses: ["General", "Ancient Structures", "Modern Buildings", "Architects", "Styles"]
-    },
-    {
-      title: "Art",
-      icon: <PenTool className="h-6 w-6 text-pirate-navy" />,
-      description: "Paint a masterpiece with your art knowledge.",
-      slug: "art",
-      focuses: ["General", "Paintings", "Sculpture", "Photography", "Modern Art"]
-    },
-    {
-      title: "Politics",
-      icon: <Landmark className="h-6 w-6 text-pirate-navy" />,
-      description: "Debate your knowledge of governments and political systems.",
-      slug: "politics",
-      focuses: ["General", "World Leaders", "Systems of Government", "Political History", "International Relations"]
-    },
-    {
-      title: "Languages",
-      icon: <Languages className="h-6 w-6 text-pirate-navy" />,
-      description: "Translate your way through linguistic questions.",
-      slug: "languages",
-      focuses: ["General", "Etymology", "World Languages", "Grammar", "Language History"]
-    },
-    {
-      title: "Maritime",
-      icon: <Ship className="h-6 w-6 text-pirate-navy" />,
-      description: "Set sail with questions about ships and the sea.",
-      slug: "maritime",
-      focuses: ["General", "Ships", "Navigation", "Sea Exploration", "Pirates"]
-    },
-    {
-      title: "Literature",
-      icon: <BookText className="h-6 w-6 text-pirate-navy" />,
-      description: "Turn the page with questions about books and authors.",
-      slug: "literature",
-      focuses: ["General", "Classic Literature", "Modern Fiction", "Poetry", "Authors"]
-    },
-    {
-      title: "Random Mix",
-      icon: <Dices className="h-6 w-6 text-pirate-navy" />,
-      description: "A treasure chest of questions from all categories.",
-      slug: "random",
-      focuses: ["General"]
-    },
-    {
-      title: "Sports Trivia",
-      icon: <Trophy className="h-6 w-6 text-pirate-navy" />,
-      description: "Challenge yourself with sports facts and trivia.",
-      slug: "sports-trivia",
-      focuses: ["General", "Records", "Championships", "Player Facts", "Team Histories"]
-    }
-  ];
-
-  const filteredCategories = categories.filter(category => 
-    category.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchQuery.toLowerCase())
+  // --- UPDATED Filtering Logic ---
+  const filteredPacks = availablePacks.filter(pack =>
+    pack.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (pack.description && pack.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+  // --- END ---
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
-          {!selectedCategory ? (
+          {/* Back button logic */}
+          {!selectedPack ? ( // <<< Changed condition
             <Link to={getBackLink()} className="flex items-center text-pirate-navy hover:text-pirate-accent">
               <ArrowLeft className="h-4 w-4 mr-2" />
               <span>Back</span>
             </Link>
           ) : (
-            <button 
+            <button
               onClick={handleBackToCategories}
-              className="flex items-center text-pirate-navy hover:text-pirate-accent"
+              disabled={isCreatingGame} // <<< Changed state variable
+              className="flex items-center text-pirate-navy hover:text-pirate-accent disabled:opacity-50"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               <span>Back to Categories</span>
             </button>
           )}
-          
-          {mode === 'crew' && gameCode && (
+
+          {/* Game Code Display remains the same */}
+           {mode === 'crew' && gameCodeFromUrl && (
             <div className="flex items-center">
               <Users className="h-4 w-4 mr-2 text-pirate-navy" />
               <span className="text-sm font-mono bg-pirate-navy/10 px-2 py-1 rounded">
-                {gameCode}
+                {gameCodeFromUrl}
               </span>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button 
+                    <button
                       onClick={copyGameCodeToClipboard}
                       className="ml-2 p-1 text-pirate-navy hover:text-pirate-gold transition-colors rounded-full hover:bg-pirate-navy/10"
                       aria-label="Copy game code"
@@ -281,55 +263,103 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
             </div>
           )}
         </div>
-        
-        <div className="map-container p-6 md:p-8 mb-10">
+
+        <div className="map-container p-6 md:p-8 mb-10 relative">
           {getPageTitle() && <h1 className="pirate-heading text-3xl md:text-4xl mb-3">{getPageTitle()}</h1>}
           {getPageDescription() && <p className="text-pirate-navy/80 mb-8">{getPageDescription()}</p>}
-          
-          {!selectedCategory ? (
+
+          {/* Conditional Rendering: Show Loading, Error, Categories, or Settings */}
+          {isLoadingPacks ? (
+            // --- Loading State ---
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-[calc(100vh-350px)]">
+              {[...Array(6)].map((_, i) => (
+                <Card key={i} className="p-6 flex flex-col items-center">
+                  <Skeleton className="h-12 w-12 rounded-full mb-4 bg-pirate-navy/10" />
+                  <Skeleton className="h-5 w-3/4 mb-2 bg-pirate-navy/10" />
+                  <Skeleton className="h-4 w-full bg-pirate-navy/5" />
+                  <Skeleton className="h-4 w-5/6 mt-1 bg-pirate-navy/5" />
+                </Card>
+              ))}
+            </div>
+          ) : fetchPacksError ? (
+             // --- Error State ---
+            <div className="text-center py-10 text-destructive">
+                <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+                <h3 className="font-semibold text-lg mb-2">Failed to Load Categories</h3>
+                <p className="text-sm">{fetchPacksError}</p>
+                <PirateButton onClick={() => window.location.reload()} className="mt-4" variant="secondary">
+                    Try Again
+                </PirateButton>
+            </div>
+          ) : !selectedPack ? (
+            // --- Category Selection State ---
             <>
               <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-pirate-navy/50" />
-                <Input 
-                  placeholder="Search categories..." 
+                <Input
+                  placeholder="Search categories..."
                   className="pl-10 border-pirate-navy/20 focus-visible:ring-pirate-gold"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
 
-              <ScrollArea className="h-[calc(100vh-300px)] pr-4">
+              <ScrollArea className="h-[calc(100vh-350px)] pr-4"> {/* Adjusted height slightly */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredCategories.map((category, index) => (
+                  {filteredPacks.map((pack) => ( // <<< Map over filteredPacks
                     <CategoryCard
-                      key={index}
-                      title={category.title}
-                      icon={category.icon}
-                      description={category.description}
-                      onClick={() => handleCategorySelect(category)}
+                      key={pack.id}
+                      title={pack.name}
+                      icon={getIconForPack(pack.name)} // <<< Use icon mapping
+                      description={pack.description || ""}
+                      onClick={() => handlePackSelect(pack)} // <<< Pass the whole pack
                     />
                   ))}
-                  
-                  {filteredCategories.length === 0 && (
+
+                  {filteredPacks.length === 0 && !isLoadingPacks && ( // <<< Check loading state
                     <div className="col-span-full text-center py-10">
                       <p className="text-pirate-navy/60 text-lg">No categories match your search</p>
                       <p className="text-pirate-navy/40">Try a different search term</p>
                     </div>
                   )}
+                   {availablePacks.length === 0 && !isLoadingPacks && !fetchPacksError && ( // Handle case where fetch succeeded but no packs exist
+                        <div className="col-span-full text-center py-10">
+                            <p className="text-pirate-navy/60 text-lg">No trivia packs available right now.</p>
+                            <p className="text-pirate-navy/40">Check back later!</p>
+                        </div>
+                   )}
                 </div>
               </ScrollArea>
             </>
           ) : (
-            <GameSettings 
-              category={selectedCategory} 
-              onSubmit={navigateToWaitingRoom}
+             // --- Game Settings State ---
+             // Adapt GameSettings to accept pack name/description if needed
+             // Or just pass the relevant parts
+            <GameSettings
+              category={{ // Adapt the props passed to GameSettings
+                 title: selectedPack.name,
+                 icon: getIconForPack(selectedPack.name),
+                 description: selectedPack.description || '',
+                 slug: selectedPack.name.toLowerCase().replace(/\s+/g, '-'), // Generate slug if needed
+                 focuses: [] // Focuses aren't directly available from pack
+              }}
+              onSubmit={handleGameSettingsSubmit}
               mode={mode}
               role={role}
             />
           )}
+
+          {/* Loading Indicator for Game Creation */}
+          {isCreatingGame && (
+            <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
+              <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" />
+              <span className="ml-2 font-semibold text-pirate-navy">Creating Game...</span>
+            </div>
+          )}
         </div>
       </main>
-      
+
+      {/* Footer remains the same */}
       <footer className="ocean-bg py-8">
         <div className="container mx-auto text-center text-white relative z-10">
           <p className="font-pirate text-xl mb-2">Choose yer category, matey!</p>
@@ -341,3 +371,4 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
 };
 
 export default GameSelect;
+// --- END OF FILE ---
