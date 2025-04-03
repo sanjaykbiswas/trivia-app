@@ -69,14 +69,14 @@ export interface ApiGameStartResponse {
 // --- END NEW Game Start Types ---
 
 
-// --- NEW Participant Types ---
-// Matches the participant structure returned by the new endpoint
+// --- MODIFIED Participant Types ---
+// Matches the participant structure returned by the GET /participants endpoint
 export interface ApiParticipant {
-    id: string; // This is the participant record ID, not necessarily user ID
+    id: string; // This is the participant record ID
+    user_id: string; // <<< ADDED: The actual User ID
     display_name: string;
     score: number;
     is_host: boolean;
-    // user_id: string; // Could also include user_id if needed by frontend logic
 }
 
 // Matches the structure of the GET /participants response
@@ -84,7 +84,7 @@ export interface ApiParticipantListResponse {
     total: number;
     participants: ApiParticipant[];
 }
-// --- END NEW Participant Types ---
+// --- END MODIFIED Participant Types ---
 
 // --- Pack API Types ---
 // Matches backend PackResponse schema

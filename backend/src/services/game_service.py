@@ -191,7 +191,7 @@ class GameService:
                 logger.info(f"Updating display name for rejoining user {user_id} to '{display_name}'")
                 updated_participant_record = await self.game_participant_repo.update(
                     id=existing_participant.id,
-                    obj_in=GameParticipantUpdate(display_name=display_name)
+                    obj_in=GameParticipantUpdate(display_name=display_name) # type: ignore[call-arg]
                 )
                 if updated_participant_record:
                      return game_session, updated_participant_record
@@ -254,7 +254,7 @@ class GameService:
             )
             game_session = await self.game_session_repo.update(
                  id=game_session_id,
-                 obj_in=GameSessionUpdate(question_count=actual_question_count)
+                 obj_in=GameSessionUpdate(question_count=actual_question_count) # type: ignore[call-arg]
              )
             if not game_session:
                 raise ValueError(f"Failed to update question count for game {game_session_id}")
@@ -279,7 +279,7 @@ class GameService:
                 status=GameStatus.ACTIVE,
                 current_question_index=0,
                 updated_at=datetime.now(timezone.utc)
-            )
+            ) # type: ignore[call-arg]
         )
         if not updated_game:
              raise ValueError(f"Failed to update game status to ACTIVE for game {game_session_id}")
@@ -329,7 +329,7 @@ class GameService:
             return None
         updated_session = await self.game_session_repo.update(
             id=game_session_id,
-            obj_in=GameSessionUpdate(current_question_index=next_index)
+            obj_in=GameSessionUpdate(current_question_index=next_index) # type: ignore[call-arg]
         )
         if not updated_session:
              logger.error(f"Failed to update current_question_index for game {game_session_id}")
@@ -448,10 +448,32 @@ class GameService:
                 logger.warning(f"Game {game_session_id} advance returned None, but status is not COMPLETED (status: {final_game_session.status if final_game_session else 'Not Found'}). Returning completion flag without results.")
                 return {"game_complete": True, "results": None}
 
+    # --- MODIFIED get_game_participants ---
     async def get_game_participants(self, game_session_id: str) -> List[Dict[str, Any]]:
+        """
+        Retrieves participant data including the user_id.
+
+        Args:
+            game_session_id: The ID of the game session.
+
+        Returns:
+            A list of dictionaries, each representing a participant.
+        """
         game_session_id_str = ensure_uuid(game_session_id)
         participants = await self.game_participant_repo.get_by_game_session_id(game_session_id_str)
-        return [{"id": p.id, "display_name": p.display_name, "score": p.score, "is_host": p.is_host} for p in participants]
+        # Include 'user_id' in the returned dictionary
+        return [
+            {
+                "id": p.id, # Participant record ID
+                "user_id": p.user_id, # The crucial User ID
+                "display_name": p.display_name,
+                "score": p.score,
+                "is_host": p.is_host
+            }
+            for p in participants
+        ]
+    # --- END MODIFIED get_game_participants ---
+
 
     async def get_game_results(self, game_session_id: str) -> Dict[str, Any]:
         game_session_id = ensure_uuid(game_session_id)
