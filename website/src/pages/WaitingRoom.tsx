@@ -1,5 +1,5 @@
 // src/pages/WaitingRoom.tsx
-// --- START OF FULL CORRECTED FILE ---
+// --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw } from 'lucide-react';
@@ -18,6 +18,7 @@ import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
 // Import API types for state and payload
 import { ApiParticipant, ApiGameSessionResponse, ApiGameJoinRequest } from '@/types/apiTypes';
 import { Button } from '@/components/ui/button'; // Correct import
+import { cn } from '@/lib/utils'; // Import cn for conditional classes
 
 const POLLING_INTERVAL = 5000; // Fetch participants every 5 seconds
 
@@ -335,15 +336,45 @@ const WaitingRoom: React.FC = () => {
             </div>
              <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 ${!gameCode ? 'justify-center' : ''}`}>
                {/* Display Crew Members */}
-               {crewMembers.map((member) => (
-                 <Card key={member.id} className="p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md">
-                   <PlayerAvatar playerId={member.id} name={member.display_name} size="md" />
-                   <div>
-                     <p className="font-medium text-pirate-navy">{member.display_name}</p>
-                     {gameCode && <p className="text-xs text-pirate-navy/70">{member.is_host ? 'Captain' : 'Crew Member'}</p>}
-                   </div>
-                 </Card>
-               ))}
+               {crewMembers.map((member) => {
+                 // *** START HIGHLIGHTING LOGIC ***
+                 const isYou = member.id === currentUserId;
+                 // *** END HIGHLIGHTING LOGIC ***
+                 return (
+                   <Card
+                     key={member.id}
+                     // *** APPLY CONDITIONAL CLASSES ***
+                     className={cn(
+                       "p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md",
+                       isYou && "bg-pirate-navy text-white border-pirate-gold border-2" // Apply highlight classes if it's the current user
+                     )}
+                   >
+                     <PlayerAvatar playerId={member.id} name={member.display_name} size="md" />
+                     <div>
+                       {/* *** ADJUST TEXT COLOR FOR HIGHLIGHT *** */}
+                       <p className={cn(
+                           "font-medium",
+                           isYou ? "text-white" : "text-pirate-navy" // White text if highlighted
+                         )}
+                       >
+                         {member.display_name}
+                       </p>
+                       {gameCode && (
+                         <p className={cn(
+                             "text-xs",
+                             isYou ? "text-white/80" : "text-pirate-navy/70" // Lighter text if highlighted
+                           )}
+                         >
+                           {member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''} {/* Add '(You)' indicator */}
+                         </p>
+                       )}
+                        {!gameCode && isYou && ( // Add (You) for Solo mode too
+                           <p className="text-xs text-white/80">(You)</p>
+                       )}
+                     </div>
+                   </Card>
+                 )
+                })}
                {/* Placeholder/Waiting Indicator */}
                {isFetchingParticipants && crewMembers.length === 0 && gameCode && (
                     <Card className="p-4 flex items-center justify-center space-x-3 border-pirate-navy/20 border-dashed shadow-inner bg-pirate-parchment/50 min-h-[76px]">
@@ -368,7 +399,7 @@ const WaitingRoom: React.FC = () => {
 
           {/* Action Button / Waiting Message */}
           {gameCode ? ( // Crew Mode
-            // **FIX: Use isCurrentUserHost based on fetched data**
+            // Use isCurrentUserHost derived from API data
             isCurrentUserHost ? ( // Captain's view
                <div className="mt-10">
                  <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!settingsAvailable || crewMembers.length < 1 || isLoading} >
@@ -437,4 +468,4 @@ const WaitingRoom: React.FC = () => {
  };
 
  export default WaitingRoom;
-// --- END OF FULL CORRECTED FILE ---
+// --- END OF FULL MODIFIED FILE ---
