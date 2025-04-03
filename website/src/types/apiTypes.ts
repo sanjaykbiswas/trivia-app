@@ -1,6 +1,29 @@
 // website/src/types/apiTypes.ts
 // --- START OF FILE ---
 
+// --- User API Types ---
+// Matches backend UserCreateRequest (body)
+export interface ApiUserCreateRequest {
+  displayname?: string | null; // Optional display name
+  email?: string | null; // Optional email
+  is_temporary: boolean;
+  auth_provider?: string | null; // Optional
+  auth_id?: string | null; // Optional
+}
+
+// Matches backend UserResponse
+export interface ApiUserResponse {
+  id: string; // The important part we need
+  displayname: string | null;
+  email: string | null;
+  is_temporary: boolean;
+  created_at: string; // ISO date string
+  // auth_provider and auth_id might also be present but optional
+}
+// --- END User API Types ---
+
+
+// --- Game API Types ---
 // Matches backend GameSessionCreateRequest (body)
 export interface GameCreationPayload {
   pack_id: string;
@@ -24,7 +47,15 @@ export interface ApiGameSessionResponse {
   created_at: string; // ISO date string
 }
 
-// --- NEW: Types for Fetching Packs ---
+// Matches backend GameSessionJoinRequest (body)
+// <<< --- THIS IS THE MISSING INTERFACE --- >>>
+export interface ApiGameJoinRequest {
+    game_code: string;
+    display_name: string;
+}
+// <<< --- END MISSING INTERFACE --- >>>
+
+// --- Pack API Types ---
 // Matches backend PackResponse schema
 export interface ApiPackResponse {
     id: string;
@@ -43,8 +74,8 @@ export interface ApiPackListResponse {
     total: number;
     packs: ApiPackResponse[];
 }
+// --- END Pack API Types ---
 
-// --- END NEW ---
 
 // Add other API request/response types as needed...
 
