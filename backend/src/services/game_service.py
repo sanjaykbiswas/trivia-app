@@ -451,22 +451,24 @@ class GameService:
     # --- MODIFIED get_game_participants ---
     async def get_game_participants(self, game_session_id: str) -> List[Dict[str, Any]]:
         """
-        Retrieves participant data including the user_id.
+        Retrieves participant data including the latest display name from the users table.
 
         Args:
             game_session_id: The ID of the game session.
 
         Returns:
-            A list of dictionaries, each representing a participant.
+            A list of dictionaries, each representing a participant with the latest data.
         """
         game_session_id_str = ensure_uuid(game_session_id)
-        participants = await self.game_participant_repo.get_by_game_session_id(game_session_id_str)
-        # Include 'user_id' in the returned dictionary
+        # The repository method now handles fetching the latest user display name
+        participants: List[GameParticipant] = await self.game_participant_repo.get_by_game_session_id(game_session_id_str)
+
+        # Format the result for the API endpoint, using the (potentially updated) display_name from the GameParticipant model
         return [
             {
                 "id": p.id, # Participant record ID
-                "user_id": p.user_id, # The crucial User ID
-                "display_name": p.display_name,
+                "user_id": p.user_id, # The User ID
+                "display_name": p.display_name, # This name is now sourced from 'users' table by the repo
                 "score": p.score,
                 "is_host": p.is_host
             }
@@ -481,6 +483,7 @@ class GameService:
         if not game_session: raise ValueError(f"Game with ID {game_session_id} not found")
         if game_session.status != GameStatus.COMPLETED: logger.warning(f"Requesting results for game {game_session_id} which is not completed (status: {game_session.status})")
 
+        # Fetch participants - this will now use the updated repo method getting latest names
         participants = await self.game_participant_repo.get_by_game_session_id(game_session_id)
         participants.sort(key=lambda p: p.score, reverse=True)
         game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
@@ -493,6 +496,7 @@ class GameService:
                 total_answered = len(gq.participant_answers)
                 question_results.append({"index": gq.question_index, "question_text": original_question.question, "correct_answer": original_question.answer, "correct_count": correct_count, "total_answered": total_answered, "correct_percentage": (correct_count / total_answered * 100) if total_answered > 0 else 0})
 
+        # The display_name here will be the latest one fetched by get_by_game_session_id
         participant_results = [{"id": p.id, "user_id": p.user_id, "display_name": p.display_name, "score": p.score, "is_host": p.is_host} for p in participants]
         completion_time = game_session.updated_at if game_session.status == GameStatus.COMPLETED else datetime.now(timezone.utc)
         return {"game_id": game_session_id, "game_code": game_session.code, "status": game_session.status, "participants": participant_results, "questions": question_results, "total_questions": len(game_questions), "completed_at": completion_time}
@@ -522,6 +526,7 @@ class GameService:
                 logger.warning(f"Game session {game_session_id} not found for participation {participation.id}")
                 continue
             if not include_completed and game_session.status in [GameStatus.COMPLETED, GameStatus.CANCELLED]: continue
+            # Fetch participants using the updated method to get latest names for count display
             participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
             game_info = {"id": game_session.id, "code": game_session.code, "status": game_session.status, "participant_count": len(participants), "max_participants": game_session.max_participants, "current_question": game_session.current_question_index, "total_questions": game_session.question_count, "is_host": participation.is_host, "created_at": game_session.created_at, "updated_at": game_session.updated_at}
             results.append(game_info)
