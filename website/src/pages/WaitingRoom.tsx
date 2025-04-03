@@ -1,5 +1,5 @@
 // src/pages/WaitingRoom.tsx
-// --- START OF MODIFIED FILE ---
+// --- START OF FULL CORRECTED FILE ---
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw } from 'lucide-react';
@@ -17,6 +17,7 @@ import { joinGameSession, getGameParticipants, startGame } from '@/services/game
 import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
 // Import API types for state and payload
 import { ApiParticipant, ApiGameSessionResponse, ApiGameJoinRequest } from '@/types/apiTypes';
+import { Button } from '@/components/ui/button'; // Correct import
 
 const POLLING_INTERVAL = 5000; // Fetch participants every 5 seconds
 
@@ -32,7 +33,6 @@ const WaitingRoom: React.FC = () => {
   const navigate = useNavigate();
 
   // State
-  // Use ApiGameSessionResponse | null for gameSession state
   const [gameSession, setGameSession] = useState<ApiGameSessionResponse | null>(null);
   const [crewMembers, setCrewMembers] = useState<ApiParticipant[]>([]); // Holds actual participants from API
   const [isVoyageDetailsOpen, setIsVoyageDetailsOpen] = useState(false);
@@ -45,6 +45,54 @@ const WaitingRoom: React.FC = () => {
   // Refs
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // --- Participant Fetching and Polling Callbacks (Defined Early) ---
+  const fetchParticipants = useCallback(async (gameIdToFetch?: string) => {
+      const targetGameId = gameIdToFetch || gameSession?.id;
+      if (!targetGameId || targetGameId.startsWith('unknown') || targetGameId.startsWith('solo')) {
+        console.log("Skipping participant fetch: No valid game ID available.", targetGameId);
+        return;
+      }
+
+      console.log(`Fetching participants for game ID: ${targetGameId}`);
+      setIsFetchingParticipants(true);
+      try {
+          const response = await getGameParticipants(targetGameId);
+          setCrewMembers(response.participants);
+          setGameSession(prev => prev ? { ...prev, participant_count: response.total } : null);
+          console.log("Fetched participants:", response.participants);
+      } catch (error) {
+          console.error("Failed to fetch participants:", error);
+      } finally {
+          setIsFetchingParticipants(false);
+      }
+  }, [gameSession?.id]); // Depend only on gameSession.id
+
+  const startParticipantPolling = useCallback((gameIdToPoll?: string) => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+    const targetGameId = gameIdToPoll || gameSession?.id;
+    if (gameCode && targetGameId && !targetGameId.startsWith('unknown') && !targetGameId.startsWith('solo')) {
+        console.log(`Starting participant polling for game ID: ${targetGameId}`);
+        fetchParticipants(targetGameId); // Initial fetch
+        pollingIntervalRef.current = setInterval(() => {
+            fetchParticipants(targetGameId);
+        }, POLLING_INTERVAL);
+    } else {
+         console.log("Not starting polling (no gameCode or invalid gameId).");
+    }
+    return () => { // Cleanup function
+      if (pollingIntervalRef.current) {
+        console.log("Clearing participant polling interval.");
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [gameCode, gameSession?.id, fetchParticipants]); // Depend on relevant state/callbacks
+
+
+  // --- Effects ---
+
   // Get current user info from localStorage on mount
   useEffect(() => {
       const storedUserId = localStorage.getItem('tempUserId');
@@ -52,82 +100,89 @@ const WaitingRoom: React.FC = () => {
       if (!storedUserId) {
           console.error("Waiting Room: tempUserId not found in localStorage!");
           toast.error("Session Error", { description: "Could not find your user ID. Please go back."});
-          // Optionally navigate back
-          // navigate(role ? '/crew' : '/');
+          // navigate(role ? '/crew' : '/'); // Optional: force navigation back
       } else {
         setCurrentUserId(storedUserId);
+        // Ensure display name is set, assign if missing
+        setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId));
       }
-      // Use stored name, or assign one if somehow missing
-      setCurrentUserDisplayName(storedName || (storedUserId ? getPirateNameForUserId(storedUserId) : 'Unknown Pirate'));
       console.log("Waiting Room: Current User ID:", storedUserId, "Name:", storedName || 'Assigned Name');
-  }, [role, navigate]); // Add navigate to dependency array
+  }, [role, navigate]);
 
-  // --- Scallywag Join Game Logic ---
+  // Scallywag Join Game Logic
   useEffect(() => {
-      // Only run if scallywag, gameCode exists, user info is loaded, AND join hasn't been attempted
       if (role === 'scallywag' && gameCode && currentUserId && currentUserDisplayName && !joinAttempted) {
-          setJoinAttempted(true); // Mark join as attempted
+          setJoinAttempted(true);
           const performJoin = async () => {
-              setIsLoading(true); // Show loading indicator during join
+              setIsLoading(true);
               console.log(`Scallywag ${currentUserDisplayName} (${currentUserId}) attempting to join game ${gameCode}`);
               try {
                   const joinPayload: ApiGameJoinRequest = {
                        game_code: gameCode,
-                       display_name: currentUserDisplayName // Use the assigned/stored name
+                       display_name: currentUserDisplayName
                   };
                   const sessionData = await joinGameSession(joinPayload, currentUserId);
                   console.log("Successfully joined game:", sessionData);
-                  setGameSession(sessionData); // Store joined session details
-                  fetchParticipants(sessionData.id); // Fetch participants immediately
+                  setGameSession(sessionData);
+                  fetchParticipants(sessionData.id); // Fetch immediately after join
                   startParticipantPolling(sessionData.id); // Start polling
 
               } catch (error) {
                   console.error("Failed to join game:", error);
                   const errorMsg = error instanceof Error ? error.message : "Could not join the game.";
                   toast.error("Join Failed", { description: errorMsg });
-                  navigate('/crew'); // Navigate back to role select on failure
+                  navigate('/crew');
               } finally {
                   setIsLoading(false);
               }
           };
           performJoin();
       }
-      // Don't include navigate in dependencies here to avoid re-joining on navigation changes
       // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted]);
+  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted]); // Exclude fetch/startPolling from deps
 
-  // --- Captain Initial Load & Session State Handling ---
+  // Captain Initial Load & Session State Handling
    useEffect(() => {
-       // If captain and we have a gameCode (e.g., after creating game)
-       if (role === 'captain' && gameCode && currentUserId) {
+       if (role === 'captain' && gameCode && currentUserId && currentUserDisplayName) {
            console.log(`Captain ${currentUserId} arrived for game ${gameCode}.`);
-           // TODO: In a real app, fetch the game session details by gameCode or ID here
-           // to populate `gameSession` state accurately.
-           // For now, we'll construct a partial state based on URL params for display.
-           setGameSession(prev => ({
-               // Keep existing fields if joining (though unlikely for captain), or set defaults
-               id: prev?.id || 'unknown-game-id', // Need the actual ID for polling/starting
+
+           // Set gameSession state based on URL params or existing state
+           const newSessionData = {
+               id: gameSession?.id || 'unknown-game-id', // Placeholder until potential fetch
                code: gameCode,
-               status: prev?.status || 'pending',
-               pack_id: prev?.pack_id || categoryParam || 'unknown-pack',
-               max_participants: prev?.max_participants || 10,
+               status: gameSession?.status || 'pending',
+               pack_id: gameSession?.pack_id || categoryParam || 'unknown-pack',
+               max_participants: gameSession?.max_participants || 10,
                question_count: parseInt(questionsParam || '10'),
                time_limit_seconds: parseInt(timeParam || '30'),
-               current_question_index: prev?.current_question_index || 0,
-               participant_count: prev?.participant_count || 0, // Will be updated by polling
-               is_host: true, // Captain is host
-               created_at: prev?.created_at || new Date().toISOString(),
-           }));
-            // Fetch initial participants (needs game ID)
-            // fetchParticipants(gameSession?.id); // PROBLEM: gameSession.id might not be set yet
-            // Let's fetch participants when gameSession ID becomes available in the polling effect
-           startParticipantPolling(gameSession?.id); // Start polling (might need ID)
+               current_question_index: gameSession?.current_question_index || 0,
+               participant_count: gameSession?.participant_count || 1, // Start count at 1 for captain
+               is_host: true,
+               created_at: gameSession?.created_at || new Date().toISOString(),
+           };
+           console.log("Setting captain game session state (derived):", newSessionData);
+           setGameSession(newSessionData);
+
+           // **FIX:** Set initial crewMembers state to include the captain immediately
+           console.log("Setting initial crew members state for captain.");
+           setCrewMembers(prevMembers => {
+               // Avoid adding duplicate if polling already ran somehow
+               if (!prevMembers.some(m => m.id === currentUserId)) {
+                   return [{
+                       id: currentUserId,
+                       display_name: currentUserDisplayName, // Use the loaded display name
+                       score: 0,
+                       is_host: true
+                   }];
+               }
+               return prevMembers; // Keep existing if already populated
+           });
+           // Polling will start/update based on gameSession.id in the polling effect
 
        } else if (!gameCode && role !== 'captain' && role !== 'scallywag') { // Solo mode
             console.log(`Solo player ${currentUserId} setting up voyage.`);
-             // Construct minimal session state for solo display
              setGameSession({
-                 id: 'solo-game-' + currentUserId, // Fake ID for solo
+                 id: 'solo-game-' + currentUserId,
                  code: 'SOLO',
                  status: 'pending',
                  pack_id: categoryParam || 'unknown-pack',
@@ -139,73 +194,28 @@ const WaitingRoom: React.FC = () => {
                  is_host: true,
                  created_at: new Date().toISOString(),
              });
-             // Add the solo player to the crew list for display
              if (currentUserId && currentUserDisplayName) {
                  setCrewMembers([{ id: currentUserId, display_name: currentUserDisplayName, score: 0, is_host: true }]);
              }
        }
-   }, [role, gameCode, currentUserId, currentUserDisplayName, categoryParam, questionsParam, timeParam, startParticipantPolling]); // Added startParticipantPolling
+       // Intentionally exclude gameSession from deps to avoid loop on setGameSession
+       // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [role, gameCode, currentUserId, currentUserDisplayName, categoryParam, questionsParam, timeParam]);
 
-
-  // --- Participant Fetching Function ---
-  const fetchParticipants = useCallback(async (gameIdToFetch?: string) => {
-      const targetGameId = gameIdToFetch || gameSession?.id;
-      if (!targetGameId || targetGameId.startsWith('unknown') || targetGameId.startsWith('solo')) {
-        console.log("Skipping participant fetch: No valid game ID available.", targetGameId);
-        return; // Don't fetch if ID is unknown or for solo
-      }
-
-      console.log(`Fetching participants for game ID: ${targetGameId}`);
-      setIsFetchingParticipants(true);
-      try {
-          const response = await getGameParticipants(targetGameId);
-          setCrewMembers(response.participants); // Update state with API data
-          // Update participant count in gameSession state as well
-          setGameSession(prev => prev ? { ...prev, participant_count: response.total } : null);
-          console.log("Fetched participants:", response.participants);
-      } catch (error) {
-          console.error("Failed to fetch participants:", error);
-          // Avoid spamming toasts on polling errors
-          // toast.error("Update Failed", { description: "Could not fetch updated player list." });
-          // Stop polling on persistent errors?
-          // if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-      } finally {
-          setIsFetchingParticipants(false);
-      }
-  }, [gameSession?.id]); // Depend only on gameSession.id for stability
-
-  // --- Participant Polling Effect ---
-  const startParticipantPolling = useCallback((gameIdToPoll?: string) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-    const targetGameId = gameIdToPoll || gameSession?.id;
-    // Only poll in crew mode if we have a valid game ID
-    if (gameCode && targetGameId && !targetGameId.startsWith('unknown') && !targetGameId.startsWith('solo')) {
-        console.log(`Starting participant polling for game ID: ${targetGameId}`);
-        // Initial fetch right away
-        fetchParticipants(targetGameId);
-        // Then set interval
-        pollingIntervalRef.current = setInterval(() => {
-            fetchParticipants(targetGameId);
-        }, POLLING_INTERVAL);
-    } else {
-         console.log("Not starting polling (no gameCode or invalid gameId).");
-    }
-    // Cleanup function
-    return () => {
-      if (pollingIntervalRef.current) {
-        console.log("Clearing participant polling interval.");
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  }, [gameCode, gameSession?.id, fetchParticipants]); // Depend on gameCode, session ID, and fetch function
-
-  // Start/Restart polling when gameSession ID becomes available
+  // Start/Restart polling when gameSession ID becomes valid for crew mode
   useEffect(() => {
-     return startParticipantPolling(); // Cleanup is handled inside
-  }, [startParticipantPolling]); // Re-run only if the function itself changes
+     // Check if the game ID is valid before starting polling
+     if (gameSession?.id && !gameSession.id.startsWith('unknown') && !gameSession.id.startsWith('solo')) {
+         return startParticipantPolling(gameSession.id); // Start polling with the valid ID
+     } else {
+         // Ensure any previous interval is cleared if the ID becomes invalid
+         if (pollingIntervalRef.current) {
+             clearInterval(pollingIntervalRef.current);
+             pollingIntervalRef.current = null;
+         }
+     }
+  }, [gameSession?.id, startParticipantPolling]); // Depend on gameSession.id and the polling function ref
+
 
   // --- Game Start Logic ---
   const handleStartGame = async () => {
@@ -215,7 +225,7 @@ const WaitingRoom: React.FC = () => {
     }
     setIsLoading(true);
     console.log(`Captain ${currentUserDisplayName} (${currentUserId}) attempting to start game ${gameSession.id}`);
-    if (pollingIntervalRef.current) { // Stop polling before starting
+    if (pollingIntervalRef.current) { // Stop polling
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
     }
@@ -223,9 +233,8 @@ const WaitingRoom: React.FC = () => {
         const startResponse = await startGame(gameSession.id, currentUserId);
         console.log("Game started successfully:", startResponse);
         if (startResponse.status === 'active') {
-            // Navigate to countdown, passing necessary info via state if needed
-            // The GameplayScreen will fetch the first question based on the game state
-            navigate(`/countdown?questions=${startResponse.current_question?.time_limit ?? gameSession.question_count}`);
+            const totalQ = startResponse.current_question?.time_limit ?? gameSession.question_count;
+            navigate(`/countdown?questions=${totalQ}`);
         } else {
             throw new Error(`Backend reported unexpected status after start: ${startResponse.status}`);
         }
@@ -249,25 +258,23 @@ const WaitingRoom: React.FC = () => {
   };
 
  const getBackLink = () => {
-     // Captain goes back to category select (GameSelect) for the *same* game code
      if (role === 'captain') return `/crew/captain?gameCode=${gameCode}`;
-     // Scallywag goes back to role selection
      if (role === 'scallywag') return `/crew`;
-     // Solo goes back to solo category select
      return '/solo';
   };
 
-  // Determine host and display name
+  // --- Derived Data ---
   const hostParticipant = crewMembers.find(p => p.is_host);
+  // Check if the current user ID matches the host participant ID fetched from the API
   const isCurrentUserHost = currentUserId === hostParticipant?.id;
-  const hostDisplayName = hostParticipant?.display_name || 'The Captain';
+  const hostDisplayName = hostParticipant?.display_name || 'The Captain'; // Use fetched host name
 
-  // Settings derived from gameSession state or URL params
   const displayCategory = gameSession?.pack_id || categoryParam || 'Unknown';
   const displayQuestions = gameSession?.question_count ?? questionsParam ?? 'N/A';
   const displayTime = gameSession?.time_limit_seconds ?? timeParam ?? 'N/A';
-  const settingsAvailable = !!gameSession; // Settings are available if we have session data
+  const settingsAvailable = !!gameSession;
 
+  // --- Render ---
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -298,7 +305,7 @@ const WaitingRoom: React.FC = () => {
 
         {/* Main Content Area */}
         <div className="map-container p-6 md:p-8 mb-10 relative">
-           {/* Loading Overlay for initial join or captain loading */}
+           {/* Loading Overlay */}
            {(isLoading && !gameSession && role !== 'solo') && (
                <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
                    <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" />
@@ -310,9 +317,10 @@ const WaitingRoom: React.FC = () => {
           <div className="mb-8">
             <div className='flex justify-between items-center mb-6'>
                 <h2 className="font-pirate text-3xl md:text-4xl text-pirate-navy">
-                  {gameCode ? `Crew Members (${crewMembers.length})` : 'Your Voyage'}
+                  {/* Use gameSession.participant_count if available, otherwise crewMembers.length */}
+                  {gameCode ? `Crew Members (${gameSession?.participant_count ?? crewMembers.length})` : 'Your Voyage'}
                 </h2>
-                {gameCode && ( // Show refresh only in crew mode
+                {gameCode && (
                     <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -326,6 +334,7 @@ const WaitingRoom: React.FC = () => {
                 )}
             </div>
              <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 ${!gameCode ? 'justify-center' : ''}`}>
+               {/* Display Crew Members */}
                {crewMembers.map((member) => (
                  <Card key={member.id} className="p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md">
                    <PlayerAvatar playerId={member.id} name={member.display_name} size="md" />
@@ -335,18 +344,31 @@ const WaitingRoom: React.FC = () => {
                    </div>
                  </Card>
                ))}
-               {/* Placeholder/Loading Indicator */}
-               {isFetchingParticipants && crewMembers.length === 0 && gameCode && ( // Show only in crew mode when loading empty
+               {/* Placeholder/Waiting Indicator */}
+               {isFetchingParticipants && crewMembers.length === 0 && gameCode && (
                     <Card className="p-4 flex items-center justify-center space-x-3 border-pirate-navy/20 border-dashed shadow-inner bg-pirate-parchment/50 min-h-[76px]">
                       <Loader2 className="h-5 w-5 animate-spin text-pirate-navy/50"/>
                       <p className="text-xs text-pirate-navy/50">Loading Crew...</p>
                     </Card>
                )}
+               {/* Show waiting text if scallywag and no members loaded yet */}
+               {!isFetchingParticipants && crewMembers.length === 0 && role === 'scallywag' && gameCode && (
+                   <div className="col-span-full text-center py-4">
+                       <p className="text-pirate-navy/60">Waiting for the Captain and crew...</p>
+                   </div>
+               )}
+                {/* Show waiting text if captain and no members loaded yet (after initial state set) */}
+                {!isFetchingParticipants && crewMembers.length <= 1 && role === 'captain' && gameCode && (
+                   <div className="col-span-full text-center py-4">
+                       <p className="text-pirate-navy/60">Waiting for crew to join...</p>
+                   </div>
+               )}
              </div>
           </div>
 
           {/* Action Button / Waiting Message */}
-          {gameCode ? ( // --- Crew Mode ---
+          {gameCode ? ( // Crew Mode
+            // **FIX: Use isCurrentUserHost based on fetched data**
             isCurrentUserHost ? ( // Captain's view
                <div className="mt-10">
                  <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!settingsAvailable || crewMembers.length < 1 || isLoading} >
@@ -354,7 +376,8 @@ const WaitingRoom: React.FC = () => {
                    {isLoading ? 'Starting...' : 'All aboard? Set sail!'}
                  </PirateButton>
                  {!settingsAvailable && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for voyage details...</p>}
-                 {crewMembers.length < 1 && settingsAvailable && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for crew members...</p>}
+                 {/* Show waiting message if only captain is present and not loading */}
+                 {crewMembers.length <= 1 && settingsAvailable && !isLoading && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for crew members to join...</p>}
                </div>
              ) : ( // Scallywag's view
                <div className="mt-10 text-center text-pirate-navy/80">
@@ -362,7 +385,7 @@ const WaitingRoom: React.FC = () => {
                  <div className="animate-pulse mt-2 text-2xl">⚓️</div>
                </div>
              )
-           ) : ( // --- Solo Mode ---
+           ) : ( // Solo Mode
              <div className="mt-10">
                  <PirateButton onClick={() => navigate(`/countdown?questions=${displayQuestions}`)} className="w-full py-3 text-lg" variant="accent" >
                    <Anchor className="h-5 w-5" />
@@ -372,8 +395,8 @@ const WaitingRoom: React.FC = () => {
            )}
          </div>
 
-        {/* --- Collapsible Voyage Details --- */}
-         {settingsAvailable && ( // Show if settings known (gameSession exists)
+        {/* Collapsible Voyage Details */}
+         {settingsAvailable && (
             <Collapsible open={isVoyageDetailsOpen} onOpenChange={setIsVoyageDetailsOpen} className="mb-8">
               <Card className="p-4 flex items-center min-h-[60px] bg-pirate-parchment/50">
                 <CollapsibleTrigger className="flex items-center justify-between w-full">
@@ -386,8 +409,7 @@ const WaitingRoom: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="border border-pirate-navy/10 rounded p-3">
                       <p className="text-xs text-pirate-navy/50 mb-1">Category</p>
-                      {/* TODO: Display actual Pack Name based on pack_id */}
-                      <p className="font-medium capitalize">{displayCategory.replace('-', ' ') || 'Unknown'}</p>
+                      <p className="font-medium capitalize">{displayCategory.replace(/-/g, ' ') || 'Unknown'}</p> {/* Use replace for slugs */}
                     </div>
                     <div className="border border-pirate-navy/10 rounded p-3">
                       <p className="text-xs text-pirate-navy/50 mb-1">Questions</p>
@@ -415,4 +437,4 @@ const WaitingRoom: React.FC = () => {
  };
 
  export default WaitingRoom;
-// --- END OF MODIFIED FILE ---
+// --- END OF FULL CORRECTED FILE ---
