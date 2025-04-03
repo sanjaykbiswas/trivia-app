@@ -11,9 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
-import { createTemporaryUser } from '@/services/userApi';
+// --- IMPORT updateUser ---
+import { createTemporaryUser, updateUser } from '@/services/userApi';
+// --- END IMPORT updateUser ---
 import { ApiUserResponse } from '@/types/apiTypes';
-import { getPirateNameForUserId } from '@/utils/gamePlayUtils'; // Import the name assignment function
+import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
 
 interface RoleFormValues {
   role: 'captain' | 'scallywag';
@@ -33,47 +35,56 @@ const RoleSelect: React.FC = () => {
 
   const selectedRole = form.watch('role');
 
+  // --- MODIFIED onSubmit ---
   const onSubmit = async (data: RoleFormValues) => {
     setIsLoading(true);
     let user: ApiUserResponse | null = null;
+    let userId: string | null = null;
+    let assignedName: string | null = null;
 
     try {
-      // --- Step 1: Create Temporary User (pass null for name initially) ---
-      console.log(`Creating temporary user for role: ${data.role} (name will be assigned)`);
-      // Pass null for displayName initially, backend allows it
-      user = await createTemporaryUser(null);
-      console.log("Temporary user created:", user);
+      // --- Step 1: Create Temporary User (pass null for name) ---
+      console.log(`Creating temporary user record...`);
+      user = await createTemporaryUser(null); // Pass null for displayName initially
+      console.log("Temporary user created (backend):", user);
 
       if (!user?.id) {
          throw new Error("Failed to get valid ID after user creation.");
       }
-      const userId = user.id;
+      userId = user.id; // Store the ID
 
-      // --- Step 1b: Assign and Store Name ---
-      const assignedName = getPirateNameForUserId(userId); // Assign name based on the retrieved ID
-      console.log(`Assigned name ${assignedName} to user ${userId}`);
+      // --- Step 2: Assign and Store Name LOCALLY ---
+      assignedName = getPirateNameForUserId(userId); // Assign name based on the retrieved ID
+      console.log(`Assigned name '${assignedName}' to user ${userId}`);
       localStorage.setItem('tempUserId', userId);
       localStorage.setItem('tempUserDisplayName', assignedName); // Store the *assigned* name
 
-      // --- Step 2: Navigate Based on Role ---
-      if (data.role === 'captain') {
-        // Captain Flow: Navigate to Game Select screen
-        console.log("Navigating Captain to Game Select...");
-        navigate(`/crew/captain`); // No game code needed yet
+      // --- Step 3: UPDATE User Record on BACKEND with the Assigned Name ---
+      console.log(`Updating backend user record ${userId} with name '${assignedName}'...`);
+      try {
+          await updateUser(userId, { displayname: assignedName }); // Send update request
+          console.log(`Successfully updated user ${userId} displayname on backend.`);
+      } catch (updateError) {
+          // Log the error but proceed - game creation might still work using fallback name
+          console.error(`Failed to update user ${userId} displayname on backend:`, updateError);
+          toast.warning("Name Update Failed", { description: "Could not save your pirate name to the server, using a default." });
+      }
 
-      } else {
-        // Scallywag Flow: Navigate to Waiting Room
+      // --- Step 4: Navigate Based on Role ---
+      if (data.role === 'captain') {
+        console.log("Navigating Captain to Game Select...");
+        navigate(`/crew/captain`); // Proceed to game creation
+
+      } else { // Scallywag Flow
         console.log("Validating game code and navigating Scallywag to Waiting Room...");
         if (!data.gameCode?.trim()) {
              toast.warning("Missing Game Code", { description: "Please provide the game code." });
              setIsLoading(false);
-             return;
+             return; // Stop execution
          }
-
          const gameCodeValue = data.gameCode.toUpperCase().trim();
          console.log(`Navigating Scallywag (User ID: ${userId}, Name: ${assignedName}) to Waiting Room for game code: ${gameCodeValue}`);
-
-         // Navigate Scallywag directly to Waiting Room.
+         // Scallywag will send their name during the join request anyway
          navigate(`/crew/waiting/scallywag?gameCode=${gameCodeValue}`);
       }
 
@@ -92,8 +103,9 @@ const RoleSelect: React.FC = () => {
       setIsLoading(false);
     }
   };
+  // --- END MODIFIED onSubmit ---
 
- // --- JSX (Remains the same as previous step - no name input) ---
+  // --- JSX (No changes needed from the previous version) ---
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -177,7 +189,7 @@ const RoleSelect: React.FC = () => {
               {/* Submit Button */}
               <div className="pt-4">
                 <PirateButton type="submit" className="w-full" disabled={isLoading} icon={selectedRole === 'captain' ? <Anchor className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />} >
-                  {selectedRole === 'captain' ? 'Start New Game' : 'Join Crew'}
+                  {isLoading ? (selectedRole === 'captain' ? 'Setting Course...' : 'Joining Crew...') : (selectedRole === 'captain' ? 'Start New Game' : 'Join Crew')}
                 </PirateButton>
               </div>
             </form>
@@ -187,7 +199,7 @@ const RoleSelect: React.FC = () => {
                 <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
                     <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" />
                     <span className="ml-2 font-semibold text-pirate-navy">
-                        {form.formState.isSubmitting ? (selectedRole === 'captain' ? 'Setting up...' : 'Preparing...') : 'Setting up...'}
+                      Setting up your identity...
                     </span>
                 </div>
             )}

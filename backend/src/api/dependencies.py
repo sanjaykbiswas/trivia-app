@@ -4,13 +4,12 @@ from supabase import AsyncClient
 
 # Ensure repositories are imported FIRST
 from ..repositories.pack_repository import PackRepository
-# REMOVED: from ..repositories.pack_creation_data_repository import PackCreationDataRepository
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
 from ..repositories.game_session_repository import GameSessionRepository
 from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
-from ..repositories.user_repository import UserRepository
+from ..repositories.user_repository import UserRepository # Keep UserRepository
 from ..repositories.topic_repository import TopicRepository
 
 # Services
@@ -34,8 +33,6 @@ async def get_pack_repository(
 ) -> PackRepository:
     """Get PackRepository instance."""
     return PackRepository(supabase)
-
-# REMOVED: get_pack_creation_data_repository
 
 async def get_question_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
@@ -71,7 +68,7 @@ async def get_user_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserRepository:
     """Get UserRepository instance."""
-    return UserRepository(supabase)
+    return UserRepository(supabase) # Keep this
 
 async def get_topic_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
@@ -102,7 +99,6 @@ async def get_difficulty_service(
         pack_repository=pack_repository
     )
 
-# --- REORDERED: Moved get_seed_question_service definition UP ---
 async def get_seed_question_service(
     pack_repository: PackRepository = Depends(get_pack_repository),
     topic_repository: TopicRepository = Depends(get_topic_repository)
@@ -112,15 +108,12 @@ async def get_seed_question_service(
         pack_repository=pack_repository,
         topic_repository=topic_repository
         )
-# --- END REORDERED ---
 
-
-# --- MODIFIED get_question_service ---
 async def get_question_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
     pack_repository: PackRepository = Depends(get_pack_repository),
     topic_repository: TopicRepository = Depends(get_topic_repository),
-    seed_question_service: SeedQuestionService = Depends(get_seed_question_service) # <<< Now defined above
+    seed_question_service: SeedQuestionService = Depends(get_seed_question_service)
 ) -> QuestionService:
     """Get QuestionService instance."""
     return QuestionService(
@@ -129,8 +122,6 @@ async def get_question_service(
         pack_repository=pack_repository,
         seed_question_service=seed_question_service
     )
-# --- END MODIFIED get_question_service ---
-
 
 async def get_incorrect_answer_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
@@ -142,12 +133,20 @@ async def get_incorrect_answer_service(
         incorrect_answers_repository=incorrect_answers_repository
     )
 
+async def get_user_service(
+    user_repository: UserRepository = Depends(get_user_repository)
+) -> UserService:
+    """Get UserService instance."""
+    return UserService(user_repository=user_repository) # Keep this
+
+# --- MODIFIED get_game_service ---
 async def get_game_service(
     game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
     game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
     game_question_repository: GameQuestionRepository = Depends(get_game_question_repository),
     question_repository: QuestionRepository = Depends(get_question_repository),
-    incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository)
+    incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository),
+    user_repository: UserRepository = Depends(get_user_repository) # <<< ADDED Dependency
 ) -> GameService:
     """Get GameService instance."""
     return GameService(
@@ -155,11 +154,7 @@ async def get_game_service(
         game_participant_repository=game_participant_repository,
         game_question_repository=game_question_repository,
         question_repository=question_repository,
-        incorrect_answers_repository=incorrect_answers_repository
+        incorrect_answers_repository=incorrect_answers_repository,
+        user_repository=user_repository # <<< ADDED Argument
     )
-
-async def get_user_service(
-    user_repository: UserRepository = Depends(get_user_repository)
-) -> UserService:
-    """Get UserService instance."""
-    return UserService(user_repository=user_repository)
+# --- END MODIFIED get_game_service ---
