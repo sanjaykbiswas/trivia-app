@@ -2,7 +2,7 @@
 // --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
-import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw } from 'lucide-react';
+import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw, Pencil } from 'lucide-react'; // Added Pencil
 import Header from '@/components/Header';
 import PirateButton from '@/components/PirateButton';
 import { Card } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import PlayerAvatar from '@/components/PlayerAvatar';
 import { Player } from '@/types/gameTypes'; // Player type still useful for local structure
 // Import API functions
 import { joinGameSession, getGameParticipants, startGame } from '@/services/gameApi';
+import { updateUser } from '@/services/userApi'; // <<<--- IMPORT updateUser
 // Keep name assignment util (might be needed if localStorage name is null)
 import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
 // Import API types for state and payload
@@ -20,7 +21,27 @@ import { ApiParticipant, ApiGameSessionResponse, ApiGameJoinRequest } from '@/ty
 import { Button } from '@/components/ui/button'; // Correct import
 import { cn } from '@/lib/utils'; // Import cn for conditional classes
 
+// --- Import Dialog and Form components ---
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+    DialogClose, // Import DialogClose
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useForm } from "react-hook-form"
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form" // Import Form components
+// --- End Import Dialog and Form components ---
+
+
 const POLLING_INTERVAL = 5000; // Fetch participants every 5 seconds
+
+interface EditNameFormValues {
+  newName: string;
+}
 
 const WaitingRoom: React.FC = () => {
   const { role } = useParams<{ role?: string }>(); // captain or scallywag (or undefined for solo)
@@ -42,11 +63,22 @@ const WaitingRoom: React.FC = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
   const [joinAttempted, setJoinAttempted] = useState(false); // Prevent multiple join attempts
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // <<<--- State for edit modal
+  const [isUpdatingName, setIsUpdatingName] = useState(false); // <<<--- State for name update loading
 
   // Refs
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // --- Form Hook for Edit Name ---
+  const editNameForm = useForm<EditNameFormValues>({
+    defaultValues: {
+      newName: '',
+    },
+  });
+  // --- End Form Hook ---
+
   // --- Participant Fetching and Polling Callbacks (Defined Early) ---
+  // useCallback for fetchParticipants (ensure dependencies are correct)
   const fetchParticipants = useCallback(async (gameIdToFetch?: string) => {
       const targetGameId = gameIdToFetch || gameSession?.id;
       if (!targetGameId || targetGameId.startsWith('unknown') || targetGameId.startsWith('solo')) {
@@ -64,11 +96,13 @@ const WaitingRoom: React.FC = () => {
           console.log("Fetched participants:", response.participants);
       } catch (error) {
           console.error("Failed to fetch participants:", error);
+          // Avoid setting error state here, just log it. Polling should continue.
       } finally {
           setIsFetchingParticipants(false);
       }
   }, [gameSession?.id]); // Depend only on gameSession.id
 
+  // useCallback for startParticipantPolling
   const startParticipantPolling = useCallback((gameIdToPoll?: string) => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
@@ -90,7 +124,7 @@ const WaitingRoom: React.FC = () => {
         pollingIntervalRef.current = null;
       }
     };
-  }, [gameCode, gameSession?.id, fetchParticipants]); // Depend on relevant state/callbacks
+  }, [gameCode, gameSession?.id, fetchParticipants]); // Include fetchParticipants
 
 
   // --- Effects ---
@@ -106,10 +140,12 @@ const WaitingRoom: React.FC = () => {
       } else {
         setCurrentUserId(storedUserId);
         // Ensure display name is set, assign if missing
-        setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId));
+        const nameToSet = storedName || getPirateNameForUserId(storedUserId);
+        setCurrentUserDisplayName(nameToSet);
+        editNameForm.setValue('newName', nameToSet); // <<<--- Pre-fill form
       }
       console.log("Waiting Room: Current User ID:", storedUserId, "Name:", storedName || 'Assigned Name');
-  }, [role, navigate]);
+  }, [role, navigate, editNameForm]); // Add editNameForm to deps
 
   // Scallywag Join Game Logic
   useEffect(() => {
@@ -121,16 +157,13 @@ const WaitingRoom: React.FC = () => {
               try {
                   const joinPayload: ApiGameJoinRequest = {
                        game_code: gameCode,
-                       display_name: currentUserDisplayName
+                       display_name: currentUserDisplayName // Send the current name on join
                   };
                   const sessionData = await joinGameSession(joinPayload, currentUserId);
                   console.log("Successfully joined game:", sessionData);
                   setGameSession(sessionData);
-                  // Fetch immediately after join using the new session's ID
                   fetchParticipants(sessionData.id);
-                  // Start polling using the new session's ID
                   startParticipantPolling(sessionData.id);
-
               } catch (error) {
                   console.error("Failed to join game:", error);
                   const errorMsg = error instanceof Error ? error.message : "Could not join the game.";
@@ -142,74 +175,48 @@ const WaitingRoom: React.FC = () => {
           };
           performJoin();
       }
+      // Intentionally simplified dependencies, be mindful if more complex interactions arise
       // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted]); // Exclude fetch/startPolling from deps
+  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted]);
 
   // Captain Initial Load & Session State Handling
    useEffect(() => {
-       // Ensure this runs only once for the captain when necessary info is available
        if (role === 'captain' && gameCode && currentUserId && currentUserDisplayName && !gameSession) {
            console.log(`Captain ${currentUserId} setting up initial state for game ${gameCode}.`);
-
-           // Set initial gameSession state based on URL params etc.
            const initialSessionData = {
-               id: 'unknown-game-id-' + Date.now(), // Temporary ID until/if fetched
-               code: gameCode,
-               status: 'pending',
-               pack_id: categoryParam || 'unknown-pack',
-               max_participants: 10, // Default or from previous screen if available
-               question_count: parseInt(questionsParam || '10'),
-               time_limit_seconds: parseInt(timeParam || '30'),
-               current_question_index: 0,
-               participant_count: 1, // Start with the captain
-               is_host: true,
-               created_at: new Date().toISOString(),
+               id: 'unknown-game-id-' + Date.now(),
+               code: gameCode, status: 'pending', pack_id: categoryParam || 'unknown-pack',
+               max_participants: 10, question_count: parseInt(questionsParam || '10'),
+               time_limit_seconds: parseInt(timeParam || '30'), current_question_index: 0,
+               participant_count: 1, is_host: true, created_at: new Date().toISOString(),
            };
-           console.log("Setting captain initial game session state:", initialSessionData);
            setGameSession(initialSessionData);
-
-           // Set initial crewMembers state to include only the captain
-           console.log("Setting captain initial crew members state.");
            setCrewMembers([{
-               id: 'temp-captain-part-id', // Temporary participant record ID
-               user_id: currentUserId, // The captain's actual user ID
-               display_name: currentUserDisplayName,
-               score: 0,
-               is_host: true
+               id: 'temp-captain-part-id', user_id: currentUserId,
+               display_name: currentUserDisplayName, score: 0, is_host: true
            }]);
-           // Polling will start/restart based on the gameSession.id update in the other effect
        } else if (!gameCode && role !== 'captain' && role !== 'scallywag') { // Solo mode
             console.log(`Solo player ${currentUserId} setting up voyage.`);
              setGameSession({
-                 id: 'solo-game-' + currentUserId,
-                 code: 'SOLO',
-                 status: 'pending',
-                 pack_id: categoryParam || 'unknown-pack',
-                 max_participants: 1,
+                 id: 'solo-game-' + currentUserId, code: 'SOLO', status: 'pending',
+                 pack_id: categoryParam || 'unknown-pack', max_participants: 1,
                  question_count: parseInt(questionsParam || '10'),
-                 time_limit_seconds: parseInt(timeParam || '30'),
-                 current_question_index: 0,
-                 participant_count: 1,
-                 is_host: true,
-                 created_at: new Date().toISOString(),
+                 time_limit_seconds: parseInt(timeParam || '30'), current_question_index: 0,
+                 participant_count: 1, is_host: true, created_at: new Date().toISOString(),
              });
              if (currentUserId && currentUserDisplayName) {
                  setCrewMembers([{
-                    id: 'temp-solo-part-id',
-                    user_id: currentUserId,
-                    display_name: currentUserDisplayName,
-                    score: 0,
-                    is_host: true
+                    id: 'temp-solo-part-id', user_id: currentUserId,
+                    display_name: currentUserDisplayName, score: 0, is_host: true
                 }]);
              }
        }
-       // Intentionally exclude gameSession to prevent loop on initial set
        // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [role, gameCode, currentUserId, currentUserDisplayName, categoryParam, questionsParam, timeParam]);
 
   // Start/Restart polling when gameSession ID becomes valid for crew mode
   useEffect(() => {
-     if (gameSession?.id && !gameSession.id.startsWith('unknown') && !gameSession.id.startsWith('solo')) {
+     if (gameSession?.id && !gameSession.id.startsWith('unknown') && !gameSession.id.startsWith('solo') && gameCode) {
          return startParticipantPolling(gameSession.id);
      } else {
          if (pollingIntervalRef.current) {
@@ -217,7 +224,7 @@ const WaitingRoom: React.FC = () => {
              pollingIntervalRef.current = null;
          }
      }
-  }, [gameSession?.id, startParticipantPolling]); // Depend on gameSession.id
+  }, [gameSession?.id, gameCode, startParticipantPolling]); // Depend on gameCode as well
 
 
   // --- Game Start Logic ---
@@ -236,12 +243,10 @@ const WaitingRoom: React.FC = () => {
         const startResponse = await startGame(gameSession.id, currentUserId);
         console.log("Game started successfully:", startResponse);
         if (startResponse.status === 'active') {
-            // Pass game settings needed for GameplayScreen via state
-            navigate(`/countdown`, {
+            navigate(`/countdown`, { // Use countdown route
                 state: {
                     gameId: gameSession.id,
-                    totalQuestions: startResponse.current_question?.time_limit ?? gameSession.question_count, // Or use gameSession.question_count directly
-                    // Add other relevant game settings if needed by GameplayScreen
+                    totalQuestions: startResponse.current_question?.time_limit ?? gameSession.question_count,
                 }
             });
         } else {
@@ -257,6 +262,45 @@ const WaitingRoom: React.FC = () => {
     }
   };
 
+  // --- Edit Name Logic ---
+  const handleOpenEditModal = () => {
+    if (currentUserDisplayName) {
+        editNameForm.setValue('newName', currentUserDisplayName);
+    }
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditNameSubmit = async (data: EditNameFormValues) => {
+    if (!currentUserId) {
+        toast.error("Error", { description: "Cannot update name. User ID missing." });
+        return;
+    }
+    const newName = data.newName.trim();
+    if (!newName || newName === currentUserDisplayName) {
+        setIsEditModalOpen(false); // Close modal if name is empty or unchanged
+        return;
+    }
+
+    setIsUpdatingName(true);
+    console.log(`Attempting to update name for user ${currentUserId} to: ${newName}`);
+    try {
+        await updateUser(currentUserId, { displayname: newName });
+        setCurrentUserDisplayName(newName); // Update local state
+        localStorage.setItem('tempUserDisplayName', newName); // Update local storage
+        setIsEditModalOpen(false); // Close modal
+        toast.success("Name Changed!", { description: `Ye be known as ${newName} now!` });
+        // The polling will update the name for others eventually
+        // Optionally trigger an immediate fetch if needed
+        fetchParticipants(gameSession?.id);
+    } catch (error) {
+        console.error("Failed to update name:", error);
+        toast.error("Update Failed", { description: error instanceof Error ? error.message : "Could not change your name." });
+    } finally {
+        setIsUpdatingName(false);
+    }
+  };
+  // --- End Edit Name Logic ---
+
   // --- Helper Functions ---
   const copyGameCodeToClipboard = () => {
     if (gameCode) {
@@ -267,16 +311,13 @@ const WaitingRoom: React.FC = () => {
   };
 
  const getBackLink = () => {
-     // Captain should go back to category select IF they created the game from there
-     // This might require more state tracking. For now, simpler logic:
-     if (role === 'captain') return `/crew`; // Go back to role select
-     if (role === 'scallywag') return `/crew`; // Go back to role select
-     return '/solo'; // Solo goes back to solo category select
+     if (role === 'captain') return `/crew`;
+     if (role === 'scallywag') return `/crew`;
+     return '/solo';
   };
 
   // --- Derived Data ---
   const hostParticipant = crewMembers.find(p => p.is_host);
-  // *** USE user_id FOR HOST CHECK ***
   const isCurrentUserHost = currentUserId === hostParticipant?.user_id;
   const hostDisplayName = hostParticipant?.display_name || 'The Captain';
 
@@ -344,42 +385,45 @@ const WaitingRoom: React.FC = () => {
                 )}
             </div>
              <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 ${!gameCode ? 'justify-center' : ''}`}>
-               {/* Display Crew Members */}
                {crewMembers.map((member) => {
-                 // *** UPDATED HIGHLIGHTING LOGIC ***
-                 const isYou = member.user_id === currentUserId; // Compare USER IDs
-                 // *** END UPDATED LOGIC ***
+                 const isYou = member.user_id === currentUserId;
                  return (
                    <Card
-                     key={member.id} // Keep using participant record ID as key
+                     key={member.id}
                      className={cn(
-                       "p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md",
-                       isYou && "bg-pirate-navy text-white border-pirate-gold border-2" // Highlight classes
+                       "p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md relative", // Added relative positioning
+                       isYou && "bg-pirate-navy text-white border-pirate-gold border-2"
                      )}
                    >
-                     {/* Pass USER_ID to PlayerAvatar for consistent emoji */}
                      <PlayerAvatar playerId={member.user_id} name={member.display_name} size="md" />
-                     <div>
+                     <div className="flex-1"> {/* Added flex-1 to allow name to take space */}
                        <p className={cn(
-                           "font-medium",
-                           isYou ? "text-white" : "text-pirate-navy" // Text color
+                           "font-medium truncate", // Added truncate
+                           isYou ? "text-white" : "text-pirate-navy"
                          )}
                        >
                          {member.display_name}
                        </p>
                        {gameCode && (
-                         <p className={cn(
-                             "text-xs",
-                             isYou ? "text-white/80" : "text-pirate-navy/70" // Muted text color
-                           )}
-                         >
-                           {member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''} {/* (You) indicator */}
+                         <p className={cn( "text-xs", isYou ? "text-white/80" : "text-pirate-navy/70" )}>
+                           {member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''}
                          </p>
                        )}
-                        {!gameCode && isYou && ( // (You) for Solo
-                           <p className="text-xs text-white/80">(You)</p>
-                       )}
+                       {!gameCode && isYou && ( <p className="text-xs text-white/80">(You)</p> )}
                      </div>
+                     {/* --- Edit Button --- */}
+                     {isYou && gameCode && ( // Only show for 'You' in crew mode
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-1 right-1 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10" // Positioning and styling
+                          onClick={handleOpenEditModal}
+                          aria-label="Edit name"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                     {/* --- End Edit Button --- */}
                    </Card>
                  )
                 })}
@@ -395,7 +439,7 @@ const WaitingRoom: React.FC = () => {
                        <p className="text-pirate-navy/60">Waiting for the Captain and crew...</p>
                    </div>
                )}
-                {!isFetchingParticipants && crewMembers.length <= 1 && role === 'captain' && gameCode && (
+               {!isFetchingParticipants && crewMembers.length <= 1 && role === 'captain' && gameCode && (
                    <div className="col-span-full text-center py-4">
                        <p className="text-pirate-navy/60">Waiting for crew to join...</p>
                    </div>
@@ -405,7 +449,6 @@ const WaitingRoom: React.FC = () => {
 
           {/* Action Button / Waiting Message */}
           {gameCode ? ( // Crew Mode
-            // Use isCurrentUserHost derived from API data (comparing user_ids)
             isCurrentUserHost ? ( // Captain's view
                <div className="mt-10">
                  <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!settingsAvailable || crewMembers.length < 1 || isLoading} >
@@ -461,6 +504,54 @@ const WaitingRoom: React.FC = () => {
             </Collapsible>
           )}
        </main>
+
+       {/* --- Edit Name Dialog --- */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-pirate-parchment border-pirate-wood">
+            <DialogHeader>
+                <DialogTitle className="font-pirate text-pirate-navy text-2xl">Change Yer Pirate Name</DialogTitle>
+            </DialogHeader>
+            <Form {...editNameForm}>
+                <form onSubmit={editNameForm.handleSubmit(handleEditNameSubmit)} className="space-y-4 py-4">
+                <FormField
+                    control={editNameForm.control}
+                    name="newName"
+                    rules={{
+                    required: "A pirate needs a name!",
+                    maxLength: { value: 18, message: "Name be too long! (Max 18 chars)" },
+                    minLength: { value: 1, message: "Name cannot be empty." }
+                    }}
+                    render={({ field }) => (
+                    <FormItem>
+                        <Label htmlFor="newName" className="text-left text-pirate-navy/90">New Name</Label>
+                        <FormControl>
+                         <Input
+                           id="newName"
+                           {...field}
+                           className="border-pirate-navy/30 focus-visible:ring-pirate-gold"
+                           maxLength={18}
+                           autoComplete="off"
+                         />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <DialogFooter>
+                    <DialogClose asChild>
+                       <Button type="button" variant="outline" className='border-pirate-navy/50 text-pirate-navy/90 hover:bg-pirate-navy/10'>Cancel</Button>
+                    </DialogClose>
+                    <PirateButton type="submit" variant="primary" disabled={isUpdatingName}>
+                    {isUpdatingName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Change Name
+                    </PirateButton>
+                </DialogFooter>
+                </form>
+            </Form>
+            </DialogContent>
+        </Dialog>
+       {/* --- End Edit Name Dialog --- */}
+
        {/* Footer */}
        <footer className="ocean-bg py-8">
          <div className="container mx-auto text-center text-white relative z-10">

@@ -133,20 +133,27 @@ async def get_incorrect_answer_service(
         incorrect_answers_repository=incorrect_answers_repository
     )
 
+# --- MODIFIED get_user_service ---
 async def get_user_service(
-    user_repository: UserRepository = Depends(get_user_repository)
+    user_repository: UserRepository = Depends(get_user_repository),
+    game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository), # <<< ADDED
+    game_session_repository: GameSessionRepository = Depends(get_game_session_repository) # <<< ADDED
 ) -> UserService:
     """Get UserService instance."""
-    return UserService(user_repository=user_repository) # Keep this
+    return UserService(
+        user_repository=user_repository,
+        game_participant_repository=game_participant_repository, # <<< ADDED
+        game_session_repository=game_session_repository # <<< ADDED
+    )
+# --- END MODIFIED get_user_service ---
 
-# --- MODIFIED get_game_service ---
 async def get_game_service(
     game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
     game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
     game_question_repository: GameQuestionRepository = Depends(get_game_question_repository),
     question_repository: QuestionRepository = Depends(get_question_repository),
     incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository),
-    user_repository: UserRepository = Depends(get_user_repository) # <<< ADDED Dependency
+    user_repository: UserRepository = Depends(get_user_repository)
 ) -> GameService:
     """Get GameService instance."""
     return GameService(
@@ -155,6 +162,5 @@ async def get_game_service(
         game_question_repository=game_question_repository,
         question_repository=question_repository,
         incorrect_answers_repository=incorrect_answers_repository,
-        user_repository=user_repository # <<< ADDED Argument
+        user_repository=user_repository
     )
-# --- END MODIFIED get_game_service ---
