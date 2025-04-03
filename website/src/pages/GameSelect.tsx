@@ -79,7 +79,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
   const [selectedPack, setSelectedPack] = useState<ApiPackResponse | null>(null);
   const [isLoadingPacks, setIsLoadingPacks] = useState(true);
   const [fetchPacksError, setFetchPacksError] = useState<string | null>(null);
-  const [isCreatingGame, setIsCreatingGame] = useState(false); // Correct state variable
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
 
   const [hostUserId, setHostUserId] = useState<string | null>(null);
   useEffect(() => {
@@ -168,7 +168,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
   const handleGameSettingsSubmit = async (gameSettings: {
     numberOfQuestions: number;
     timePerQuestion: number;
-    focus: string;
+    focus: string; // Keep focus even if not used in API payload yet
   }) => {
     if (!selectedPack) {
       toast.error("No pack selected.");
@@ -176,37 +176,39 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
     }
     if (!hostUserId) {
         toast.error("User session error", { description: "Could not identify the user. Please restart." });
-        // setIsCreatingGame(false); // No need to set this if returning early
         return;
     }
 
-    setIsCreatingGame(true); // <<< Use correct setter
+    setIsCreatingGame(true);
 
     const payload: GameCreationPayload = {
       pack_id: selectedPack.id,
-      max_participants: 10,
+      max_participants: 10, // Or make this configurable later
       question_count: gameSettings.numberOfQuestions,
       time_limit_seconds: gameSettings.timePerQuestion,
     };
 
     try {
       console.log("Calling createGameSession with:", payload, hostUserId);
-      const createdGame = await createGameSession(payload, hostUserId);
+      const createdGame: ApiGameSessionResponse = await createGameSession(payload, hostUserId); // Ensure type
       console.log("Game created successfully:", createdGame);
 
       const newGameCode = createdGame.code;
+
+      // --- *** MODIFICATION: Pass full gameSession object in state *** ---
       const targetPath = mode === 'solo'
-        ? `/solo/waiting?gameCode=${newGameCode}`
-        : `/crew/waiting/${role}?gameCode=${newGameCode}`;
+        ? `/solo/waiting?gameCode=${newGameCode}` // Solo still uses query params
+        : `/crew/waiting/${role}?gameCode=${newGameCode}`; // Crew uses query param for code
 
       navigate(targetPath, {
         state: {
+          // Pass the entire game session object received from the API
           gameSession: createdGame,
-          categoryName: selectedPack.name,
-          questionCount: createdGame.question_count,
-          timeLimit: createdGame.time_limit_seconds,
+          // Keep other relevant info if needed, though session contains most
+          categoryName: selectedPack.name, // Good for display
         }
       });
+      // --- *** END MODIFICATION *** ---
 
     } catch (error) {
       console.error("Failed to create game:", error);
@@ -214,7 +216,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
         description: error instanceof Error ? error.message : "An unknown error occurred.",
       });
     } finally {
-      setIsCreatingGame(false); // <<< Use correct setter
+      setIsCreatingGame(false);
     }
   };
 
@@ -240,7 +242,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
           ) : (
             <button
               onClick={handleBackToCategories}
-              disabled={isCreatingGame} // <<< Use correct state variable
+              disabled={isCreatingGame}
               className="flex items-center text-pirate-navy hover:text-pirate-accent disabled:opacity-50"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -348,7 +350,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
                  icon: getIconForPack(selectedPack.name),
                  description: selectedPack.description || '',
                  slug: selectedPack.name.toLowerCase().replace(/\s+/g, '-'),
-                 focuses: []
+                 focuses: [] // Add focuses if your API provides them
               }}
               onSubmit={handleGameSettingsSubmit}
               mode={mode}
@@ -359,7 +361,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
           )}
 
           {/* Loading Indicator for Game Creation */}
-          {isCreatingGame && ( // <<< Use correct state variable
+          {isCreatingGame && (
             <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
               <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" />
               <span className="ml-2 font-semibold text-pirate-navy">Creating Game...</span>
