@@ -183,7 +183,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
 
     const payload: GameCreationPayload = {
       pack_id: selectedPack.id,
-      max_participants: 10, // Or make this configurable later
+      max_participants: mode === 'solo' ? 1 : 10, // Set max participants for solo
       question_count: gameSettings.numberOfQuestions,
       time_limit_seconds: gameSettings.timePerQuestion,
     };
@@ -195,19 +195,28 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
 
       const newGameCode = createdGame.code;
 
-      // --- *** MODIFICATION: Pass full gameSession object in state *** ---
-      const targetPath = mode === 'solo'
-        ? `/solo/waiting?gameCode=${newGameCode}` // Solo still uses query params
-        : `/crew/waiting/${role}?gameCode=${newGameCode}`; // Crew uses query param for code
-
-      navigate(targetPath, {
-        state: {
-          // Pass the entire game session object received from the API
-          gameSession: createdGame,
-          // Keep other relevant info if needed, though session contains most
-          categoryName: selectedPack.name, // Good for display
-        }
-      });
+      // --- *** MODIFICATION: Navigate solo to countdown, crew to waiting *** ---
+      let targetPath: string;
+      if (mode === 'solo') {
+          // Solo mode goes directly to countdown
+          targetPath = `/countdown`;
+          // Pass necessary info for gameplay screen via state
+          navigate(targetPath, {
+            state: {
+              gameId: createdGame.id, // Pass game ID
+              totalQuestions: createdGame.question_count // Pass question count
+            }
+          });
+      } else {
+          // Crew mode goes to waiting room
+          targetPath = `/crew/waiting/${role}?gameCode=${newGameCode}`;
+          navigate(targetPath, {
+            state: {
+              gameSession: createdGame,
+              categoryName: selectedPack.name,
+            }
+          });
+      }
       // --- *** END MODIFICATION *** ---
 
     } catch (error) {

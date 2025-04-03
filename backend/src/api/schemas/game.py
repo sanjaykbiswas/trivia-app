@@ -9,7 +9,9 @@ from ...models.game_session import GameStatus
 class GameSessionCreateRequest(BaseModel):
     """Request schema for creating a new game session."""
     pack_id: str = Field(..., description="ID of the pack to use for the game")
-    max_participants: int = Field(10, description="Maximum number of participants allowed", ge=2, le=50)
+    # --- MODIFICATION: Changed ge from 2 to 1 ---
+    max_participants: int = Field(10, description="Maximum number of participants allowed", ge=1, le=50) # Allow 1 for solo
+    # --- END MODIFICATION ---
     question_count: int = Field(10, description="Number of questions to include in the game", ge=1, le=75)
     time_limit_seconds: int = Field(0, description="Time limit per question in seconds (0 for no limit)", ge=0)
 

@@ -101,6 +101,15 @@ const WaitingRoom: React.FC = () => {
       } catch (error) {
           if (error instanceof Error && error.message.includes('404')) {
               console.warn(`Participant fetch failed (likely placeholder/old ID or game ended): ${error.message}`);
+              // If game not found during polling, maybe stop polling?
+              if (pollingIntervalRef.current) {
+                  console.log("Stopping polling due to 404.");
+                  clearInterval(pollingIntervalRef.current);
+                  pollingIntervalRef.current = null;
+                  // Optionally navigate back or show error message
+                  toast.error("Game Not Found", { description: "The game session seems to have ended or doesn't exist."});
+                  // Consider navigation: navigate(getBackLink());
+              }
           } else {
               console.error("Failed to fetch participants:", error);
           }
@@ -108,7 +117,7 @@ const WaitingRoom: React.FC = () => {
           setIsFetchingParticipants(false);
       }
   // Added currentUserId and currentUserDisplayName to dependencies
-  }, [gameSession?.id, role, currentUserId, currentUserDisplayName]);
+  }, [gameSession?.id, role, currentUserId, currentUserDisplayName]); // Removed fetchParticipants from dependencies
 
   const startParticipantPolling = useCallback((gameIdToPoll?: string) => {
     if (pollingIntervalRef.current) {
@@ -121,9 +130,9 @@ const WaitingRoom: React.FC = () => {
         fetchParticipants(targetGameId); // Initial fetch
         pollingIntervalRef.current = setInterval(() => {
             // Check inside interval if the session still exists and isn't solo
-            const currentSession = gameSession; // Capture current session state
-            if (currentSession?.id && !currentSession.id.startsWith('solo')) {
-                 fetchParticipants(currentSession.id);
+            const currentSessionId = gameSessionRef.current?.id; // Use ref to get latest session ID
+            if (currentSessionId && !currentSessionId.startsWith('solo')) {
+                 fetchParticipants(currentSessionId);
             } else {
                 console.log("Stopping polling inside interval: No valid game ID or session changed.");
                 if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
@@ -139,8 +148,14 @@ const WaitingRoom: React.FC = () => {
         pollingIntervalRef.current = null;
       }
     };
-  // Include gameSession?.id in dependencies to restart polling if ID changes
-  }, [gameCode, gameSession?.id, fetchParticipants]);
+  // Use ref instead of state for gameSession ID inside interval
+  }, [gameCode, fetchParticipants]); // Removed gameSession?.id
+
+  // Ref to store the latest gameSession ID for use in interval
+  const gameSessionRef = useRef(gameSession);
+  useEffect(() => {
+    gameSessionRef.current = gameSession;
+  }, [gameSession]);
 
 
   // --- Effects ---
@@ -158,26 +173,23 @@ const WaitingRoom: React.FC = () => {
       }
   }, [role, navigate, editNameForm]);
 
-  // --- MODIFICATION: Initialize Captain/Solo state from location ---
+  // Initialize Captain/Solo state from location
   useEffect(() => {
-      // Get gameSession passed from GameSelect (if available)
       const stateFromNavigation = location.state?.gameSession as ApiGameSessionResponse | undefined;
 
-      // Captain Logic: Prioritize state from navigation
-      if (role === 'captain' && currentUserId && currentUserDisplayName && !gameSession) { // Run only once if gameSession is null
+      if (role === 'captain' && currentUserId && currentUserDisplayName && !gameSession) {
           if (stateFromNavigation && stateFromNavigation.code === gameCode) {
               console.log("Captain: Initializing with gameSession from navigation state:", stateFromNavigation);
               setGameSession(stateFromNavigation);
               setCrewMembers([{
                   id: 'captain-participant-' + currentUserId,
                   user_id: currentUserId,
-                  display_name: currentUserDisplayName, // Use already set display name
+                  display_name: currentUserDisplayName,
                   score: 0,
                   is_host: true
               }]);
-              startParticipantPolling(stateFromNavigation.id); // Start polling with REAL ID
+              startParticipantPolling(stateFromNavigation.id);
           } else {
-              // This fallback is less likely now but kept for safety (e.g., page refresh)
               console.warn("Captain: gameSession missing/mismatched in navigation state. Using placeholder.");
               const placeholderSession = {
                  id: 'unknown-game-id-' + Date.now(),
@@ -191,33 +203,15 @@ const WaitingRoom: React.FC = () => {
                  id: 'temp-captain-part-id-' + currentUserId, user_id: currentUserId,
                  display_name: currentUserDisplayName, score: 0, is_host: true
              }]);
-             // Polling might start with placeholder, fetchParticipants handles invalid IDs gracefully
              startParticipantPolling(placeholderSession.id);
           }
       }
-      // Solo Mode Logic (remains the same)
-      else if (!gameCode && !role && currentUserId && currentUserDisplayName && !gameSession) {
-           console.log(`Solo player ${currentUserId} setting up voyage.`);
-           setGameSession({
-               id: 'solo-game-' + currentUserId, code: 'SOLO', status: 'pending',
-               pack_id: categoryParam || 'unknown-pack', max_participants: 1,
-               question_count: parseInt(questionsParam || '10'),
-               time_limit_seconds: parseInt(timeParam || '30'), current_question_index: 0,
-               participant_count: 1, is_host: true, created_at: new Date().toISOString(),
-           });
-           setCrewMembers([{
-               id: 'temp-solo-part-id', user_id: currentUserId,
-               display_name: currentUserDisplayName, score: 0, is_host: true
-           }]);
-           // No polling for solo
-      }
-  // Added location.state and startParticipantPolling as dependencies
+      // Solo Mode Logic removed - handled by GameSelect navigation now
   }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, location.state, categoryParam, questionsParam, timeParam, startParticipantPolling]);
-  // --- END MODIFICATION ---
 
   // Scallywag Join Game Logic
   useEffect(() => {
-      if (role === 'scallywag' && gameCode && currentUserId && currentUserDisplayName && !joinAttempted && !gameSession) { // Only join if session isn't already set
+      if (role === 'scallywag' && gameCode && currentUserId && currentUserDisplayName && !joinAttempted && !gameSession) {
           setJoinAttempted(true);
           const performJoin = async () => {
               setIsLoading(true);
@@ -227,8 +221,8 @@ const WaitingRoom: React.FC = () => {
                        display_name: currentUserDisplayName
                   };
                   const sessionData = await joinGameSession(joinPayload, currentUserId);
-                  setGameSession(sessionData); // Set the *actual* session data
-                  startParticipantPolling(sessionData.id); // Start polling with the *actual* ID
+                  setGameSession(sessionData);
+                  startParticipantPolling(sessionData.id);
               } catch (error) {
                   console.error("Failed to join game:", error);
                   const errorMsg = error instanceof Error ? error.message : "Could not join the game.";
@@ -240,7 +234,6 @@ const WaitingRoom: React.FC = () => {
           };
           performJoin();
       }
-  // Added gameSession to dependencies to prevent re-joining if already joined
   }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted, navigate, startParticipantPolling, gameSession]);
 
   // Cleanup polling on component unmount
@@ -253,10 +246,16 @@ const WaitingRoom: React.FC = () => {
   }, []);
 
 
-  // --- Game Start Logic (No changes needed) ---
+  // --- Game Start Logic ---
   const handleStartGame = async () => {
-    if (!gameSession?.id || !currentUserId || gameSession.id.startsWith('unknown')) {
-      toast.error("Error", { description: "Cannot start game. Missing game or user information." });
+    // Check if the game can be started (captain, valid session, enough players)
+    // *** MODIFICATION: Check crewMembers.length >= 2 for crew games ***
+    if (!gameSession?.id || !currentUserId || gameSession.id.startsWith('unknown') || (gameCode && crewMembers.length < 2)) {
+      if (gameCode && crewMembers.length < 2) {
+          toast.error("Need More Crew!", { description: "At least one other pirate must join before you can set sail." });
+      } else {
+          toast.error("Error", { description: "Cannot start game. Missing game or user information." });
+      }
       return;
     }
     // Stop polling before starting
@@ -267,8 +266,7 @@ const WaitingRoom: React.FC = () => {
     }
     setIsLoading(true);
     try {
-        // Ensure we use the LATEST game session details for question count etc.
-        const currentSession = gameSession;
+        const currentSession = gameSession; // Use captured session
         const startResponse = await startGame(currentSession.id, currentUserId);
         if (startResponse.status === 'active') {
             navigate(`/countdown`, { state: { gameId: currentSession.id, totalQuestions: currentSession.question_count } });
@@ -293,7 +291,6 @@ const WaitingRoom: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  // --- *** MODIFIED handleEditNameSubmit (includes local state update) *** ---
   const handleEditNameSubmit = async (data: EditNameFormValues) => {
     if (!currentUserId) {
         toast.error("Error", { description: "Cannot update name. User ID missing." });
@@ -308,39 +305,29 @@ const WaitingRoom: React.FC = () => {
     setIsUpdatingName(true);
     try {
         await updateUser(currentUserId, { displayname: newName });
-
-        // --- Success Path ---
-        setCurrentUserDisplayName(newName); // Update local name state FIRST
-        localStorage.setItem('tempUserDisplayName', newName); // Update local storage
-
-        // --- Manually update crewMembers state for immediate visual feedback ---
+        setCurrentUserDisplayName(newName);
+        localStorage.setItem('tempUserDisplayName', newName);
         setCrewMembers(prevCrew =>
             prevCrew.map(member =>
                 member.user_id === currentUserId
-                ? { ...member, display_name: newName } // Update the name
+                ? { ...member, display_name: newName }
                 : member
             )
         );
-        // --- End manual update ---
-
         toast.success("Name Changed!", { description: `Ye be known as ${newName} now!` });
-        // Optional: Trigger an immediate fetch for redundancy, though UI is updated
-        // fetchParticipants(gameSession?.id);
-        setIsEditModalOpen(false); // Close modal on success
+        setIsEditModalOpen(false);
 
     } catch (error) {
-        // --- Error Path ---
         console.error("Failed to update name:", error);
         toast.error("Update Failed", { description: error instanceof Error ? error.message : "Could not change your name." });
-        setIsEditModalOpen(false); // Close modal on error
+        setIsEditModalOpen(false);
     } finally {
         setIsUpdatingName(false);
     }
   };
-  // --- *** END MODIFIED handleEditNameSubmit *** ---
 
 
-  // --- Helper Functions (No changes needed) ---
+  // --- Helper Functions ---
   const copyGameCodeToClipboard = () => {
     if (gameCode) {
       navigator.clipboard.writeText(gameCode)
@@ -352,10 +339,11 @@ const WaitingRoom: React.FC = () => {
  const getBackLink = () => {
      if (role === 'captain') return `/crew`;
      if (role === 'scallywag') return `/crew`;
-     return '/solo';
+     // Solo mode shouldn't reach here now, but keep a fallback
+     return '/';
   };
 
-  // --- Derived Data (No changes needed) ---
+  // --- Derived Data ---
   const hostParticipant = crewMembers.find(p => p.is_host);
   const isCurrentUserHost = currentUserId === hostParticipant?.user_id;
   const hostDisplayName = hostParticipant?.display_name || 'The Captain';
@@ -365,6 +353,7 @@ const WaitingRoom: React.FC = () => {
   const displayQuestions = gameSession?.question_count ?? questionsParam ?? 'N/A';
   const displayTime = gameSession?.time_limit_seconds ?? timeParam ?? 'N/A';
   const settingsAvailable = !!gameSession;
+  const canStartGame = settingsAvailable && !isLoading && isCurrentUserHost && crewMembers.length >= 2; // *** ADDED crewMembers.length check ***
 
   // --- Render ---
   return (
@@ -425,12 +414,11 @@ const WaitingRoom: React.FC = () => {
                 )}
             </div>
               <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 ${!gameCode ? 'justify-center' : ''}`}>
-                {/* --- Rendering Crew Members (Uses local crewMembers state) --- */}
                 {crewMembers.map((member) => {
                   const isYou = member.user_id === currentUserId;
                   return (
                     <Card
-                      key={member.id || member.user_id} // Use user_id as fallback key
+                      key={member.id || member.user_id}
                       className={cn(
                         "p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md relative",
                         isYou && "bg-pirate-navy text-white border-pirate-gold border-2"
@@ -443,16 +431,14 @@ const WaitingRoom: React.FC = () => {
                             isYou ? "text-white" : "text-pirate-navy"
                           )}
                         >
-                          {member.display_name} {/* Name updates here */}
+                          {member.display_name}
                         </p>
                         {gameCode && (
                           <p className={cn( "text-xs", isYou ? "text-white/80" : "text-pirate-navy/70" )}>
                             {member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''}
                           </p>
                         )}
-                        {!gameCode && isYou && ( <p className="text-xs text-white/80">(You)</p> )}
                       </div>
-                      {/* Edit Button for 'You' in crew mode */}
                       {isYou && gameCode && (
                          <Button
                            variant="ghost"
@@ -460,7 +446,7 @@ const WaitingRoom: React.FC = () => {
                            className="shrink-0 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10 p-0"
                            onClick={handleOpenEditModal}
                            aria-label="Edit name"
-                           disabled={isUpdatingName} // Disable edit button while updating
+                           disabled={isUpdatingName}
                          >
                            <Pencil className="h-4 w-4" />
                          </Button>
@@ -468,14 +454,12 @@ const WaitingRoom: React.FC = () => {
                     </Card>
                   )
                  })}
-                {/* Placeholder/Waiting Indicator */}
                 {isFetchingParticipants && crewMembers.length === 0 && gameCode && (
                      <Card className="p-4 flex items-center justify-center space-x-3 border-pirate-navy/20 border-dashed shadow-inner bg-pirate-parchment/50 min-h-[76px]">
                        <Loader2 className="h-5 w-5 animate-spin text-pirate-navy/50"/>
                        <p className="text-xs text-pirate-navy/50">Loading Crew...</p>
                      </Card>
                 )}
-                {/* Waiting messages */}
                 {!isFetchingParticipants && crewMembers.length === 0 && role === 'scallywag' && gameCode && (
                     <div className="col-span-full text-center py-4">
                         <p className="text-pirate-navy/60">Waiting for the Captain and crew...</p>
@@ -493,13 +477,14 @@ const WaitingRoom: React.FC = () => {
            {gameCode ? ( // Crew Mode
              isCurrentUserHost ? ( // Captain's view
                 <div className="mt-10">
-                  <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!settingsAvailable || crewMembers.length < 1 || isLoading} >
+                  {/* *** MODIFIED: Added disabled condition crewMembers.length < 2 *** */}
+                  <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!settingsAvailable || crewMembers.length < 2 || isLoading} >
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Anchor className="h-5 w-5" />}
                     {isLoading ? 'Starting...' : 'All aboard? Set sail!'}
                   </PirateButton>
                   {!settingsAvailable && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for voyage details...</p>}
-                  {/* Show waiting for crew only if settings are available and game not loading */}
-                  {settingsAvailable && !isLoading && crewMembers.length <= 1 && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for crew members to join...</p>}
+                  {/* *** MODIFIED: Added waiting for crew message *** */}
+                  {settingsAvailable && !isLoading && crewMembers.length < 2 && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
                 </div>
               ) : ( // Scallywag's view
                 <div className="mt-10 text-center text-pirate-navy/80">
@@ -507,14 +492,8 @@ const WaitingRoom: React.FC = () => {
                   <div className="animate-pulse mt-2 text-2xl">⚓️</div>
                 </div>
               )
-            ) : ( // Solo Mode
-              <div className="mt-10">
-                  <PirateButton onClick={() => navigate(`/countdown?questions=${displayQuestions}`)} className="w-full py-3 text-lg" variant="accent" >
-                    <Anchor className="h-5 w-5" />
-                    Start Solo Voyage!
-                  </PirateButton>
-              </div>
-            )}
+            ) : null /* Solo Mode Start Button Removed */
+           }
          </div>
 
         {/* Collapsible Voyage Details */}
@@ -548,7 +527,7 @@ const WaitingRoom: React.FC = () => {
           )}
        </main>
 
-       {/* --- Edit Name Dialog (Cancel Button Removed) --- */}
+       {/* --- Edit Name Dialog --- */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
             <DialogContent className="sm:max-w-[425px] bg-pirate-parchment border-pirate-wood">
             <DialogHeader>
@@ -581,7 +560,6 @@ const WaitingRoom: React.FC = () => {
                     )}
                 />
                 <DialogFooter>
-                    {/* Cancel button removed */}
                     <PirateButton type="submit" variant="primary" disabled={isUpdatingName}>
                     {isUpdatingName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Change Name
