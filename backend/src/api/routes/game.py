@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Body
 from typing import Dict, List, Any, Optional
 import logging
 import random # Import random
+import asyncio # Ensure asyncio is imported
 
 from ..dependencies import get_game_service, get_pack_service
 from ..schemas.game import (
@@ -110,17 +111,17 @@ async def join_game(
              created_at=game_session.created_at
          )
 
-    except ValueError as e:
-        logger.error(f"Error joining game: {str(e)}")
+    except ValueError as e: # Catch specific errors like game full, not found, wrong status
+        logger.warning(f"Error joining game {join_data.game_code}: {str(e)}")
         raise HTTPException(
-            status_code=400,
+            status_code=400, # Use 400 for client-side errors (invalid code, full game)
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Unexpected error joining game: {str(e)}")
+        logger.error(f"Unexpected error joining game {join_data.game_code}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to join game: {str(e)}"
+            detail=f"Failed to join game: An internal error occurred."
         )
 
 @router.get("/list", response_model=GameSessionListResponse)
@@ -145,15 +146,15 @@ async def list_games(
         )
 
     except Exception as e:
-        logger.error(f"Error listing games: {str(e)}")
+        logger.error(f"Error listing games for user {user_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list games: {str(e)}"
         )
 
-# --- FIX: Added response_model ---
+# --- Route for Starting Game ---
 @router.post("/{game_id}/start", response_model=GameStartResponse)
-async def start_game(
+async def start_game_endpoint( # Renamed function to avoid conflict
     game_id: str = Path(..., description="ID of the game session"),
     user_id: str = Query(..., description="ID of the host user"),
     game_service: GameService = Depends(get_game_service)
@@ -162,7 +163,6 @@ async def start_game(
     Start a game session. Returns the status and first question.
     """
     try:
-        # Ensure IDs are valid UUID strings
         game_id = ensure_uuid(game_id)
         user_id = ensure_uuid(user_id)
 
@@ -173,21 +173,22 @@ async def start_game(
         )
 
         # Get the first question (index 0 is set by start_game)
-        # Service layer ensures game questions are created before returning
         game_question = await game_service.game_question_repo.get_by_game_session_and_index(
             game_session_id=game_id,
             question_index=0
         )
 
         if not game_question:
+            logger.error(f"Failed to retrieve game_question index 0 for started game {game_id}")
             raise HTTPException(
                 status_code=500,
                 detail="Failed to retrieve first question after starting game"
             )
 
-        # Get the original question
+        # Get the original question details
         original_question = await game_service.question_repo.get_by_id(game_question.question_id)
         if not original_question:
+            logger.error(f"Failed to retrieve original question {game_question.question_id} for game {game_id}")
             raise HTTPException(
                 status_code=500,
                 detail="Failed to retrieve original question data"
@@ -197,11 +198,10 @@ async def start_game(
         incorrect_answers = await game_service.incorrect_answers_repo.get_by_question_id(game_question.question_id)
         incorrect_options = incorrect_answers.incorrect_answers if incorrect_answers else []
 
-        # Combine and shuffle options
         all_options = [original_question.answer] + incorrect_options
         random.shuffle(all_options)
 
-        # --- FIX: Construct the response dictionary matching GameStartResponse ---
+        # Construct the response dictionary matching GameStartResponse
         response_data = {
             "status": game_session.status,
             "current_question": {
@@ -211,22 +211,18 @@ async def start_game(
                 "time_limit": game_session.time_limit_seconds
             }
         }
-        # FastAPI will now validate this dict against GameStartResponse and serialize correctly
         return response_data
 
     except ValueError as e:
-        logger.error(f"Error starting game: {str(e)}")
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+        logger.warning(f"Validation error starting game {game_id}: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error starting game: {str(e)}", exc_info=True) # Log traceback
+        logger.error(f"Unexpected error starting game {game_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to start game: An internal error occurred." # Avoid exposing internal error details
+            detail=f"Failed to start game: An internal error occurred."
         )
-# --- END FIX ---
+# --- End Start Game Route ---
 
 
 @router.post("/{game_id}/submit", response_model=QuestionResultResponse)
@@ -250,6 +246,10 @@ async def submit_answer(
             answer=answer_data.answer
         )
 
+        # Check if the service returned an error state
+        if not result.get("success", True):
+            raise ValueError(result.get("error", "Failed to submit answer."))
+
         # Ensure response matches schema
         return QuestionResultResponse(
             is_correct=result.get("is_correct", False),
@@ -259,22 +259,18 @@ async def submit_answer(
         )
 
     except ValueError as e:
-        logger.error(f"Error submitting answer: {str(e)}")
+        logger.warning(f"Error submitting answer for game {game_id}, participant {participant_id}: {str(e)}")
         raise HTTPException(
-            status_code=400,
+            status_code=400, # Use 400 for validation/state errors
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Unexpected error submitting answer: {str(e)}")
+        logger.error(f"Unexpected error submitting answer for game {game_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to submit answer: {str(e)}"
         )
 
-# --- FIX: Define response model for next_question ---
-# It can return either the next question details or the final results
-# We can use Union or create a more complex response model,
-# but for simplicity, let's return Dict[str, Any] and let the client handle it
 @router.post("/{game_id}/next", response_model=Dict[str, Any])
 async def next_question(
     game_id: str = Path(..., description="ID of the game session"),
@@ -292,19 +288,17 @@ async def next_question(
             game_session_id=game_id,
             host_user_id=user_id
         )
-
-        # The result structure depends on whether the game ended or not
-        # The service layer prepares this dictionary. Pydantic V2 handles datetime/enum.
+        # Pydantic V2 handles datetime/enum serialization in the dict
         return result
 
     except ValueError as e:
-        logger.error(f"Error advancing question: {str(e)}")
+        logger.warning(f"Error advancing question for game {game_id}: {str(e)}")
         raise HTTPException(
             status_code=400,
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Unexpected error advancing question: {str(e)}")
+        logger.error(f"Unexpected error advancing question for game {game_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to advance question: {str(e)}"
@@ -335,13 +329,13 @@ async def cancel_game(
         }
 
     except ValueError as e:
-        logger.error(f"Error cancelling game: {str(e)}")
+        logger.warning(f"Error cancelling game {game_id}: {str(e)}")
         raise HTTPException(
             status_code=400,
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Unexpected error cancelling game: {str(e)}")
+        logger.error(f"Unexpected error cancelling game {game_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to cancel game: {str(e)}"
@@ -358,26 +352,26 @@ async def get_results(
     try:
         game_id = ensure_uuid(game_id)
         results = await game_service.get_game_results(game_id)
-
-        # The service should return data compatible with GameResultsResponse
-        # Pydantic will handle the datetime/enum serialization
+        # Service returns data compatible with GameResultsResponse
+        # Pydantic V2 handles serialization
         return results
 
-    except ValueError as e:
-        logger.error(f"Error getting game results: {str(e)}")
+    except ValueError as e: # Catch specific errors like game not found
+        logger.warning(f"Error getting results for game {game_id}: {str(e)}")
         raise HTTPException(
-            status_code=400,
+            status_code=404 if "not found" in str(e).lower() else 400,
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"Unexpected error getting game results: {str(e)}")
+        logger.error(f"Unexpected error getting results for game {game_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get game results: {str(e)}"
         )
 
+# --- Route for Get Participants ---
 @router.get("/{game_id}/participants")
-async def get_participants(
+async def get_participants_endpoint( # Renamed function
     game_id: str = Path(..., description="ID of the game session"),
     game_service: GameService = Depends(get_game_service)
 ):
@@ -385,25 +379,18 @@ async def get_participants(
     Get participants for a game session.
     """
     try:
-        game_id = ensure_uuid(game_id)
-        participants = await game_service.game_participant_repo.get_by_game_session_id(game_id)
+        game_id_str = ensure_uuid(game_id)
+        participants_data = await game_service.get_game_participants(game_id_str)
 
         return {
-            "total": len(participants),
-            "participants": [
-                {
-                    "id": p.id,
-                    "display_name": p.display_name,
-                    "score": p.score,
-                    "is_host": p.is_host
-                }
-                for p in participants
-            ]
+            "total": len(participants_data),
+            "participants": participants_data
         }
 
     except Exception as e:
-        logger.error(f"Error getting game participants: {str(e)}")
+        logger.error(f"Error getting game participants for {game_id}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get game participants: {str(e)}"
         )
+# --- End Get Participants Route ---

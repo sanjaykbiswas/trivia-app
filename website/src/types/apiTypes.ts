@@ -4,21 +4,20 @@
 // --- User API Types ---
 // Matches backend UserCreateRequest (body)
 export interface ApiUserCreateRequest {
-  displayname?: string | null; // Optional display name
-  email?: string | null; // Optional email
+  displayname?: string | null;
+  email?: string | null;
   is_temporary: boolean;
-  auth_provider?: string | null; // Optional
-  auth_id?: string | null; // Optional
+  auth_provider?: string | null;
+  auth_id?: string | null;
 }
 
 // Matches backend UserResponse
 export interface ApiUserResponse {
-  id: string; // The important part we need
+  id: string;
   displayname: string | null;
   email: string | null;
   is_temporary: boolean;
   created_at: string; // ISO date string
-  // auth_provider and auth_id might also be present but optional
 }
 // --- END User API Types ---
 
@@ -48,12 +47,44 @@ export interface ApiGameSessionResponse {
 }
 
 // Matches backend GameSessionJoinRequest (body)
-// <<< --- THIS IS THE MISSING INTERFACE --- >>>
 export interface ApiGameJoinRequest {
     game_code: string;
     display_name: string;
 }
-// <<< --- END MISSING INTERFACE --- >>>
+
+// --- NEW Game Start Types ---
+// Matches backend GameQuestionInfo
+export interface ApiGameQuestionInfo {
+    index: number;
+    question_text: string;
+    options: string[];
+    time_limit: number;
+}
+
+// Matches backend GameStartResponse
+export interface ApiGameStartResponse {
+    status: string; // e.g., "active"
+    current_question: ApiGameQuestionInfo;
+}
+// --- END NEW Game Start Types ---
+
+
+// --- NEW Participant Types ---
+// Matches the participant structure returned by the new endpoint
+export interface ApiParticipant {
+    id: string; // This is the participant record ID, not necessarily user ID
+    display_name: string;
+    score: number;
+    is_host: boolean;
+    // user_id: string; // Could also include user_id if needed by frontend logic
+}
+
+// Matches the structure of the GET /participants response
+export interface ApiParticipantListResponse {
+    total: number;
+    participants: ApiParticipant[];
+}
+// --- END NEW Participant Types ---
 
 // --- Pack API Types ---
 // Matches backend PackResponse schema
@@ -63,10 +94,9 @@ export interface ApiPackResponse {
     description: string | null;
     price: number;
     pack_group_id: string[] | null;
-    creator_type: 'system' | 'user'; // Matches CreatorType enum values
+    creator_type: 'system' | 'user';
     correct_answer_rate: number | null;
     created_at: string; // ISO date string
-    // Add seed_questions and custom_difficulty_description if needed later
 }
 
 // Matches backend PackListResponse schema
@@ -75,8 +105,5 @@ export interface ApiPackListResponse {
     packs: ApiPackResponse[];
 }
 // --- END Pack API Types ---
-
-
-// Add other API request/response types as needed...
 
 // --- END OF FILE ---

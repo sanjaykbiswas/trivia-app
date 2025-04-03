@@ -1,8 +1,13 @@
 // website/src/services/gameApi.ts
 // --- START OF FILE ---
 import { API_BASE_URL } from '@/config';
-// Import all needed types for this file
-import { ApiGameSessionResponse, GameCreationPayload, ApiGameJoinRequest } from '@/types/apiTypes';
+import {
+    ApiGameSessionResponse,
+    GameCreationPayload,
+    ApiGameJoinRequest,
+    ApiParticipantListResponse, // Import new type
+    ApiGameStartResponse,      // Import new type
+} from '@/types/apiTypes';
 
 /**
  * Creates a new game session on the backend.
@@ -16,7 +21,7 @@ export const createGameSession = async (
   userId: string // Passed as query parameter
 ): Promise<ApiGameSessionResponse> => {
   const url = new URL(`${API_BASE_URL}/games/create`);
-  url.searchParams.append('user_id', userId); // Add user_id as query param
+  url.searchParams.append('user_id', userId);
 
   console.log("Attempting to create game with URL:", url.toString());
   console.log("Payload:", payload);
@@ -26,25 +31,14 @@ export const createGameSession = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json', // Explicitly accept JSON
+        'Accept': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     console.log("API Response Status (Create):", response.status);
-
-    let responseData: any;
-    try {
-      responseData = await response.json();
-      console.log("API Response Data (Create):", responseData);
-    } catch (jsonError) {
-      console.error("Failed to parse JSON response (Create):", jsonError);
-      if (!response.ok) {
-         throw new Error(`HTTP error ${response.status}: Failed to create game. Invalid response format.`);
-      }
-       throw new Error(`Failed to parse successful response JSON (Create): ${jsonError}`);
-    }
-
+    const responseData = await response.json();
+    console.log("API Response Data (Create):", responseData);
 
     if (!response.ok) {
       const errorDetail = responseData?.detail || response.statusText || `HTTP error ${response.status}`;
@@ -52,7 +46,6 @@ export const createGameSession = async (
       throw new Error(`Failed to create game: ${errorDetail}`);
     }
 
-    // Validate the structure matches ApiGameSessionResponse (basic check)
     if (!responseData || typeof responseData.id !== 'string' || typeof responseData.code !== 'string') {
         console.error("Invalid response structure received (Create):", responseData);
         throw new Error("Received invalid game session data from server.");
@@ -62,12 +55,10 @@ export const createGameSession = async (
 
   } catch (error) {
     console.error("Error creating game session:", error);
-    throw error; // Re-throw
+    throw error;
   }
 };
 
-
-// --- THIS IS THE MISSING FUNCTION ---
 /**
  * Joins an existing game session.
  * @param payload - Data required to join (game_code, display_name).
@@ -96,42 +87,23 @@ export const joinGameSession = async (
     });
 
     console.log("API Response Status (Join):", response.status);
-
-    let responseData: any;
-     try {
-      responseData = await response.json();
-      console.log("API Response Data (Join):", responseData);
-    } catch (jsonError) {
-      console.error("Failed to parse JSON response (Join):", jsonError);
-      if (!response.ok) {
-         // Provide more context if possible based on status code
-         let errorMsg = `HTTP error ${response.status}: Failed to join game. Invalid response format.`;
-          if (response.status === 404) errorMsg = `HTTP error ${response.status}: Game code not found.`;
-          if (response.status === 400) errorMsg = `HTTP error ${response.status}: Invalid request (e.g., game full, already started, bad code format).`;
-         throw new Error(errorMsg);
-      }
-       throw new Error(`Failed to parse successful response JSON (Join): ${jsonError}`);
-    }
-
+    const responseData = await response.json();
+    console.log("API Response Data (Join):", responseData);
 
     if (!response.ok) {
-      // Use detail from FastAPI error if available, otherwise status text
       const errorDetail = responseData?.detail || response.statusText || `HTTP error ${response.status}`;
        console.error("API Error Detail (Join):", errorDetail);
-       // Enhance error message for common join issues
-        let userFriendlyError = `Failed to join game: ${errorDetail}`;
-        if (response.status === 404) {
+       let userFriendlyError = `Failed to join game: ${errorDetail}`;
+        if (response.status === 404 || (typeof errorDetail === 'string' && errorDetail.toLowerCase().includes("not found"))) {
             userFriendlyError = "Game code not found. Please double-check the code.";
         } else if (response.status === 400) {
              if (errorDetail && typeof errorDetail === 'string') {
-                 if (errorDetail.toLowerCase().includes("game not found")) {
-                    userFriendlyError = "Game code not found. Please double-check the code.";
-                 } else if (errorDetail.toLowerCase().includes("not accepting new players")) {
+                 if (errorDetail.toLowerCase().includes("not accepting new players")) {
                     userFriendlyError = "This game has already started or is no longer accepting players.";
                  } else if (errorDetail.toLowerCase().includes("is full")) {
                     userFriendlyError = "This game is full.";
                  } else {
-                    userFriendlyError = `Failed to join: ${errorDetail}`; // Use backend message if specific
+                    userFriendlyError = `Failed to join: ${errorDetail}`;
                  }
              } else {
                  userFriendlyError = "Could not join the game. Please check the code and try again.";
@@ -140,7 +112,6 @@ export const joinGameSession = async (
       throw new Error(userFriendlyError);
     }
 
-     // Validate the structure matches ApiGameSessionResponse
     if (!responseData || typeof responseData.id !== 'string' || typeof responseData.code !== 'string') {
         console.error("Invalid response structure received (Join):", responseData);
         throw new Error("Received invalid game session data from server after joining.");
@@ -150,11 +121,102 @@ export const joinGameSession = async (
 
   } catch (error) {
     console.error("Error joining game session:", error);
-    throw error; // Re-throw
+    throw error;
   }
 };
-// --- END MISSING FUNCTION ---
+
+/**
+ * Fetches the list of participants for a given game session.
+ * @param gameId - The ID of the game session.
+ * @returns A promise resolving to the participant list response.
+ * @throws If the API request fails.
+ */
+export const getGameParticipants = async (gameId: string): Promise<ApiParticipantListResponse> => {
+  // Validate gameId format slightly before sending
+  if (!gameId || typeof gameId !== 'string' || gameId.length < 5) { // Basic check
+      console.error("Invalid gameId provided to getGameParticipants:", gameId);
+      throw new Error("Invalid game ID provided.");
+  }
+  const url = `${API_BASE_URL}/games/${gameId}/participants`;
+  console.log("Fetching participants for game:", gameId, "URL:", url);
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    console.log("API Response Status (Get Participants):", response.status);
+    const responseData = await response.json();
+    // console.log("API Response Data (Get Participants):", responseData); // Verbose logging
+
+    if (!response.ok) {
+      const errorDetail = responseData?.detail || response.statusText || `HTTP error ${response.status}`;
+      console.error("API Error Detail (Get Participants):", errorDetail);
+      throw new Error(`Failed to fetch participants: ${errorDetail}`);
+    }
+
+    if (!responseData || typeof responseData.total !== 'number' || !Array.isArray(responseData.participants)) {
+        console.error("Invalid participant list structure received:", responseData);
+        throw new Error("Received invalid participant data from server.");
+    }
+
+    return responseData as ApiParticipantListResponse;
+
+  } catch (error) {
+    console.error("Error fetching participants:", error);
+    throw error;
+  }
+};
+
+/**
+ * Starts the game session (called by the host).
+ * @param gameId - The ID of the game session to start.
+ * @param hostUserId - The ID of the user initiating the start (must be the host).
+ * @returns A promise resolving to the game start response, including the first question.
+ * @throws If the API request fails (e.g., user not host, game not found, wrong status).
+ */
+export const startGame = async (gameId: string, hostUserId: string): Promise<ApiGameStartResponse> => {
+    if (!gameId || !hostUserId) {
+      throw new Error("Game ID and Host User ID are required to start the game.");
+    }
+    const url = new URL(`${API_BASE_URL}/games/${gameId}/start`);
+    url.searchParams.append('user_id', hostUserId);
+
+    console.log("Attempting to start game:", gameId, "by host:", hostUserId, "URL:", url.toString());
+
+    try {
+        const response = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+
+        console.log("API Response Status (Start Game):", response.status);
+        const responseData = await response.json();
+        // console.log("API Response Data (Start Game):", responseData); // Verbose logging
+
+        if (!response.ok) {
+            const errorDetail = responseData?.detail || response.statusText || `HTTP error ${response.status}`;
+            console.error("API Error Detail (Start Game):", errorDetail);
+            throw new Error(`Failed to start game: ${errorDetail}`);
+        }
+
+        if (!responseData || typeof responseData.status !== 'string' || !responseData.current_question || typeof responseData.current_question.index !== 'number') {
+            console.error("Invalid game start response structure received:", responseData);
+            throw new Error("Received invalid game start data from server.");
+        }
+
+        return responseData as ApiGameStartResponse;
+
+    } catch (error) {
+        console.error("Error starting game:", error);
+        throw error;
+    }
+};
 
 
-// Add other game-related API functions here (startGame, submitAnswer, etc.)
 // --- END OF FILE ---
