@@ -2,6 +2,11 @@
 from fastapi import Depends, Request
 from supabase import AsyncClient
 
+# --- WebSocket Manager Import ---
+from ..websocket_manager import ConnectionManager # <<< ADDED
+# --- End WebSocket Manager Import ---
+
+
 # Ensure repositories are imported FIRST
 from ..repositories.pack_repository import PackRepository
 from ..repositories.question_repository import QuestionRepository
@@ -11,10 +16,9 @@ from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
 from ..repositories.user_repository import UserRepository
 from ..repositories.topic_repository import TopicRepository
-# --- ADD HISTORY REPO IMPORTS ---
 from ..repositories.user_question_history_repository import UserQuestionHistoryRepository
 from ..repositories.user_pack_history_repository import UserPackHistoryRepository
-# --- END HISTORY REPO IMPORTS ---
+
 
 # Services
 from ..services.pack_service import PackService
@@ -29,9 +33,21 @@ from ..services.user_service import UserService
 
 async def get_supabase_client(request: Request) -> AsyncClient:
     """Get Supabase client from request state."""
+    # Ensure the client exists in state (initialized during lifespan)
+    if not hasattr(request.app.state, 'supabase') or not request.app.state.supabase:
+        raise RuntimeError("Supabase client not initialized or found in app state.")
     return request.app.state.supabase
 
-# --- Repository dependencies ---
+# --- ADD Dependency for ConnectionManager ---
+async def get_connection_manager(request: Request) -> ConnectionManager:
+    """Get the shared ConnectionManager instance from request state."""
+    if not hasattr(request.app.state, 'connection_manager') or not request.app.state.connection_manager:
+        # This should theoretically not happen if lifespan runs correctly
+        raise RuntimeError("ConnectionManager not initialized or found in app state.")
+    return request.app.state.connection_manager
+# --- END ADD ---
+
+# --- Repository dependencies (Unchanged) ---
 async def get_pack_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> PackRepository:
@@ -72,7 +88,6 @@ async def get_topic_repository(
 ) -> TopicRepository:
     return TopicRepository(supabase)
 
-# --- ADD HISTORY REPO DEPENDENCIES ---
 async def get_user_question_history_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserQuestionHistoryRepository:
@@ -82,10 +97,13 @@ async def get_user_pack_history_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserPackHistoryRepository:
     return UserPackHistoryRepository(supabase)
-# --- END HISTORY REPO DEPENDENCIES ---
 
 
-# --- Service dependencies ---
+# --- Service dependencies (Modified to inject ConnectionManager) ---
+
+# Pack, Topic, Difficulty, Seed, Question, IncorrectAnswer services remain unchanged
+# as they don't directly interact with WebSockets in this design.
+
 async def get_pack_service(
     pack_repository: PackRepository = Depends(get_pack_repository)
 ) -> PackService:
@@ -136,16 +154,20 @@ async def get_incorrect_answer_service(
         incorrect_answers_repository=incorrect_answers_repository
     )
 
+# --- MODIFIED get_user_service ---
 async def get_user_service(
     user_repository: UserRepository = Depends(get_user_repository),
     game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
-    game_session_repository: GameSessionRepository = Depends(get_game_session_repository)
+    game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
+    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< ADDED
 ) -> UserService:
     return UserService(
         user_repository=user_repository,
         game_participant_repository=game_participant_repository,
-        game_session_repository=game_session_repository
+        game_session_repository=game_session_repository,
+        connection_manager=connection_manager # <<< ADDED
     )
+# --- END MODIFIED get_user_service ---
 
 # --- MODIFIED get_game_service ---
 async def get_game_service(
@@ -155,10 +177,9 @@ async def get_game_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
     incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository),
     user_repository: UserRepository = Depends(get_user_repository),
-    # --- ADD HISTORY REPOS ---
     user_question_history_repository: UserQuestionHistoryRepository = Depends(get_user_question_history_repository),
-    user_pack_history_repository: UserPackHistoryRepository = Depends(get_user_pack_history_repository)
-    # --- END HISTORY REPOS ---
+    user_pack_history_repository: UserPackHistoryRepository = Depends(get_user_pack_history_repository),
+    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< ADDED
 ) -> GameService:
     """Get GameService instance."""
     return GameService(
@@ -168,9 +189,8 @@ async def get_game_service(
         question_repository=question_repository,
         incorrect_answers_repository=incorrect_answers_repository,
         user_repository=user_repository,
-        # --- ADD HISTORY REPOS ---
         user_question_history_repository=user_question_history_repository,
-        user_pack_history_repository=user_pack_history_repository
-        # --- END HISTORY REPOS ---
+        user_pack_history_repository=user_pack_history_repository,
+        connection_manager=connection_manager # <<< ADDED
     )
 # --- END MODIFIED get_game_service ---
