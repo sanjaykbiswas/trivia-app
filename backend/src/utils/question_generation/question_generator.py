@@ -165,7 +165,7 @@ class QuestionGenerator:
     # --- UPDATED METHOD SIGNATURE ---
     def _build_question_generation_prompt(
         self,
-        pack_name: str, # <<< CHANGED: Use pack_name instead of creation_name
+        pack_name: str, # <<< Ensure this uses pack_name
         pack_topic: str,
         difficulty: str,
         difficulty_descriptions: Dict[str, Dict[str, str]],
@@ -174,11 +174,12 @@ class QuestionGenerator:
         num_questions: int = 5
     ) -> str:
         """Build the prompt for question generation."""
-        # --- END UPDATED SIGNATURE ---
         all_descriptions_text = self._format_all_difficulty_descriptions(difficulty_descriptions)
         examples_text = self._format_seed_questions_as_examples(seed_questions)
+        # Pre-format the optional instruction text
+        instruction_text = f"\nAdditional instructions for question generation:\n{custom_instructions}\n" if custom_instructions else ""
 
-        # Build the prompt using pack_name
+        # Combine everything into a single f-string
         prompt = f"""Generate {num_questions} trivia questions about "{pack_topic}" for a trivia pack called "{pack_name}".
 
 The TARGET difficulty level for these questions is: {difficulty}.
@@ -195,12 +196,7 @@ Each generated question should:
 6. Be interesting and creative while maintaining accuracy.
 7. Have a question length appropriate for trivia (e.g., 10-20 words or max 125 characters).
 8. Have a concise answer.
-"""
-
-        if custom_instructions:
-            prompt += f"\nAdditional instructions for question generation:\n{custom_instructions}\n"
-
-        prompt += f"""
+{instruction_text}
 {examples_text}
 
 Return ONLY a valid JSON array of question objects with the following format:
