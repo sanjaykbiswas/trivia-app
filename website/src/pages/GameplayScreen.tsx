@@ -1,4 +1,5 @@
-// src/pages/GameplayScreen.tsx
+// website/src/pages/GameplayScreen.tsx
+// --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import GameHeader from '@/components/GameHeader';
@@ -21,8 +22,9 @@ const GameplayScreen: React.FC = () => {
 
   // --- Get Data from Navigation State ---
   const gameId = location.state?.gameId as string | undefined;
+  const packId = location.state?.packId as string | undefined; // Keep packId if needed elsewhere
+  const packName = location.state?.packName as string | undefined; // <-- Get packName
   const totalQuestionsSetting = location.state?.totalQuestions as number | undefined;
-  const packId = location.state?.packId as string | undefined;
   const gameCode = searchParams.get('gameCode');
   const isSoloMode = !gameCode;
 
@@ -34,12 +36,13 @@ const GameplayScreen: React.FC = () => {
 
   // --- Fetch Game Questions ---
   useEffect(() => {
-    if (!gameId) {
-      console.error("GameplayScreen: Missing gameId in location state!");
-      toast.error("Game Error", { description: "Could not find the game session ID. Returning home." });
-      navigate('/');
-      return;
-    }
+     // Check for gameId and packName now
+     if (!gameId || !packName) {
+       console.error("GameplayScreen: Missing gameId or packName in location state!", location.state);
+       toast.error("Game Error", { description: "Missing game/pack information. Returning home." });
+       navigate('/');
+       return;
+     }
 
     const fetchQuestions = async () => {
       setIsLoadingQuestions(true);
@@ -97,7 +100,7 @@ const GameplayScreen: React.FC = () => {
             return {
                 id: apiQ.question_id,
                 text: apiQ.question_text,
-                category: packId || 'Trivia',
+                category: packId || 'Trivia', // Keep packId here if the type expects it, or update type
                 answers: answersWithOptions, // Use the mapped answers
                 correctAnswer: correctAnswerId, // Use the ID found above (might be empty)
                 timeLimit: apiQ.time_limit,
@@ -118,7 +121,8 @@ const GameplayScreen: React.FC = () => {
     };
 
     fetchQuestions();
-  }, [gameId, navigate, packId]); // Depend on gameId
+  // <-- Add packName dependency
+  }, [gameId, navigate, packId, packName]);
 
   // --- State Managed by Hooks ---
   const {
@@ -274,7 +278,7 @@ const GameplayScreen: React.FC = () => {
     );
   }
 
-  if (!question || !currentUserId) {
+  if (!question || !currentUserId || !packName) { // <-- Add packName check
     // Check if fetching finished but yielded no questions
     if (!isLoadingQuestions && gameQuestions.length === 0) {
       return (
@@ -293,7 +297,7 @@ const GameplayScreen: React.FC = () => {
        );
     }
     // Otherwise, it might be an intermediate state or an unexpected issue
-    console.log("GameplayScreen: No current question or user ID available. Current index:", currentQuestionIndex, "Total fetched:", gameQuestions.length);
+    console.log("GameplayScreen: No current question, user ID, or packName available. Current index:", currentQuestionIndex, "Total fetched:", gameQuestions.length);
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
@@ -304,8 +308,9 @@ const GameplayScreen: React.FC = () => {
 
       <main className="flex-1 container mx-auto px-4 py-6 flex flex-col">
         <div className="text-center mb-2">
+          {/* --- USE packName directly --- */}
           <h2 className="font-pirate text-3xl text-pirate-navy capitalize">
-             {question.category.replace(/-/g, ' ')}
+             {packName.replace(/-/g, ' ')} {/* <-- Display packName */}
           </h2>
           <p className="text-pirate-navy/80 font-medium">Question {currentQuestionIndex + 1} of {totalQuestionsToPlay}</p>
         </div>
@@ -317,7 +322,7 @@ const GameplayScreen: React.FC = () => {
 
         <div className="map-container p-0 mb-6 flex-1 flex">
           <QuestionCard
-            questionText={question.text}
+            questionText={question.text} // This remains correct
             answers={question.answers}
             selectedAnswer={selectedAnswer}
             isAnswered={isAnswered}
@@ -355,3 +360,4 @@ const GameplayScreen: React.FC = () => {
 };
 
 export default GameplayScreen;
+// --- END OF FULL MODIFIED FILE ---

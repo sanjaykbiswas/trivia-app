@@ -230,7 +230,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
     setSelectedPack(null);
   };
 
-  // --- MODIFIED handleGameSettingsSubmit to include startGame for SOLO ---
+  // --- MODIFIED handleGameSettingsSubmit to include packName ---
   const handleGameSettingsSubmit = async (gameSettings: {
     numberOfQuestions: number;
     timePerQuestion: number;
@@ -280,6 +280,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
             state: {
               gameId: createdGame.id, // Use the ID from the created session
               packId: selectedPack.id,
+              packName: selectedPack.name, // <-- ADD packName here
               totalQuestions: createdGame.question_count // Use count from created session
             }
           });
@@ -290,8 +291,8 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
           navigate(targetPath, {
             state: {
               gameSession: createdGame,
-              categoryName: selectedPack.name,
-              packId: selectedPack.id // Pass packId
+              packId: selectedPack.id, // Pass packId
+              packName: selectedPack.name, // <-- ADD packName here
             }
           });
       }

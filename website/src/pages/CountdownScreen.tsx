@@ -1,3 +1,5 @@
+// website/src/pages/CountdownScreen.tsx
+// --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
 import GameHeader from '@/components/GameHeader';
@@ -7,20 +9,22 @@ const CountdownScreen: React.FC = () => {
   const [count, setCount] = useState(3);
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
-  const gameData = location.state; // Access the state passed from GameSelect
+  const gameData = location.state as { gameId?: string, packName?: string, totalQuestions?: number } | undefined; // <-- Add packName to type
 
   // Add a check in case state is missing (e.g., direct navigation)
   useEffect(() => {
-    if (!gameData?.gameId) {
-       console.error("CountdownScreen: Missing game data in location state!", gameData);
+    // Check for gameId, packName is also important now
+    if (!gameData?.gameId || !gameData?.packName) {
+       console.error("CountdownScreen: Missing game data (gameId or packName) in location state!", gameData);
        toast.error("Navigation Error", { description: "Missing game information. Returning home."});
-       navigate('/'); // Navigate home if data is missing
+       navigate('/');
+       return; // Stop if data is missing
     }
   }, [gameData, navigate]);
 
   useEffect(() => {
     // Ensure gameData is valid before starting the timer/navigation logic
-    if (!gameData?.gameId) {
+    if (!gameData?.gameId || !gameData?.packName) {
       return; // Stop if gameData is invalid (already handled by the check above)
     }
 
@@ -28,8 +32,8 @@ const CountdownScreen: React.FC = () => {
       setCount((prevCount) => {
         if (prevCount <= 1) {
           clearInterval(timer);
-          // Navigate to gameplay *with* the state
-          setTimeout(() => navigate('/gameplay', { state: gameData }), 1500); // Pass gameData forward
+          // Navigate to gameplay *with* the state (including packName)
+          setTimeout(() => navigate('/gameplay', { state: gameData }), 1500); // Pass full gameData forward
           return 0;
         }
         return prevCount - 1;
@@ -38,10 +42,10 @@ const CountdownScreen: React.FC = () => {
 
     return () => clearInterval(timer);
   // Add gameData dependency because it's checked at the start of the effect
-  }, [navigate, gameData]);
+  }, [navigate, gameData]); // Depend on gameData
 
   // Don't render the countdown if gameData is missing (optional, but prevents flicker)
-  if (!gameData?.gameId) {
+  if (!gameData?.gameId || !gameData?.packName) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center">
              Loading or Redirecting... {/* Or a loading spinner */}
@@ -156,3 +160,4 @@ const CountdownScreen: React.FC = () => {
 };
 
 export default CountdownScreen;
+// --- END OF FULL MODIFIED FILE ---

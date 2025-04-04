@@ -1,4 +1,4 @@
-// src/pages/WaitingRoom.tsx
+// website/src/pages/WaitingRoom.tsx
 // --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom'; // Added useLocation
@@ -58,6 +58,7 @@ const WaitingRoom: React.FC = () => {
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [packName, setPackName] = useState<string | null>(location.state?.packName || null); // <-- ADD state for packName
 
   // Refs
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -175,12 +176,13 @@ const WaitingRoom: React.FC = () => {
 
   // Initialize Captain/Solo state from location
   useEffect(() => {
-      const stateFromNavigation = location.state?.gameSession as ApiGameSessionResponse | undefined;
+      const stateFromNavigation = location.state as { gameSession?: ApiGameSessionResponse, packName?: string } | undefined; // <-- Add packName to type
 
       if (role === 'captain' && currentUserId && currentUserDisplayName && !gameSession) {
-          if (stateFromNavigation && stateFromNavigation.code === gameCode) {
+          if (stateFromNavigation?.gameSession && stateFromNavigation.gameSession.code === gameCode) {
               console.log("Captain: Initializing with gameSession from navigation state:", stateFromNavigation);
-              setGameSession(stateFromNavigation);
+              setGameSession(stateFromNavigation.gameSession);
+              setPackName(stateFromNavigation.packName || 'Unknown Pack'); // <-- Set packName from state
               setCrewMembers([{
                   id: 'captain-participant-' + currentUserId,
                   user_id: currentUserId,
@@ -188,7 +190,7 @@ const WaitingRoom: React.FC = () => {
                   score: 0,
                   is_host: true
               }]);
-              startParticipantPolling(stateFromNavigation.id);
+              startParticipantPolling(stateFromNavigation.gameSession.id);
           } else {
               console.warn("Captain: gameSession missing/mismatched in navigation state. Using placeholder.");
               const placeholderSession = {
@@ -199,6 +201,7 @@ const WaitingRoom: React.FC = () => {
                  participant_count: 1, is_host: true, created_at: new Date().toISOString(),
               };
               setGameSession(placeholderSession);
+              setPackName(categoryParam || 'Unknown Pack'); // <-- Use categoryParam as fallback
               setCrewMembers([{
                  id: 'temp-captain-part-id-' + currentUserId, user_id: currentUserId,
                  display_name: currentUserDisplayName, score: 0, is_host: true
@@ -207,7 +210,9 @@ const WaitingRoom: React.FC = () => {
           }
       }
       // Solo Mode Logic removed - handled by GameSelect navigation now
-  }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, location.state, categoryParam, questionsParam, timeParam, startParticipantPolling]);
+  // Add location.state to dependencies
+  }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, location.state, categoryParam, questionsParam, timeParam, startParticipantPolling]); // Added location.state
+
 
   // Scallywag Join Game Logic
   useEffect(() => {
@@ -222,6 +227,14 @@ const WaitingRoom: React.FC = () => {
                   };
                   const sessionData = await joinGameSession(joinPayload, currentUserId);
                   setGameSession(sessionData);
+                  // Fetch pack details IF packName wasn't passed (might happen if directly joining via URL)
+                  if (!packName && sessionData.pack_id) {
+                       // Ideally, fetch pack name here based on sessionData.pack_id
+                       // For now, we'll rely on it potentially being passed or fallback
+                       console.warn("Pack name not available for joined Scallywag initially.");
+                       // You might need an API call to get pack details based on ID here
+                       // setPackName(fetchedPackName);
+                  }
                   startParticipantPolling(sessionData.id);
               } catch (error) {
                   console.error("Failed to join game:", error);
@@ -234,7 +247,8 @@ const WaitingRoom: React.FC = () => {
           };
           performJoin();
       }
-  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted, navigate, startParticipantPolling, gameSession]);
+  // Add packName to dependency array
+  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted, navigate, startParticipantPolling, gameSession, packName]);
 
   // Cleanup polling on component unmount
   useEffect(() => {
@@ -269,7 +283,13 @@ const WaitingRoom: React.FC = () => {
         const currentSession = gameSession; // Use captured session
         const startResponse = await startGame(currentSession.id, currentUserId);
         if (startResponse.status === 'active') {
-            navigate(`/countdown`, { state: { gameId: currentSession.id, totalQuestions: currentSession.question_count } });
+            navigate(`/countdown`, {
+              state: {
+                gameId: currentSession.id,
+                totalQuestions: currentSession.question_count,
+                packName: packName // <-- ADD packName here
+              }
+            });
         } else {
             throw new Error(`Backend reported unexpected status after start: ${startResponse.status}`);
         }
@@ -348,8 +368,8 @@ const WaitingRoom: React.FC = () => {
   const isCurrentUserHost = currentUserId === hostParticipant?.user_id;
   const hostDisplayName = hostParticipant?.display_name || 'The Captain';
 
-  // Use gameSession data if available, otherwise fall back to params for display
-  const displayCategory = gameSession?.pack_id?.replace(/-/g, ' ') || categoryParam?.replace(/-/g, ' ') || 'Unknown';
+  // --- Use packName from state for display ---
+  const displayCategory = packName || categoryParam?.replace(/-/g, ' ') || 'Unknown Pack'; // Prioritize state packName
   const displayQuestions = gameSession?.question_count ?? questionsParam ?? 'N/A';
   const displayTime = gameSession?.time_limit_seconds ?? timeParam ?? 'N/A';
   const settingsAvailable = !!gameSession;
@@ -510,7 +530,7 @@ const WaitingRoom: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="border border-pirate-navy/10 rounded p-3">
                       <p className="text-xs text-pirate-navy/50 mb-1">Category</p>
-                      <p className="font-medium capitalize">{displayCategory.replace(/-/g, ' ') || 'Unknown'}</p>
+                      <p className="font-medium capitalize">{displayCategory}</p> {/* Use displayCategory */}
                     </div>
                     <div className="border border-pirate-navy/10 rounded p-3">
                       <p className="text-xs text-pirate-navy/50 mb-1">Questions</p>
