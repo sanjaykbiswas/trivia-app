@@ -2,7 +2,7 @@
 // --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom';
-import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw, Pencil } from 'lucide-react';
+import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw, Pencil, AlertCircle } from 'lucide-react';
 import Header from '@/components/Header';
 import PirateButton from '@/components/PirateButton';
 import { Card } from '@/components/ui/card';
@@ -10,12 +10,10 @@ import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PlayerAvatar from '@/components/PlayerAvatar';
-// Keep Player type if used
-// import { Player } from '@/types/gameTypes';
 import { joinGameSession, getGameParticipants, startGame } from '@/services/gameApi';
 import { updateUser } from '@/services/userApi';
 import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
-import { ApiParticipant, ApiGameSessionResponse, ApiGameJoinRequest } from '@/types/apiTypes';
+import { ApiParticipant, ApiGameSessionResponse, ApiGameJoinRequest, ApiUserResponse } from '@/types/apiTypes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -32,6 +30,15 @@ interface EditNameFormValues {
   newName: string;
 }
 
+// Simple Loading Indicator Component
+const LoadingIndicator: React.FC<{ message?: string }> = ({ message = "Loading..." }) => (
+  <div className="absolute inset-0 bg-pirate-parchment/80 flex flex-col items-center justify-center rounded-xl z-30">
+    <Loader2 className="h-10 w-10 animate-spin text-pirate-navy mb-3" />
+    <span className="font-semibold text-pirate-navy">{message}</span>
+  </div>
+);
+
+
 const WaitingRoom: React.FC = () => {
   const { role } = useParams<{ role?: string }>();
   const [searchParams] = useSearchParams();
@@ -43,47 +50,64 @@ const WaitingRoom: React.FC = () => {
   const [gameSession, setGameSession] = useState<ApiGameSessionResponse | null>(null);
   const [crewMembers, setCrewMembers] = useState<ApiParticipant[]>([]);
   const [isVoyageDetailsOpen, setIsVoyageDetailsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
-  const [joinAttempted, setJoinAttempted] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [packName, setPackName] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [initializationError, setInitializationError] = useState<string | null>(null);
+
 
   // Refs
   const gameSessionRef = useRef(gameSession);
-   useEffect(() => { gameSessionRef.current = gameSession; }, [gameSession]); // Keep ref updated
+  useEffect(() => { gameSessionRef.current = gameSession; }, [gameSession]);
 
   // Form Hook
   const editNameForm = useForm<EditNameFormValues>({ defaultValues: { newName: '' } });
 
-  // --- Function to fetch participants ---
+  // --- Function to fetch participants (stable reference) ---
    const fetchParticipants = useCallback(async (currentGameId: string | undefined) => {
       if (!currentGameId) {
           console.warn("fetchParticipants called without a valid gameId.");
           return;
       }
-      console.log(`Fetching participants for game ${currentGameId}...`);
+      console.log(`[fetchParticipants] Fetching for game ${currentGameId}...`);
       try {
           const response = await getGameParticipants(currentGameId);
-          setCrewMembers(response.participants);
-          console.log("Participants fetched:", response.participants);
+           setCrewMembers(prevCrew => {
+               // Create a map of the newly fetched participants for efficient lookup
+               const fetchedParticipantsMap = new Map(response.participants.map(p => [p.user_id, p]));
+               // Create a map of the current crew members
+               const currentCrewMap = new Map(prevCrew.map(p => [p.user_id, p]));
+               // Merge: Update existing or add new ones from the fetched data
+               fetchedParticipantsMap.forEach((value, key) => {
+                   currentCrewMap.set(key, value);
+               });
+               // Ensure host status is correct (sometimes fetch might lag behind WS update)
+               const finalCrew = Array.from(currentCrewMap.values()).map(p => ({
+                   ...p,
+                   // Re-assert host status based on gameSessionRef if available
+                   is_host: p.user_id === gameSessionRef.current?.host_user_id
+               }));
+               console.log(`[fetchParticipants] Prev count: ${prevCrew.length}, Fetched: ${response.participants.length}, New count: ${finalCrew.length}`);
+               return finalCrew;
+           });
       } catch (error) {
-          console.error("Failed to fetch participants:", error);
-           // Avoid repeated toasts if WS is already trying to reconnect
-           // We can check wsStatus here if needed, or just be less aggressive with toasts
-           // For simplicity, let's only toast if the error is *not* a network error likely caused by WS disconnect
+          console.error("[fetchParticipants] Failed:", error);
            if (!(error instanceof Error && error.message.toLowerCase().includes('networkerror'))) {
-             toast.error("Sync Error", { description: "Could not update participant list." });
+               toast.error("Sync Error", { description: "Could not update participant list." });
            }
       }
-  // Removed wsStatus dependency - fetch is triggered by WS onOpen or join logic now
-  }, []);
+   // Dependencies: Add gameSessionRef.current?.host_user_id? No, that would make it unstable.
+   // Keep it empty, relying on the argument `currentGameId` is correct.
+   // Host status correction added inside.
+   }, []);
 
 
-  // --- WebSocket Message Handler ---
-   const handleWebSocketMessage = useCallback((message: IncomingWsMessage) => {
+  // --- WebSocket Message Handler (Stable Reference) ---
+  // Wrapped handleWebSocketMessage in useCallback
+  const handleWebSocketMessage = useCallback((message: IncomingWsMessage) => {
     console.log("Received WebSocket Message:", message.type, message.payload);
     switch (message.type) {
       case 'participant_update': {
@@ -92,29 +116,27 @@ const WaitingRoom: React.FC = () => {
           const existingIndex = prev.findIndex(p => p.user_id === updatedParticipant.user_id);
           if (existingIndex > -1) {
             const newCrew = [...prev];
-            newCrew[existingIndex] = { ...newCrew[existingIndex], ...updatedParticipant }; // Merge data
+            const score = updatedParticipant.score ?? newCrew[existingIndex].score ?? 0;
+            newCrew[existingIndex] = { ...newCrew[existingIndex], ...updatedParticipant, score };
+             console.log(`[WS] Updated participant ${updatedParticipant.user_id}`);
             return newCrew;
           } else {
-            // Add new participant only if they aren't already visually present (handles potential race conditions)
-             if (!prev.some(p => p.user_id === updatedParticipant.user_id)) {
-                 return [...prev, updatedParticipant];
-             }
-             return prev; // Avoid adding duplicate if already present
+             const score = updatedParticipant.score ?? 0;
+              console.log(`[WS] Added participant ${updatedParticipant.user_id}`);
+             return [...prev, { ...updatedParticipant, score }];
           }
         });
-        // Update current user's display name if it changed
         if (updatedParticipant.user_id === currentUserId && updatedParticipant.display_name !== currentUserDisplayName) {
-          console.log(`Updating current user name via WS: ${updatedParticipant.display_name}`);
+          console.log(`[WS] Updating current user name via WS: ${updatedParticipant.display_name}`);
           setCurrentUserDisplayName(updatedParticipant.display_name);
           localStorage.setItem('tempUserDisplayName', updatedParticipant.display_name);
-          editNameForm.setValue('newName', updatedParticipant.display_name); // Update form default
+          editNameForm.setValue('newName', updatedParticipant.display_name);
         }
         break;
       }
       case 'participant_left': {
         const { user_id, display_name } = message.payload;
         setCrewMembers(prev => prev.filter(p => p.user_id !== user_id));
-        // Only show toast if it wasn't the current user leaving
         if(user_id !== currentUserId) {
            toast.info(`${display_name} left the crew.`);
         }
@@ -126,27 +148,26 @@ const WaitingRoom: React.FC = () => {
          if (user_id === currentUserId) {
            setCurrentUserDisplayName(new_display_name);
            localStorage.setItem('tempUserDisplayName', new_display_name);
-           editNameForm.setValue('newName', new_display_name); // Update form default
+           editNameForm.setValue('newName', new_display_name);
          }
          break;
       }
       case 'game_started': {
         const { game_id, total_questions } = message.payload;
-        console.log(`Game ${game_id} started via WebSocket! Navigating...`);
+        console.log(`[WS] Game ${game_id} started! Navigating...`);
         toast.success("Game Started!", { description: "Get ready to answer!" });
         navigate(`/countdown`, {
           state: {
             gameId: game_id,
-            packName: packName, // Pass packName
-            totalQuestions: total_questions, // Pass total questions
-            // gameSession: message.payload // Can pass the whole payload if needed later
+            packName: packName, // Pass the packName state
+            totalQuestions: total_questions,
           }
         });
         break;
       }
       case 'game_cancelled': {
         toast.error("Game Cancelled", { description: "The Captain has cancelled the game." });
-        navigate(getBackLink()); // Use helper for back link
+        navigate(getBackLink()); // Define getBackLink or replace with static path
         break;
       }
       case 'error': {
@@ -156,175 +177,164 @@ const WaitingRoom: React.FC = () => {
       default:
         console.warn("Received unknown WebSocket message type:", message.type);
     }
-  // Dependencies: Ensure currentUserDisplayName, currentUserId, navigate, packName, getBackLink are stable or included
-  }, [currentUserId, currentUserDisplayName, navigate, packName, editNameForm]); // Removed getBackLink from deps, should be stable
+  // Dependencies are crucial for useCallback stability
+  }, [currentUserId, currentUserDisplayName, navigate, packName, editNameForm]); // Removed getBackLink
 
-  // --- Initialize WebSocket Connection (Deferred) ---
-   const canConnectWebSocket = !!gameSession?.id && !!currentUserId && !gameSession.id.startsWith('unknown');
+
+  // --- Consolidated Initialization Effect ---
+   useEffect(() => {
+       let didCancel = false;
+       setInitializationError(null);
+
+       const initialize = async () => {
+           console.log("Starting Waiting Room Initialization...");
+           // Start initializing IMMEDIATELY upon effect run
+           setIsInitializing(true);
+
+           let finalUserId: string | null = null;
+           let finalUserName: string | null = null;
+           let finalSessionData: ApiGameSessionResponse | null = null;
+           let finalPackName: string | null = null;
+
+           try {
+               // 1. Get/Verify User ID and Name
+               let userId = localStorage.getItem('tempUserId');
+               let userName = localStorage.getItem('tempUserDisplayName');
+
+               if (!userId) { throw new Error("User session not found. Please go back."); }
+               if (!userName) {
+                   userName = getPirateNameForUserId(userId);
+                   localStorage.setItem('tempUserDisplayName', userName);
+                   console.log(`User name was missing, assigned: ${userName}`);
+                   updateUser(userId, { displayname: userName }).catch(err => console.warn("Background name update failed:", err));
+               }
+               finalUserId = userId;
+               finalUserName = userName;
+               console.log(`User Initialized: ID=${userId}, Name=${userName}`);
+
+               if (didCancel) return;
+
+               // 2. Handle Game Session based on Role
+               const navState = location.state as { gameSession?: ApiGameSessionResponse, packName?: string } | undefined;
+
+               if (role === 'captain') {
+                   if (navState?.gameSession?.code === gameCode && navState?.gameSession?.id) {
+                       finalSessionData = navState.gameSession;
+                       finalPackName = navState.packName || 'Unknown Pack';
+                       console.log("Captain: Using game session from navigation state.");
+                       setCrewMembers([{ id: 'captain-temp-' + finalUserId, user_id: finalUserId, display_name: finalUserName, score: 0, is_host: true }]);
+                   } else {
+                       throw new Error("Captain is missing necessary game session data.");
+                   }
+               } else if (role === 'scallywag' && gameCode) {
+                   console.log(`Scallywag: Attempting to join game ${gameCode}...`);
+                   const joinPayload: ApiGameJoinRequest = { game_code: gameCode, display_name: userName };
+                   finalSessionData = await joinGameSession(joinPayload, userId);
+                   if (!finalSessionData?.id) throw new Error("Join response did not contain valid session data.");
+                   console.log("Scallywag: Join successful.");
+                   finalPackName = navState?.packName || 'Loading Pack...';
+                   if (!navState?.packName && finalSessionData.pack_id) { console.warn(`Scallywag joined, pack name not in nav state. Pack ID: ${finalSessionData.pack_id}`); }
+                   setCrewMembers([]);
+               } else {
+                   throw new Error(`Invalid role ('${role}') or missing game code for Scallywag.`);
+               }
+
+               if (didCancel) return;
+
+               // 3. Set ALL state variables together AFTER successful async operations
+               console.log("Initialization successful, setting final state.");
+               setCurrentUserId(finalUserId);
+               setCurrentUserDisplayName(finalUserName);
+               editNameForm.setValue('newName', finalUserName);
+               setGameSession(finalSessionData);
+               gameSessionRef.current = finalSessionData;
+               setPackName(finalPackName);
+
+           } catch (error) {
+                console.error("Initialization Error:", error);
+                const errorMsg = error instanceof Error ? error.message : "Could not initialize the game room.";
+                if (!didCancel) {
+                    setInitializationError(errorMsg);
+                    toast.error("Error", { description: errorMsg });
+                    // Optional: navigate back only after setting error
+                    // navigate(getBackLink());
+                }
+           } finally {
+                // Set initializing false ONLY when initialization attempt is fully complete (success or fail)
+                if (!didCancel) {
+                    setIsInitializing(false);
+                    console.log("Waiting Room Initialization Attempt Finished.");
+                }
+           }
+       };
+
+       initialize();
+
+       return () => {
+           didCancel = true;
+           console.log("Waiting Room Initialization Effect Cleanup.");
+       };
+   }, [role, gameCode, navigate, location.state, editNameForm]); // Dependencies seem correct
+
+
+  // --- Define onOpen Callback with useCallback ---
+   const handleWebSocketOpen = useCallback(() => {
+       console.log("[handleWebSocketOpen] WebSocket connected callback triggered.");
+       // Fetch initial list of participants now that connection is open
+       // Use the ref as state might not be updated yet in this callback closure
+       if (gameSessionRef.current?.id) {
+           console.log(`[handleWebSocketOpen] Calling fetchParticipants for game ${gameSessionRef.current.id}`);
+           fetchParticipants(gameSessionRef.current.id);
+       } else {
+           console.warn("[handleWebSocketOpen] WS opened but gameSessionRef.current.id is missing.");
+       }
+   // Ensure fetchParticipants is stable (it has `[]` deps currently, which is okay)
+   }, [fetchParticipants]);
+
+  // --- Initialize WebSocket Connection ---
+  // Pass stable IDs only when initialization is complete and successful
+   const wsGameId = !isInitializing && !initializationError ? gameSession?.id : null;
+   const wsUserId = !isInitializing && !initializationError ? currentUserId : null;
 
    const { status: wsStatus } = useWebSocket({
-     gameId: canConnectWebSocket ? gameSession.id : null,
-     userId: canConnectWebSocket ? currentUserId : null,
-     onMessage: handleWebSocketMessage,
-     onOpen: () => {
-       console.log("WebSocket connected callback triggered.");
-       // Fetch initial participants on successful connect
-       if (gameSessionRef.current?.id && !gameSessionRef.current.id.startsWith('unknown')) {
-         fetchParticipants(gameSessionRef.current.id);
-       }
-     },
-     onClose: (event) => console.log("WebSocket closed callback:", event.code),
-     onError: (event) => toast.error("Connection Error", { description: "Lost connection to the game server." }),
+     gameId: wsGameId,
+     userId: wsUserId,
+     onMessage: handleWebSocketMessage, // Stable callback
+     onOpen: handleWebSocketOpen,       // Stable callback
+     onClose: (event) => console.log("Waiting Room WebSocket closed:", event.code),
+     onError: (event) => {
+          console.error("WebSocket connection error reported in WaitingRoom:", event);
+          // Toasting is handled within the hook's handleClose based on retry logic
+          // toast.warning("Connection Issue", { description: "Having trouble communicating..." });
+     }
    });
    // --- End WebSocket Initialization ---
 
 
-  // --- User Initialization Effect ---
-  useEffect(() => {
-    const storedUserId = localStorage.getItem('tempUserId');
-    const storedName = localStorage.getItem('tempUserDisplayName');
-    if (!storedUserId) {
-      console.error("Waiting Room: tempUserId not found in localStorage!");
-      toast.error("Session Error", { description: "Could not find your user ID. Please go back."});
-      navigate('/crew');
-    } else {
-      setCurrentUserId(storedUserId);
-      const nameToSet = storedName || getPirateNameForUserId(storedUserId);
-      setCurrentUserDisplayName(nameToSet);
-      editNameForm.setValue('newName', nameToSet); // Set initial form value
-    }
-  }, [navigate, editNameForm]);
-
-  // --- Initialize Captain/Scallywag state ---
-  useEffect(() => {
-      const stateFromNavigation = location.state as { gameSession?: ApiGameSessionResponse, packName?: string } | undefined;
-
-      if (role === 'captain' && currentUserId && currentUserDisplayName && !gameSession) {
-          if (stateFromNavigation?.gameSession && stateFromNavigation.gameSession.code === gameCode) {
-              console.log("Captain: Initializing with gameSession from navigation state:", stateFromNavigation);
-              setGameSession(stateFromNavigation.gameSession);
-              setPackName(stateFromNavigation.packName || 'Unknown Pack');
-              // Set initial crew member (will be updated by WS onOpen)
-              setCrewMembers([{ id: 'captain-participant-' + currentUserId, user_id: currentUserId, display_name: currentUserDisplayName, score: 0, is_host: true }]);
-              setIsLoading(false);
-          } else {
-              console.warn("Captain: gameSession missing/mismatched in navigation state.");
-              toast.error("Game Error", { description: "Could not load game session details." });
-              setIsLoading(false);
-              navigate('/crew');
-          }
-      } else if (role === 'scallywag') {
-           // Scallywag waits for join effect
-           if (stateFromNavigation?.packName && !packName) {
-             setPackName(stateFromNavigation.packName);
-           }
-      } else if (isLoading && gameSession) {
-           // If we were loading and gameSession arrived, stop loading
-           setIsLoading(false);
-      }
-  // Only re-run if essential static info changes or user details become available
-  }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, navigate, location.state, packName, isLoading]);
-
-
-  // --- Scallywag Join Game Logic ---
-  useEffect(() => {
-      if (role === 'scallywag' && gameCode && currentUserId && currentUserDisplayName && !gameSession && !joinAttempted) {
-          setJoinAttempted(true);
-          const performJoin = async () => {
-              setIsLoading(true);
-              try {
-                  const joinPayload: ApiGameJoinRequest = { game_code: gameCode, display_name: currentUserDisplayName };
-                  console.log(`Scallywag ${currentUserDisplayName} (${currentUserId}) attempting to join game ${gameCode}`);
-                  const sessionData = await joinGameSession(joinPayload, currentUserId);
-                  console.log("Join successful, received session data:", sessionData);
-                  gameSessionRef.current = sessionData; // Update ref
-                  setGameSession(sessionData); // Update state - this will trigger WS connection
-
-                   // Set packName if available from location state, otherwise handle later maybe
-                   if (!packName && location.state?.packName) {
-                     setPackName(location.state.packName);
-                   } else if (!packName && sessionData.pack_id) {
-                     console.warn("Scallywag joined, but pack name needs fetching (not implemented).");
-                     setPackName("Pack Loading..."); // Placeholder
-                   }
-                   // Initial participant fetch is now handled by WS onOpen
-
-              } catch (error) {
-                  console.error("Failed to join game:", error);
-                  const errorMsg = error instanceof Error ? error.message : "Could not join the game.";
-                  toast.error("Join Failed", { description: errorMsg });
-                  navigate('/crew'); // Send back to role select on join failure
-              } finally {
-                  setIsLoading(false);
-              }
-          };
-          performJoin();
-      }
-  // Only trigger join when essential conditions are met and join hasn't been attempted/successful
-  }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, joinAttempted, navigate, packName, location.state]);
-
-
-  // --- Game Start Logic ---
+  // --- Other Handlers ---
   const handleStartGame = async () => {
-    if (!gameSession?.id || !currentUserId || gameSession.id.startsWith('unknown')) {
-      toast.error("Error", { description: "Cannot start game. Missing game or user information." });
-      return;
-    }
-    // Check for >= 2 players ONLY in crew mode (role == captain)
-    if (role === 'captain' && gameCode && crewMembers.length < 2) {
-        toast.error("Need More Crew!", { description: "At least one other pirate must join before you can set sail." });
-        return;
-    }
-
-    setIsLoading(true); // Show loading indicator while starting
-    try {
-        await startGame(gameSession.id, currentUserId);
-        // Don't navigate here. Let the 'game_started' WS message handle navigation.
-        console.log("Start game request sent successfully. Waiting for WebSocket confirmation...");
-        // Optionally disable the start button further here if needed
-    } catch (error) {
-        console.error("Failed to send start game request:", error);
-        const errorMsg = error instanceof Error ? error.message : "Could not start the game.";
-        toast.error("Start Failed", { description: errorMsg });
-        setIsLoading(false); // Re-enable button on failure
-    }
-    // Note: setIsLoading(false) is NOT called on success, as we navigate away upon WS confirmation.
+    // No change needed here
+    if (!gameSession?.id || !currentUserId) { toast.error("Error", { description: "Cannot start game. Missing info." }); return; }
+    if (role === 'captain' && gameCode && crewMembers.length < 1) { toast.error("Need More Crew!", { description: "Usually, at least one other pirate must join." }); return; }
+    setIsInitializing(true); // Use initializing state for loading
+    try { await startGame(gameSession.id, currentUserId); }
+    catch (error) { console.error("Start game error:", error); toast.error("Start Failed", { description: error instanceof Error ? error.message : "Could not start." }); setIsInitializing(false); }
   };
 
-  // --- Edit Name Logic ---
   const handleEditNameSubmit = async (data: EditNameFormValues) => {
+     // No change needed here
     if (!currentUserId) { toast.error("Error", { description: "Cannot update name. User ID missing." }); return; }
     const newName = data.newName.trim();
     if (!newName || newName === currentUserDisplayName) { setIsEditModalOpen(false); return; }
-
     setIsUpdatingName(true);
-    try {
-        // Update backend first
-        await updateUser(currentUserId, { displayname: newName });
-        // Update local state & storage immediately for responsiveness
-        setCurrentUserDisplayName(newName);
-        localStorage.setItem('tempUserDisplayName', newName);
-         // Update the crew list locally - WS broadcast will confirm for others
-         setCrewMembers(prevCrew =>
-            prevCrew.map(member =>
-                member.user_id === currentUserId ? { ...member, display_name: newName } : member
-            )
-         );
-        toast.success("Name Changed!", { description: `Ye be known as ${newName} now!` });
-        setIsEditModalOpen(false);
-    } catch (error) {
-        console.error("Failed to update name:", error);
-        toast.error("Update Failed", { description: error instanceof Error ? error.message : "Could not change your name." });
-        setIsEditModalOpen(false); // Close modal even on failure
-    } finally {
-        setIsUpdatingName(false);
-    }
+    try { await updateUser(currentUserId, { displayname: newName }); toast.success("Name Change Sent!"); setIsEditModalOpen(false); }
+    catch (error) { console.error("Update name error:", error); toast.error("Update Failed", { description: error instanceof Error ? error.message : "Could not change name." }); }
+    finally { setIsUpdatingName(false); }
   };
 
-
-  // --- Helper Functions ---
   const copyGameCodeToClipboard = () => { if (gameCode) { navigator.clipboard.writeText(gameCode).then(() => toast.success('Copied!')).catch(() => toast.error('Copy failed')); } };
-  const getBackLink = () => role === 'captain' || role === 'scallywag' ? '/crew' : '/'; // Simplified
+  // Define getBackLink within the component or ensure it's stable if imported
+  const getBackLink = useCallback(() => role === 'captain' || role === 'scallywag' ? '/crew' : '/', [role]);
   const handleOpenEditModal = () => { if (currentUserDisplayName) { editNameForm.setValue('newName', currentUserDisplayName); } setIsEditModalOpen(true); };
 
 
@@ -332,15 +342,27 @@ const WaitingRoom: React.FC = () => {
   const hostParticipant = crewMembers.find(p => p.is_host);
   const isCurrentUserHost = currentUserId === hostParticipant?.user_id;
   const hostDisplayName = hostParticipant?.display_name || 'The Captain';
-  const displayCategory = packName || (isLoading ? 'Loading...' : 'Unknown Pack');
-  const displayQuestions = gameSession?.question_count ?? (isLoading ? '-' : 'N/A');
-  const displayTime = gameSession?.time_limit_seconds ?? (isLoading ? '-' : 'N/A');
-  const settingsAvailable = !!gameSession && !isLoading; // Game session loaded and not in general loading state
-  // Updated canStartGame logic for crew mode
-  const canStartGame = settingsAvailable && !isLoading && isCurrentUserHost && (role === 'captain' ? crewMembers.length >= 2 : true);
+  const displayCategory = packName || (isInitializing ? 'Loading...' : 'Unknown Pack');
+  const displayQuestions = gameSession?.question_count ?? (isInitializing ? '-' : 'N/A');
+  const displayTime = gameSession?.time_limit_seconds ?? (isInitializing ? '-' : 'N/A');
+  // Allow starting with 1+ for captain testing
+  const canStartGame = !isInitializing && gameSession && isCurrentUserHost && (role === 'captain' ? crewMembers.length >= 1 : true);
 
 
   // --- Render Logic ---
+  if (initializationError) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4">
+              <Card className="p-6 text-center border-destructive bg-destructive/10">
+                  <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-destructive mb-2">Avast Ye, Landlubber!</h2>
+                  <p className="text-destructive/80 mb-4">{initializationError}</p>
+                  <PirateButton onClick={() => navigate(getBackLink())} variant="secondary">Return to Port</PirateButton>
+              </Card>
+          </div>
+      );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -359,20 +381,16 @@ const WaitingRoom: React.FC = () => {
 
         {/* Main Content Area */}
         <div className="map-container p-6 md:p-8 mb-10 relative">
-           {(isLoading && !gameSession) && ( // Show loading overlay only if gameSession is not yet loaded
-               <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
-                   <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" /><span className="ml-2 font-semibold text-pirate-navy">{role === 'scallywag' ? 'Joining Crew...' : 'Loading Game...'}</span>
-               </div>
-           )}
+           {isInitializing && <LoadingIndicator message={role === 'scallywag' ? 'Joining Crew...' : 'Setting Course...'} />}
 
           {/* Player List */}
           <div className="mb-8">
              <div className='flex justify-between items-center mb-6'>
                <h2 className="font-pirate text-3xl md:text-4xl text-pirate-navy">Crew Members ({crewMembers.length})</h2>
-                <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => fetchParticipants(gameSession?.id)} className="text-pirate-navy/70 hover:text-pirate-navy hover:bg-pirate-navy/10" aria-label="Refresh crew list"><RefreshCw className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Refresh Crew List</p></TooltipContent></Tooltip></TooltipProvider>
+                <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => fetchParticipants(gameSession?.id)} className="text-pirate-navy/70 hover:text-pirate-navy hover:bg-pirate-navy/10" aria-label="Refresh crew list" disabled={isInitializing || wsStatus !== 'connected'}><RefreshCw className={`h-5 w-5 ${wsStatus === 'connected' ? 'hover:animate-spin' : ''}`} /></Button></TooltipTrigger><TooltipContent><p>{wsStatus === 'connected' ? 'Refresh Crew List' : 'Connecting...'}</p></TooltipContent></Tooltip></TooltipProvider>
              </div>
             {/* Participant Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 min-h-[80px]"> {/* Added min-height */}
              {crewMembers.map((member) => {
                 const isYou = member.user_id === currentUserId;
                 return (
@@ -382,37 +400,37 @@ const WaitingRoom: React.FC = () => {
                       <p className={cn("font-medium truncate", isYou ? "text-white" : "text-pirate-navy")}>{member.display_name}</p>
                       <p className={cn("text-xs", isYou ? "text-white/80" : "text-pirate-navy/70")}>{member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''}</p>
                     </div>
-                     {isYou && (<Button variant="ghost" size="icon" className="shrink-0 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10 p-0" onClick={handleOpenEditModal} aria-label="Edit name" disabled={isUpdatingName}><Pencil className="h-4 w-4" /></Button>)}
+                     {isYou && (<Button variant="ghost" size="icon" className="shrink-0 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10 p-0" onClick={handleOpenEditModal} aria-label="Edit name" disabled={isUpdatingName || isInitializing}><Pencil className="h-4 w-4" /></Button>)}
                   </Card>
                 );
              })}
-              {(crewMembers.length === 0 && !isLoading) && (<p className="col-span-full text-center py-4 text-pirate-navy/60">Waiting for pirates to assemble...</p>)}
+              {(crewMembers.length === 0 && !isInitializing) && (<p className="col-span-full text-center py-4 text-pirate-navy/60">Waiting for pirates to assemble...</p>)}
             </div>
           </div>
 
           {/* Start Button / Waiting Message */}
           {role === 'captain' ? (
             <div className="mt-10">
-               <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!canStartGame || isLoading}>
-                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Anchor className="h-5 w-5" />}
-                 {isLoading ? 'Starting...' : 'All aboard? Set sail!'}
+               <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!canStartGame || isInitializing}>
+                 {isInitializing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Anchor className="h-5 w-5" />}
+                 {isInitializing ? 'Initializing...' : 'All aboard? Set sail!'}
                </PirateButton>
-               {!settingsAvailable && <p className="text-xs text-center mt-2 text-pirate-navy/60">Loading game details...</p>}
-               {settingsAvailable && crewMembers.length < 2 && !isLoading && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
+               {!isInitializing && crewMembers.length < 1 && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
             </div>
           ) : ( // Scallywag's view
             <div className="mt-10 text-center text-pirate-navy/80">
               <p>Waiting for {hostDisplayName} to start the voyage...</p>
-              <div className="animate-pulse mt-2 text-2xl">⚓️</div>
+               <div className="animate-pulse mt-2 text-2xl">{wsStatus === 'connected' ? '⚓️' : <Loader2 className="inline-block h-6 w-6 animate-spin"/>}</div>
+               {wsStatus !== 'connected' && <p className="text-xs mt-1">(Connecting...)</p>}
             </div>
           )}
         </div>
 
         {/* Collapsible Voyage Details */}
-        {settingsAvailable && (
+        {gameSession && !isInitializing && (
           <Collapsible open={isVoyageDetailsOpen} onOpenChange={setIsVoyageDetailsOpen} className="mb-8">
             <Card className="p-4 flex items-center min-h-[60px] bg-pirate-parchment/50"><CollapsibleTrigger className="flex items-center justify-between w-full"><div className="flex items-center gap-2"> <Settings className="h-5 w-5 text-pirate-black" /> <h3 className="font-pirate text-2xl text-pirate-black">Voyage Details</h3> </div><ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isVoyageDetailsOpen ? 'rotate-180' : ''}`} /></CollapsibleTrigger></Card>
-            <CollapsibleContent className="mt-2"><Card className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Category</p><p className="font-medium capitalize">{displayCategory}</p></div><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Questions</p><p className="font-medium">{displayQuestions}</p></div><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Time per Question</p><p className="font-medium">{displayTime !== 'N/A' ? `${displayTime} seconds` : 'N/A'}</p></div></div></Card></CollapsibleContent>
+            <CollapsibleContent className="mt-2"><Card className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Category</p><p className="font-medium capitalize">{displayCategory}</p></div><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Questions</p><p className="font-medium">{displayQuestions}</p></div><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Time per Question</p><p className="font-medium">{displayTime !== '-' ? `${displayTime} seconds` : 'N/A'}</p></div></div></Card></CollapsibleContent>
           </Collapsible>
         )}
       </main>

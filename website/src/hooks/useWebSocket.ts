@@ -1,7 +1,7 @@
 // website/src/hooks/useWebSocket.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { IncomingWsMessage } from '@/types/websocketTypes'; // Import message types
+import { IncomingWsMessage } from '@/types/websocketTypes';
 import { API_BASE_URL } from '@/config';
 
 // Define WebSocket connection states
@@ -11,8 +11,8 @@ interface UseWebSocketOptions {
   gameId: string | null;
   userId: string | null;
   onMessage: (message: IncomingWsMessage) => void; // Callback to handle received messages
-  onError?: (event: Event) => void;
-  onOpen?: () => void;
+  onError?: (event: Event | CloseEvent) => void; // Allow CloseEvent for error handling context
+  onOpen?: () => void; // Callback when connection successfully opens
   onClose?: (event: CloseEvent) => void;
   retryInterval?: number; // Time in ms between reconnection attempts
   maxRetries?: number; // Max number of reconnection attempts (-1 for infinite)
@@ -25,6 +25,7 @@ console.log("WebSocket Base URL:", WS_BASE_URL);
 /**
  * Custom hook to manage a WebSocket connection for the game.
  * Handles connection, disconnection, message sending/receiving, and basic reconnection.
+ * Refined connection logic and cleanup to prevent premature closure.
  */
 export const useWebSocket = ({
   gameId,
@@ -33,14 +34,16 @@ export const useWebSocket = ({
   onError,
   onOpen,
   onClose,
-  retryInterval = 5000, // Default 5 seconds
-  maxRetries = 5,       // Default 5 retries
+  retryInterval = 5000,
+  maxRetries = 5,
 }: UseWebSocketOptions) => {
   const [status, setStatus] = useState<WebSocketStatus>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const retryCountRef = useRef<number>(0);
   const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const attemptingConnectionRef = useRef<boolean>(false); // Flag to prevent concurrent connection attempts
+  const attemptingConnectionRef = useRef<boolean>(false);
+  // --- NEW: Ref to track if a manual disconnect was requested ---
+  const manualDisconnectRef = useRef<boolean>(false);
 
   // Stable callback refs
   const onMessageRef = useRef(onMessage);
@@ -53,128 +56,216 @@ export const useWebSocket = ({
   useEffect(() => { onOpenRef.current = onOpen; }, [onOpen]);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
-  const connect = useCallback(() => {
-    // Prevent connection if missing required IDs or already connecting/connected
-    if (!gameId || !userId || attemptingConnectionRef.current || status === 'connected' || status === 'connecting') {
-      if (!gameId || !userId) console.log("WebSocket connect skipped: Missing gameId or userId");
-      else console.log(`WebSocket connect skipped: Status is ${status} or already attempting.`);
-      return;
-    }
-
-    // Construct WebSocket URL
-    const wsUrl = `${WS_BASE_URL}/ws/${gameId}/${userId}`;
-    console.log(`Attempting WebSocket connection to: ${wsUrl}`);
-
-    attemptingConnectionRef.current = true; // Set flag
-    setStatus('connecting');
-    retryCountRef.current = 0; // Reset retry count on new manual connect attempt
-
-    try {
-      wsRef.current = new WebSocket(wsUrl);
-
-      wsRef.current.onopen = () => {
-        console.log('WebSocket connection opened');
-        setStatus('connected');
-        retryCountRef.current = 0; // Reset retries on successful connection
-        if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-        attemptingConnectionRef.current = false; // Clear flag
-        if (onOpenRef.current) onOpenRef.current();
-      };
-
-      wsRef.current.onmessage = (event) => {
-        try {
-          const message: IncomingWsMessage = JSON.parse(event.data);
-          // console.log('WebSocket message received:', message); // Debug log
-          if (onMessageRef.current) onMessageRef.current(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error, 'Data:', event.data);
-        }
-      };
-
-      wsRef.current.onerror = (event) => {
-        console.error('WebSocket error:', event);
-        setStatus('error');
-        attemptingConnectionRef.current = false; // Clear flag on error too
-        if (onErrorRef.current) onErrorRef.current(event);
-        // Optionally trigger reconnection logic here as well
-        handleClose(new CloseEvent('errorclose')); // Treat error as a close event for potential retry
-      };
-
-      wsRef.current.onclose = (event) => {
-        console.log('WebSocket connection closed:', event.code, event.reason);
-        handleClose(event);
-      };
-
-    } catch (error) {
-        console.error("Error creating WebSocket:", error);
-        setStatus('error');
-        attemptingConnectionRef.current = false; // Clear flag
-        // Handle creation error, maybe retry?
-    }
-
-  }, [gameId, userId, status]); // Depends on IDs and status to prevent multiple connects
-
+  // --- handleClose Function ---
+  // Moved before connect/disconnect as they reference it
   const handleClose = useCallback((event: CloseEvent) => {
-      setStatus('disconnected');
-      attemptingConnectionRef.current = false; // Clear flag
+      const wasAttempting = attemptingConnectionRef.current;
+      const wasConnected = status === 'connected'; // Check status *before* setting disconnected
+
+      // Only process if not already marked as disconnected by our logic
+      if (status !== 'disconnected') {
+        console.log(`[WS handleClose - ${gameId}/${userId}] Status was ${status}. Setting disconnected. Code: ${event.code}`);
+        setStatus('disconnected');
+      } else {
+         console.log(`[WS handleClose - ${gameId}/${userId}] Already disconnected. Code: ${event.code}`);
+      }
+
+      attemptingConnectionRef.current = false; // Always reset flag on close
       wsRef.current = null; // Clear the ref
-      if (onCloseRef.current) onCloseRef.current(event);
+
+      if (onCloseRef.current) {
+          onCloseRef.current(event);
+      }
 
       // Reconnection logic
-      if ((maxRetries === -1 || retryCountRef.current < maxRetries)) {
-         retryCountRef.current++;
-         console.log(`WebSocket closed. Attempting reconnect ${retryCountRef.current}/${maxRetries === -1 ? 'infinite' : maxRetries}...`);
-         toast.info("Connection Lost", { description: `Attempting to reconnect (${retryCountRef.current})...`});
-         if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current); // Clear previous timeout
-         connectTimeoutRef.current = setTimeout(connect, retryInterval);
+      // Avoid retry if manually disconnected or clean close (code 1000)
+      const shouldRetry = !manualDisconnectRef.current && event.code !== 1000;
+      console.log(`[WS handleClose - ${gameId}/${userId}] ShouldRetry: ${shouldRetry} (Manual: ${manualDisconnectRef.current}, Code: ${event.code})`);
+
+      if (shouldRetry && (maxRetries === -1 || retryCountRef.current < maxRetries)) {
+          retryCountRef.current++;
+          const retryMsg = `Attempting reconnect ${retryCountRef.current}/${maxRetries === -1 ? 'infinite' : maxRetries}...`;
+          console.log(`[WS Retry - ${gameId}/${userId}] ${retryMsg}`);
+          toast.info("Connection Lost", { description: retryMsg });
+          if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+          connectTimeoutRef.current = setTimeout(() => {
+              // Check if IDs are still valid before retrying connection
+              // Note: 'connect' reference might be stale here, directly check props? Or pass connect?
+              // Let's assume connect uses the latest props/state via its own closure.
+              if (gameId && userId) {
+                   // Re-call connect (which is stable via useCallback)
+                   // connect will check its own preconditions again
+                   connect();
+              } else {
+                   console.log(`[WS Retry Aborted - ${gameId}/${userId}] IDs became invalid.`);
+              }
+          }, retryInterval);
+      } else if (shouldRetry) {
+          console.log(`[WS Retry - ${gameId}/${userId}] Max retries reached or retries disabled.`);
+          toast.error("Connection Lost", { description: "Could not reconnect to the game server." });
       } else {
-         console.log("WebSocket closed. Max retries reached or retries disabled.");
-         toast.error("Connection Lost", { description: "Could not reconnect to the game server."});
+           console.log(`[WS Retry - ${gameId}/${userId}] No retry needed (Manual disconnect or code 1000).`);
       }
-  }, [maxRetries, retryInterval, connect]); // Added `connect` to dependencies
+  }, [maxRetries, retryInterval, onCloseRef, status, gameId, userId]); // Added status, gameId, userId - connect itself is stable
 
+
+  // --- connect Function (Stable Reference) ---
+  const connect = useCallback(() => {
+    if (!gameId || !userId) { console.log(`[WS Connect Skipped] Missing gameId(${gameId}) or userId(${userId})`); return; }
+    // Check readyState directly for more accurate current status
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+       console.log(`[WS Connect Skipped - ${gameId}/${userId}] WebSocket already OPEN or CONNECTING (readyState: ${wsRef.current.readyState})`); return;
+    }
+     if (attemptingConnectionRef.current) {
+        console.log(`[WS Connect Skipped - ${gameId}/${userId}] Already attempting connection.`); return;
+     }
+
+    const wsUrl = `${WS_BASE_URL}/ws/${gameId}/${userId}`;
+    console.log(`[WS Attempting Connect - ${gameId}/${userId}] URL: ${wsUrl}`);
+
+    manualDisconnectRef.current = false; // Reset manual flag on new attempt
+    attemptingConnectionRef.current = true;
+    setStatus('connecting');
+    // Reset retry count ONLY on a new *manual* connect intent (handled in useEffect)
+
+    try {
+        const newWs = new WebSocket(wsUrl);
+        wsRef.current = newWs; // Assign immediately
+
+        newWs.onopen = () => {
+             // Double-check if this is still the active socket attempt
+            if (wsRef.current === newWs) {
+                console.log(`[WS Connected - ${gameId}/${userId}] Connection opened.`);
+                setStatus('connected');
+                retryCountRef.current = 0;
+                if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+                attemptingConnectionRef.current = false;
+                if (onOpenRef.current) onOpenRef.current();
+            } else {
+                 console.warn(`[WS Stale Open Event - ${gameId}/${userId}] Ignoring open event for a previous socket instance.`);
+                 // Close this potentially orphaned connection if it's not the current one
+                 newWs.close(1001, "Stale connection attempt");
+            }
+        };
+
+        newWs.onmessage = (event) => {
+            if (wsRef.current === newWs) { // Ensure message is from the active socket
+                try { const message: IncomingWsMessage = JSON.parse(event.data); if (onMessageRef.current) onMessageRef.current(message); }
+                catch (error) { console.error(`[WS Message Error - ${gameId}/${userId}] Failed to parse:`, error, 'Data:', event.data); }
+            }
+        };
+
+        newWs.onerror = (event) => {
+             if (wsRef.current === newWs) { // Ensure error is from the active socket
+                 console.error(`[WS Error - ${gameId}/${userId}]`, event);
+                 if (onErrorRef.current) onErrorRef.current(event as Event); // Pass original event
+                 // Let onclose handle the state change and retry logic
+             }
+        };
+
+        newWs.onclose = (event) => {
+             // Only handle close if it's the currently managed socket ref
+             // Or if the ref is null but we were expecting a close
+             if (wsRef.current === newWs || wsRef.current === null) {
+                 console.log(`[WS Closed Event - ${gameId}/${userId}] Code: ${event.code}, Reason: ${event.reason}`);
+                 handleClose(event);
+             } else {
+                  console.warn(`[WS Stale Close Event - ${gameId}/${userId}] Ignoring close event for a previous socket instance.`);
+             }
+        };
+
+    } catch (error) {
+        console.error(`[WS Creation Error - ${gameId}/${userId}]`, error);
+        setStatus('error'); // Set error status
+        attemptingConnectionRef.current = false;
+        wsRef.current = null; // Ensure ref is cleared
+        if (onErrorRef.current) onErrorRef.current(new Event("WebSocket Creation Failed")); // Pass generic event
+        // Trigger close handling for potential retry
+        handleClose(new CloseEvent('createerror', { code: 1006, reason: "WebSocket creation failed" }));
+    }
+  }, [gameId, userId, handleClose]); // handleClose is now stable
+
+
+  // --- disconnect Function (Stable Reference) ---
   const disconnect = useCallback(() => {
+    console.log(`[WS Manual Disconnect - ${gameId}/${userId}] Initiated.`);
+    manualDisconnectRef.current = true; // Set flag to prevent retries
+
     if (connectTimeoutRef.current) {
-      clearTimeout(connectTimeoutRef.current); // Cancel any pending reconnection attempts
+      clearTimeout(connectTimeoutRef.current);
       connectTimeoutRef.current = null;
+      console.log(`[WS Manual Disconnect - ${gameId}/${userId}] Cleared pending retry timeout.`);
     }
-    retryCountRef.current = maxRetries; // Prevent further retries after manual disconnect
-    if (wsRef.current) {
-      console.log('Manually closing WebSocket connection.');
-      wsRef.current.close(1000, 'User disconnected'); // Use standard code 1000
-      // wsRef.current = null; // Let onclose handle setting ref to null
-      // setStatus('disconnected'); // Let onclose handle status update
-    }
-  }, [maxRetries]);
 
-  // Effect to initiate connection when gameId and userId are available
-  useEffect(() => {
-    if (gameId && userId) {
-      connect();
+    const currentWs = wsRef.current; // Capture current ref
+    if (currentWs) {
+        console.log(`[WS Manual Disconnect - ${gameId}/${userId}] Closing socket (readyState: ${currentWs.readyState}).`);
+        // Check readyState before closing - avoids errors if already closing/closed
+        if (currentWs.readyState === WebSocket.OPEN || currentWs.readyState === WebSocket.CONNECTING) {
+            currentWs.close(1000, 'User initiated disconnect');
+        }
+        wsRef.current = null; // Clear ref immediately
     } else {
-      // If IDs become null/undefined, ensure disconnection
-      disconnect();
+         console.log(`[WS Manual Disconnect - ${gameId}/${userId}] No active socket to close.`);
     }
 
-    // Cleanup on unmount or when IDs change significantly
-    return () => {
-      console.log("useWebSocket cleanup: Disconnecting...");
-      disconnect();
-    };
-  }, [gameId, userId, connect, disconnect]); // Add connect/disconnect
+    // Ensure status is updated immediately for manual disconnect
+    if (status !== 'disconnected') {
+        setStatus('disconnected');
+    }
+    attemptingConnectionRef.current = false; // Reset flag
 
-  // Function to send messages (if needed later)
-  // const sendMessage = useCallback((message: any) => {
-  //   if (wsRef.current && status === 'connected') {
-  //     try {
-  //       wsRef.current.send(JSON.stringify(message));
-  //     } catch (error) {
-  //       console.error("Failed to send WebSocket message:", error);
-  //     }
-  //   } else {
-  //     console.warn("WebSocket not connected. Cannot send message:", message);
-  //   }
-  // }, [status]);
+  }, [status]); // Depends on status
 
-  return { status }; // Expose status, maybe sendMessage later
+
+  // --- Primary Connection Effect ---
+  useEffect(() => {
+      console.log(`[WS useEffect Check - ${gameId}/${userId}] Current Status: ${status}, Attempting: ${attemptingConnectionRef.current}`);
+      if (gameId && userId) {
+          // Attempt connection only if disconnected and not already trying
+          if (status === 'disconnected' && !attemptingConnectionRef.current) {
+              console.log(`[WS useEffect Trigger Connect - ${gameId}/${userId}]`);
+              retryCountRef.current = 0; // Reset retries when explicitly trying to connect due to ID availability
+              manualDisconnectRef.current = false; // Allow retries for this new connection attempt
+              connect();
+          } else {
+              console.log(`[WS useEffect Skip Connect - ${gameId}/${userId}] Conditions not met (status: ${status}, attempting: ${attemptingConnectionRef.current})`);
+          }
+      } else {
+          // IDs are missing or invalid, ensure disconnection
+          if (status === 'connected' || status === 'connecting') {
+              console.log(`[WS useEffect Trigger Disconnect - ${gameId}/${userId}] IDs invalid (${gameId}, ${userId}), status: ${status}.`);
+              disconnect();
+          } else {
+               console.log(`[WS useEffect Skip Disconnect - ${gameId}/${userId}] IDs invalid, status: ${status}.`);
+          }
+      }
+
+      // --- Refined Cleanup ---
+      return () => {
+          const currentStatus = status; // Capture status at the time cleanup is defined
+          console.log(`[WS Cleanup - ${gameId}/${userId}] Status: ${currentStatus}. Unmounting or deps changed.`);
+
+          // Only call disconnect if the connection was active or attempting.
+          // Avoid calling disconnect if it's already 'disconnected' or in 'error' state from its perspective.
+          if (currentStatus === 'connected' || currentStatus === 'connecting') {
+               console.log(`[WS Cleanup - ${gameId}/${userId}] Calling disconnect as status was ${currentStatus}.`);
+               disconnect();
+          } else {
+               console.log(`[WS Cleanup - ${gameId}/${userId}] Skipping disconnect call as status was ${currentStatus}.`);
+          }
+
+          // Always clear pending retry timers on cleanup
+           if (connectTimeoutRef.current) {
+              console.log(`[WS Cleanup - ${gameId}/${userId}] Clearing retry timer.`);
+              clearTimeout(connectTimeoutRef.current);
+              connectTimeoutRef.current = null;
+           }
+      };
+  // connect/disconnect are stable useCallback refs now. Rerun only if gameId/userId changes.
+  }, [gameId, userId, connect, disconnect]); // Removed status
+
+
+  return { status };
 };
+// --- END OF FILE ---

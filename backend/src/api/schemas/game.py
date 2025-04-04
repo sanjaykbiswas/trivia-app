@@ -10,7 +10,7 @@ from ...models.game_session import GameStatus
 class GameSessionCreateRequest(BaseModel):
     """Request schema for creating a new game session."""
     pack_id: str = Field(..., description="ID of the pack to use for the game")
-    max_participants: int = Field(10, description="Maximum number of participants allowed", ge=1, le=50) # Allow 1 for solo
+    max_participants: int = Field(10, description="Maximum number of participants allowed", ge=1, le=50)
     question_count: int = Field(10, description="Number of questions to include in the game", ge=1, le=75)
     time_limit_seconds: int = Field(0, description="Time limit per question in seconds (0 for no limit)", ge=0)
 
@@ -37,24 +37,25 @@ class GameSessionResponse(BaseModel):
     code: str
     status: GameStatus # Use enum
     pack_id: str
+    # --- ADDED host_user_id ---
+    host_user_id: str = Field(..., description="ID of the user who created/hosts the game")
+    # --- END ADDED host_user_id ---
     max_participants: int
     question_count: int
     time_limit_seconds: int
     current_question_index: int
     participant_count: int = Field(..., description="Current number of participants")
-    is_host: bool = Field(..., description="Whether the current user is the host")
-    created_at: datetime # Keep as datetime, Pydantic handles serialization
+    is_host: bool = Field(..., description="Whether the current user making the request is the host") # Clarified description
+    created_at: datetime
 
     class Config:
         from_attributes = True
-        use_enum_values = True # Serialize enums to values
+        use_enum_values = True
 
 class GameSessionListResponse(BaseModel):
     """Response schema for listing game sessions."""
     total: int
-    games: List[Dict[str, Any]] # Keep as Dict for flexibility from service
-
-# --- MODIFIED / ADDED Schemas ---
+    games: List[Dict[str, Any]]
 
 # Renamed GameQuestionInfo -> ApiGameQuestionInfo to avoid frontend naming conflicts potentially
 class ApiGameQuestionInfo(BaseModel):
@@ -66,12 +67,12 @@ class ApiGameQuestionInfo(BaseModel):
 
 class GameStartResponse(BaseModel):
     """Response schema for the start_game endpoint."""
-    status: GameStatus # Use the enum type
+    status: GameStatus
     current_question: ApiGameQuestionInfo
 
     class Config:
-        from_attributes = True # Needed if status comes from an object attribute
-        use_enum_values = True # Ensure enums are serialized to their values
+        from_attributes = True
+        use_enum_values = True
 
 class QuestionResultResponse(BaseModel):
     """Response schema for question result."""
@@ -84,11 +85,11 @@ class GameResultsResponse(BaseModel):
     """Response schema for game results."""
     game_id: str
     game_code: str
-    status: GameStatus # Use enum
-    participants: List[Dict[str, Any]] # Keep Dict for flexibility
-    questions: List[Dict[str, Any]] # Keep Dict for flexibility
+    status: GameStatus
+    participants: List[Dict[str, Any]]
+    questions: List[Dict[str, Any]]
     total_questions: int
-    completed_at: datetime # Keep datetime
+    completed_at: datetime
 
     class Config:
         from_attributes = True
@@ -97,22 +98,20 @@ class GameResultsResponse(BaseModel):
 # --- NEW SCHEMAS FOR /play-questions Endpoint ---
 class GamePlayQuestionResponse(BaseModel):
     """Schema for a single question served during gameplay."""
-    index: int = Field(..., description="0-based index of the question in the game sequence")
-    question_id: str = Field(..., description="Original ID of the question")
-    question_text: str = Field(..., description="The text of the question")
-    options: List[str] = Field(..., description="Shuffled list of answer options (correct + incorrect)")
-    # --- ADDED FIELD ---
-    correct_answer_id: str = Field(..., description="The ID (e.g., 'qID-optionIndex') of the correct option within the shuffled list")
-    # --- END ADDED FIELD ---
-    time_limit: int = Field(..., description="Time limit for this question in seconds (from game settings)")
+    index: int
+    question_id: str
+    question_text: str
+    options: List[str]
+    correct_answer_id: str
+    time_limit: int
 
     class Config:
-        from_attributes = True # Allow creation from ORM models or dicts
+        from_attributes = True
 
 class GamePlayQuestionListResponse(BaseModel):
     """Response schema for the list of questions for gameplay."""
     game_id: str
     questions: List[GamePlayQuestionResponse]
-    total_questions: int # Actual number of questions in this game
+    total_questions: int
 # --- END NEW SCHEMAS ---
 # --- END OF FULL MODIFIED FILE ---
