@@ -21,7 +21,11 @@ from .question import (
 from .game import (
     GameSessionCreateRequest, GameSessionJoinRequest, GameSessionSubmitAnswerRequest,
     ParticipantResponse, GameSessionResponse, GameSessionListResponse,
-    GameQuestionResponse, QuestionResultResponse, GameResultsResponse, GameStartResponse
+    # GameQuestionResponse, <-- Removed, replaced by GamePlayQuestionResponse
+    QuestionResultResponse, GameResultsResponse, GameStartResponse,
+    # --- ADDED NEW SCHEMAS ---
+    GamePlayQuestionResponse,
+    GamePlayQuestionListResponse
 )
 from .user import (
     UserCreateRequest, UserResponse, UserUpdateRequest,
@@ -69,10 +73,13 @@ __all__ = [
     "ParticipantResponse",
     "GameSessionResponse",
     "GameSessionListResponse",
-    "GameQuestionResponse",
+    # "GameQuestionResponse", <-- Removed
     "QuestionResultResponse",
     "GameResultsResponse",
     "GameStartResponse",
+    # --- ADDED NEW SCHEMAS ---
+    "GamePlayQuestionResponse",
+    "GamePlayQuestionListResponse",
 
     # User schemas
     "UserCreateRequest",

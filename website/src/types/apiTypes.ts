@@ -52,7 +52,6 @@ export interface ApiGameJoinRequest {
     display_name: string;
 }
 
-// --- NEW Game Start Types ---
 // Matches backend GameQuestionInfo
 export interface ApiGameQuestionInfo {
     index: number;
@@ -66,14 +65,11 @@ export interface ApiGameStartResponse {
     status: string; // e.g., "active"
     current_question: ApiGameQuestionInfo;
 }
-// --- END NEW Game Start Types ---
 
-
-// --- MODIFIED Participant Types ---
 // Matches the participant structure returned by the GET /participants endpoint
 export interface ApiParticipant {
     id: string; // This is the participant record ID
-    user_id: string; // <<< ADDED: The actual User ID
+    user_id: string; // The actual User ID
     display_name: string;
     score: number;
     is_host: boolean;
@@ -84,7 +80,24 @@ export interface ApiParticipantListResponse {
     total: number;
     participants: ApiParticipant[];
 }
-// --- END MODIFIED Participant Types ---
+
+// --- NEW TYPES FOR /play-questions ---
+// Matches backend GamePlayQuestionResponse
+export interface ApiGamePlayQuestion {
+    index: number;
+    question_id: string;
+    question_text: string;
+    options: string[]; // Shuffled options from backend
+    time_limit: number; // Time limit per question
+}
+
+// Matches backend GamePlayQuestionListResponse
+export interface ApiGamePlayQuestionListResponse {
+    game_id: string;
+    questions: ApiGamePlayQuestion[];
+    total_questions: number;
+}
+// --- END NEW TYPES ---
 
 // --- Pack API Types ---
 // Matches backend PackResponse schema

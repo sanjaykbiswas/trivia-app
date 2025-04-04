@@ -9,9 +9,7 @@ from ...models.game_session import GameStatus
 class GameSessionCreateRequest(BaseModel):
     """Request schema for creating a new game session."""
     pack_id: str = Field(..., description="ID of the pack to use for the game")
-    # --- MODIFICATION: Changed ge from 2 to 1 ---
     max_participants: int = Field(10, description="Maximum number of participants allowed", ge=1, le=50) # Allow 1 for solo
-    # --- END MODIFICATION ---
     question_count: int = Field(10, description="Number of questions to include in the game", ge=1, le=75)
     time_limit_seconds: int = Field(0, description="Time limit per question in seconds (0 for no limit)", ge=0)
 
@@ -55,15 +53,11 @@ class GameSessionListResponse(BaseModel):
     total: int
     games: List[Dict[str, Any]] # Keep as Dict for flexibility from service
 
-class GameQuestionResponse(BaseModel):
-    """Response schema for a game question (used by service internally or potentially other endpoints)."""
-    index: int
-    question_text: str
-    options: List[str]
-    time_limit: int
+# --- MODIFIED / ADDED Schemas ---
 
-# --- NEW Schemas for Start Game Response ---
-class GameQuestionInfo(BaseModel):
+# Removed GameQuestionResponse - not directly used by API endpoints now
+# Renamed GameQuestionInfo -> ApiGameQuestionInfo to avoid frontend naming conflicts potentially
+class ApiGameQuestionInfo(BaseModel):
     """Schema for the current question info returned on game start or next question."""
     index: int
     question_text: str
@@ -73,13 +67,11 @@ class GameQuestionInfo(BaseModel):
 class GameStartResponse(BaseModel):
     """Response schema for the start_game endpoint."""
     status: GameStatus # Use the enum type
-    current_question: GameQuestionInfo
+    current_question: ApiGameQuestionInfo
 
     class Config:
         from_attributes = True # Needed if status comes from an object attribute
         use_enum_values = True # Ensure enums are serialized to their values
-# --- END NEW Schemas ---
-
 
 class QuestionResultResponse(BaseModel):
     """Response schema for question result."""
@@ -101,3 +93,22 @@ class GameResultsResponse(BaseModel):
     class Config:
         from_attributes = True
         use_enum_values = True
+
+# --- NEW SCHEMAS FOR /play-questions Endpoint ---
+class GamePlayQuestionResponse(BaseModel):
+    """Schema for a single question served during gameplay."""
+    index: int = Field(..., description="0-based index of the question in the game sequence")
+    question_id: str = Field(..., description="Original ID of the question")
+    question_text: str = Field(..., description="The text of the question")
+    options: List[str] = Field(..., description="Shuffled list of answer options (correct + incorrect)")
+    time_limit: int = Field(..., description="Time limit for this question in seconds (from game settings)")
+
+    class Config:
+        from_attributes = True # Allow creation from ORM models or dicts
+
+class GamePlayQuestionListResponse(BaseModel):
+    """Response schema for the list of questions for gameplay."""
+    game_id: str
+    questions: List[GamePlayQuestionResponse]
+    total_questions: int # Actual number of questions in this game
+# --- END NEW SCHEMAS ---

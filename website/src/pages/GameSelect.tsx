@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, BookOpen, Globe, Lightbulb, Film, Dices, Users, Copy, Search, Music, Map, Trophy, Utensils, BriefcaseMedical, Building2, PenTool, Landmark, Languages, LucideIcon, Ship, BookText, Loader2, AlertCircle // Added Loader2, AlertCircle
+  ArrowLeft, BookOpen, Globe, Lightbulb, Film, Dices, Users, Copy, Search, Music, Map, Trophy, Utensils, BriefcaseMedical, Building2, PenTool, Landmark, Languages, LucideIcon, Ship, BookText, Loader2, AlertCircle
 } from 'lucide-react';
 import Header from '@/components/Header';
 import PirateButton from '@/components/PirateButton';
@@ -12,14 +12,13 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Skeleton } from '@/components/ui/skeleton';
 import GameSettings from '@/components/GameSettings';
-import { createGameSession } from '@/services/gameApi'; // createGameSession is used HERE now
+import { createGameSession } from '@/services/gameApi';
 import { fetchPacks } from '@/services/packApi';
 import { ApiPackResponse, GameCreationPayload, ApiGameSessionResponse } from '@/types/apiTypes';
 
 // --- Icon Mapping ---
-// Helper to get an icon based on pack name (case-insensitive partial match)
 const getIconForPack = (packName: string): React.ReactNode => {
     const lowerName = packName.toLowerCase();
     if (lowerName.includes("history")) return <BookOpen className="h-6 w-6 text-pirate-navy" />;
@@ -27,7 +26,7 @@ const getIconForPack = (packName: string): React.ReactNode => {
     if (lowerName.includes("entertainment")) return <Film className="h-6 w-6 text-pirate-navy" />;
     if (lowerName.includes("music")) return <Music className="h-6 w-6 text-pirate-navy" />;
     if (lowerName.includes("geography")) return <Map className="h-6 w-6 text-pirate-navy" />;
-    if (lowerName.includes("sport")) return <Trophy className="h-6 w-6 text-pirate-navy" />; // Match "sports" or "sport"
+    if (lowerName.includes("sport")) return <Trophy className="h-6 w-6 text-pirate-navy" />;
     if (lowerName.includes("food") || lowerName.includes("drink")) return <Utensils className="h-6 w-6 text-pirate-navy" />;
     if (lowerName.includes("medicine")) return <BriefcaseMedical className="h-6 w-6 text-pirate-navy" />;
     if (lowerName.includes("architecture")) return <Building2 className="h-6 w-6 text-pirate-navy" />;
@@ -49,7 +48,6 @@ interface CategoryCardProps {
   onClick: () => void;
 }
 
-// CategoryCard component remains the same
 const CategoryCard: React.FC<CategoryCardProps> = ({ title, icon, description, onClick }) => {
   return (
     <div onClick={onClick} className="cursor-pointer">
@@ -58,7 +56,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({ title, icon, description, o
           {icon}
         </div>
         <h3 className="font-pirate text-xl text-pirate-navy mb-2">{title}</h3>
-        <p className="text-pirate-navy/70 text-sm">{description || "Test your knowledge in this category!"}</p> {/* Added default desc */}
+        <p className="text-pirate-navy/70 text-sm">{description || "Test your knowledge in this category!"}</p>
       </Card>
     </div>
   );
@@ -140,7 +138,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
 
   const getBackLink = () => {
     if (mode === 'solo') return '/';
-    if (role === 'captain') return '/crew'; // Captain always goes back to role select from here
+    if (role === 'captain') return '/crew';
     return '/crew';
   };
 
@@ -168,7 +166,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
   const handleGameSettingsSubmit = async (gameSettings: {
     numberOfQuestions: number;
     timePerQuestion: number;
-    focus: string; // Keep focus even if not used in API payload yet
+    focus: string;
   }) => {
     if (!selectedPack) {
       toast.error("No pack selected.");
@@ -183,41 +181,38 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
 
     const payload: GameCreationPayload = {
       pack_id: selectedPack.id,
-      max_participants: mode === 'solo' ? 1 : 10, // Set max participants for solo
+      max_participants: mode === 'solo' ? 1 : 10,
       question_count: gameSettings.numberOfQuestions,
       time_limit_seconds: gameSettings.timePerQuestion,
     };
 
     try {
       console.log("Calling createGameSession with:", payload, hostUserId);
-      const createdGame: ApiGameSessionResponse = await createGameSession(payload, hostUserId); // Ensure type
+      const createdGame: ApiGameSessionResponse = await createGameSession(payload, hostUserId);
       console.log("Game created successfully:", createdGame);
 
       const newGameCode = createdGame.code;
-
-      // --- *** MODIFICATION: Navigate solo to countdown, crew to waiting *** ---
       let targetPath: string;
+
       if (mode === 'solo') {
-          // Solo mode goes directly to countdown
           targetPath = `/countdown`;
-          // Pass necessary info for gameplay screen via state
           navigate(targetPath, {
             state: {
-              gameId: createdGame.id, // Pass game ID
-              totalQuestions: createdGame.question_count // Pass question count
+              gameId: createdGame.id,
+              packId: selectedPack.id, // Pass packId
+              totalQuestions: createdGame.question_count // Use count from response
             }
           });
-      } else {
-          // Crew mode goes to waiting room
+      } else { // Crew mode
           targetPath = `/crew/waiting/${role}?gameCode=${newGameCode}`;
           navigate(targetPath, {
             state: {
               gameSession: createdGame,
               categoryName: selectedPack.name,
+              packId: selectedPack.id // Pass packId
             }
           });
       }
-      // --- *** END MODIFICATION *** ---
 
     } catch (error) {
       console.error("Failed to create game:", error);
@@ -290,7 +285,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
           {getPageTitle() && <h1 className="pirate-heading text-3xl md:text-4xl mb-3">{getPageTitle()}</h1>}
           {getPageDescription() && <p className="text-pirate-navy/80 mb-8">{getPageDescription()}</p>}
 
-          {/* Conditional Rendering Logic (Loading, Error, Categories, Settings) */}
+          {/* Conditional Rendering Logic */}
           {isLoadingPacks ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-[calc(100vh-350px)]">
               {[...Array(6)].map((_, i) => (
@@ -312,8 +307,8 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
                 </PirateButton>
             </div>
           ) : !selectedPack ? (
+            // Category Selection View
             <>
-              {/* Search Input */}
               <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-pirate-navy/50" />
                 <Input
@@ -323,7 +318,6 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              {/* Category Grid */}
                <ScrollArea className="h-[calc(100vh-350px)] pr-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredPacks.map((pack) => (
@@ -335,7 +329,6 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
                       onClick={() => handlePackSelect(pack)}
                     />
                   ))}
-                  {/* Empty/No Results States */}
                   {filteredPacks.length === 0 && availablePacks.length > 0 && !isLoadingPacks && (
                     <div className="col-span-full text-center py-10">
                       <p className="text-pirate-navy/60 text-lg">No categories match your search</p>
@@ -352,20 +345,18 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
               </ScrollArea>
             </>
           ) : (
-             // Game Settings
+             // Game Settings View
             <GameSettings
               category={{
                  title: selectedPack.name,
                  icon: getIconForPack(selectedPack.name),
                  description: selectedPack.description || '',
                  slug: selectedPack.name.toLowerCase().replace(/\s+/g, '-'),
-                 focuses: [] // Add focuses if your API provides them
+                 focuses: []
               }}
               onSubmit={handleGameSettingsSubmit}
               mode={mode}
               role={role}
-              // You could pass isCreatingGame here if GameSettings needs a disabled state
-              // disabled={isCreatingGame}
             />
           )}
 
@@ -379,7 +370,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
         </div>
       </main>
 
-      {/* Footer remains the same */}
+      {/* Footer */}
        <footer className="ocean-bg py-8">
         <div className="container mx-auto text-center text-white relative z-10">
           <p className="font-pirate text-xl mb-2">Choose yer category, matey!</p>

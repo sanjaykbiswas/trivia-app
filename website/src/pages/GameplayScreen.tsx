@@ -1,234 +1,315 @@
 // src/pages/GameplayScreen.tsx
-import React, { useState, useEffect, useRef, useMemo } from 'react'; // Added useMemo
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'; // Added useLocation
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import GameHeader from '@/components/GameHeader';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionTimer from '@/components/QuestionTimer';
-// *** MODIFICATION: Import Player and PlayerResult type ***
-import { Player, PlayerSelection, PlayerResult } from '@/types/gameTypes';
-import { mockQuestions, getPlayerById, getQuestionTextClass, getPirateNameForUserId } from '@/utils/gamePlayUtils'; // Removed mockPlayers import
-import { useGameTimer } from '@/hooks/useGameTimer'; // Import timer hook
-import { useQuestionManager } from '@/hooks/useQuestionManager'; // Import question manager hook
+import { Player, PlayerSelection, PlayerResult, Question, Answer } from '@/types/gameTypes';
+import { getGamePlayQuestions } from '@/services/gameApi';
+import { getPlayerById, getQuestionTextClass, getPirateNameForUserId } from '@/utils/gamePlayUtils';
+import { useGameTimer } from '@/hooks/useGameTimer';
+import { useQuestionManager } from '@/hooks/useQuestionManager';
+import { toast } from 'sonner';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import PirateButton from '@/components/PirateButton'; // Import PirateButton for error state
 
 const GameplayScreen: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const location = useLocation(); // Get location state
-  const gameId = location.state?.gameId as string | undefined; // Get gameId from state
-  const totalQuestionsParam = location.state?.totalQuestions as number | undefined; // Get totalQuestions from state
-  const gameCode = searchParams.get('gameCode'); // Check if it's a crew game
+
+  // --- Get Data from Navigation State ---
+  const gameId = location.state?.gameId as string | undefined;
+  const totalQuestionsSetting = location.state?.totalQuestions as number | undefined;
+  const packId = location.state?.packId as string | undefined;
+  const gameCode = searchParams.get('gameCode');
   const isSoloMode = !gameCode;
 
-  const defaultTotalQuestions = 10; // Define default centrally if needed
-  const totalQuestions = totalQuestionsParam ?? defaultTotalQuestions;
+  // --- State for Fetched Questions and Loading/Error ---
+  const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
+  const [questionFetchError, setQuestionFetchError] = useState<string | null>(null);
+  const [fetchedCorrectAnswers, setFetchedCorrectAnswers] = useState<Record<string, string>>({}); // Store correct answers by question ID
+
+  // --- Fetch Game Questions ---
+  useEffect(() => {
+    if (!gameId) {
+      console.error("GameplayScreen: Missing gameId in location state!");
+      toast.error("Game Error", { description: "Could not find the game session ID. Returning home." });
+      navigate('/');
+      return;
+    }
+
+    const fetchQuestions = async () => {
+      setIsLoadingQuestions(true);
+      setQuestionFetchError(null);
+      console.log(`Fetching questions for game ID: ${gameId}`);
+      try {
+        const response = await getGamePlayQuestions(gameId);
+        console.log("API response for questions:", response);
+
+        // --- **CORRECTNESS FIX**: Need original answers *before* formatting ---
+        // We need the backend to tell us the correct answer text explicitly,
+        // as we cannot reliably deduce it after shuffling on the frontend.
+        //
+        // **ASSUMPTION FOR NOW:** Backend MUST return the correct answer text
+        // alongside the question data or options (e.g., in a separate field).
+        // Let's assume `ApiGamePlayQuestion` now has an optional `correct_answer_text` field.
+        // If not, this correctness logic will fail.
+
+        const correctAnswersMap: Record<string, string> = {}; // question_id -> correct_answer_text
+        // Populate this map if the backend provides the correct answer text.
+        // Example (assuming backend adds 'correct_answer_text'):
+        // response.questions.forEach(apiQ => {
+        //   if (apiQ.correct_answer_text) {
+        //      correctAnswersMap[apiQ.question_id] = apiQ.correct_answer_text;
+        //   }
+        // });
+        // setFetchedCorrectAnswers(correctAnswersMap); // Store for later use
+
+        // Map API response to frontend Question type
+        const formattedQuestions: Question[] = response.questions.map((apiQ): Question => {
+            // Find the ID corresponding to the correct answer text *before* shuffling
+            // This is still problematic if backend doesn't provide correct answer text
+            const correctAnswerText = fetchedCorrectAnswers[apiQ.question_id] || ""; // Get correct text if available
+            let correctAnswerId = "";
+
+            const answersWithOptions: Answer[] = apiQ.options.map((optionText, optionIndex): Answer => {
+                const answerId = `${apiQ.question_id}-${optionIndex}`;
+                // Check if this option is the correct one
+                // This comparison is flawed without backend confirmation
+                if (optionText === correctAnswerText) {
+                   correctAnswerId = answerId;
+                }
+                return {
+                    id: answerId,
+                    text: optionText,
+                    letter: String.fromCharCode(65 + optionIndex), // A, B, C, D...
+                };
+            });
+
+            // If we couldn't identify the correct answer ID, log a warning
+            if (!correctAnswerId && correctAnswerText) {
+                console.warn(`Could not find ID for correct answer text "${correctAnswerText}" in options for question ${apiQ.question_id}`);
+            }
+
+            return {
+                id: apiQ.question_id,
+                text: apiQ.question_text,
+                category: packId || 'Trivia',
+                answers: answersWithOptions, // Use the mapped answers
+                correctAnswer: correctAnswerId, // Use the ID found above (might be empty)
+                timeLimit: apiQ.time_limit,
+            };
+        });
+
+        console.log("Formatted questions:", formattedQuestions);
+        setGameQuestions(formattedQuestions);
+
+      } catch (error) {
+        console.error("Failed to fetch game questions:", error);
+        const errorMsg = error instanceof Error ? error.message : "Could not load questions.";
+        setQuestionFetchError(errorMsg);
+        toast.error("Failed to Load Questions", { description: errorMsg });
+      } finally {
+        setIsLoadingQuestions(false);
+      }
+    };
+
+    fetchQuestions();
+  }, [gameId, navigate, packId]); // Depend on gameId
 
   // --- State Managed by Hooks ---
   const {
-    currentQuestion: question, // Renamed for convenience
+    currentQuestion: question,
     currentQuestionIndex,
     isLastQuestion,
     nextQuestion,
-    totalQuestionsToPlay // Get the actual number being played
-  } = useQuestionManager(mockQuestions, totalQuestions); // Use the question manager hook - using mock questions for now
+    totalQuestionsToPlay
+  } = useQuestionManager(gameQuestions, totalQuestionsSetting ?? gameQuestions.length);
 
-  // --- Local State for Gameplay Interaction ---
+  // --- Local State ---
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [score, setScore] = useState(0); // Player's score for this game
-  // Removed useState for players - we only need the current user for solo
+  const [score, setScore] = useState(0);
   const [playerSelections, setPlayerSelections] = useState<PlayerSelection[]>([]);
-  // Removed playerScores - only track the single player's score for solo
   const [maxHeight, setMaxHeight] = useState<number | null>(null);
   const answerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const navigate = useNavigate();
-
-  // --- Get Current User Info (for Solo) ---
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
 
+  // --- User Info Effect ---
   useEffect(() => {
     const storedUserId = localStorage.getItem('tempUserId');
     const storedName = localStorage.getItem('tempUserDisplayName');
     if (storedUserId) {
       setCurrentUserId(storedUserId);
-      setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId)); // Fallback name generation
+      setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId));
     } else {
       console.error("Gameplay: User ID not found!");
-      // Handle error - maybe navigate back
+      toast.error("Session Error", { description: "User ID missing. Please restart." });
       navigate('/');
     }
   }, [navigate]);
 
+  // --- Timer Hook & Submit Logic ---
+  const handleSubmit = useCallback(() => {
+    if (isAnswered || !question || !currentUserId) return;
 
-  // --- Timer Hook ---
-  // The 'handleSubmit' function will now also act as the onTimeout callback
+    setIsAnswered(true);
+    // --- **CORRECTNESS FIX**: Compare selected ID with the identified correct ID ---
+    const isAnswerCorrect = selectedAnswer === question.correctAnswer;
+    setIsCorrect(isAnswerCorrect);
+    console.log(`Selected ID: ${selectedAnswer}, Correct ID: ${question.correctAnswer}, Is Correct: ${isAnswerCorrect}`);
+
+    if (isAnswerCorrect) {
+      setScore(prev => prev + 1); // Basic scoring
+    }
+
+    setTimeout(() => {
+      if (!isLastQuestion) {
+        nextQuestion();
+      } else {
+        let playerResultsArray: PlayerResult[] = [];
+        if (isSoloMode && currentUserId && currentUserDisplayName !== null) {
+          playerResultsArray = [{ id: currentUserId, name: currentUserDisplayName, score: score }];
+        } else {
+          console.warn("Crew mode results calculation needed.");
+          if (currentUserId && currentUserDisplayName !== null) {
+            playerResultsArray = [{ id: currentUserId, name: currentUserDisplayName, score: score }];
+          }
+        }
+        const resultsPath = gameCode ? `/results?gameCode=${gameCode}` : '/results';
+        navigate(resultsPath, { state: { results: playerResultsArray } });
+      }
+    }, 3000);
+  }, [isAnswered, question, currentUserId, isLastQuestion, nextQuestion, isSoloMode, currentUserDisplayName, score, gameCode, navigate, selectedAnswer]);
+
   const timeRemaining = useGameTimer(
-    question?.timeLimit || 10, // Use question's time limit, provide default
-    isAnswered,               // Pause when answered
-    () => handleSubmit()      // Call handleSubmit on timeout
+    question?.timeLimit || 30,
+    isAnswered,
+    handleSubmit
   );
 
   // --- Effects ---
-  // Reset state for new question (triggered by `question` changing via hook)
   useEffect(() => {
     if (question) {
       setSelectedAnswer(null);
       setIsAnswered(false);
-      setIsCorrect(false); // Reset correctness indicator
-      setPlayerSelections([]); // Reset selections for the new question
-      // Height calculation reset is now handled within its own effect
+      setIsCorrect(false);
+      setPlayerSelections([]);
+      setMaxHeight(null);
+      answerRefs.current = [];
     }
-  }, [question]); // Depend on the question object from the hook
+  }, [question]);
 
-  // Calculate equal heights for answer boxes
   useEffect(() => {
-      if (!question) return; // Don't run if there's no question
+    if (!question || !question.answers) return;
 
-    setMaxHeight(null);
+    // Ensure refs array is ready for the current number of answers
     answerRefs.current = answerRefs.current.slice(0, question.answers.length);
 
     const timer = setTimeout(() => {
-      // Check refs array length against the *current* question's answers
-      if (answerRefs.current.length === question.answers.length) {
-        let highest = 0;
-        answerRefs.current.forEach(ref => {
-          if (ref && ref.offsetHeight > highest) {
-            highest = ref.offsetHeight;
-          }
-        });
-        if (highest > 0) {
-          setMaxHeight(highest);
+        if (answerRefs.current.length === question.answers.length) {
+            let highest = 0;
+            answerRefs.current.forEach(ref => {
+                if (ref && ref.offsetHeight > highest) {
+                    highest = ref.offsetHeight;
+                }
+            });
+            if (highest > 0) {
+                setMaxHeight(highest);
+            } else {
+                console.warn("Could not determine answer height after delay.");
+            }
         }
-      }
-    }, 100);
+    }, 150);
 
     return () => clearTimeout(timer);
-  }, [question?.answers]); // Depend specifically on the answers array of the current question
-
+  }, [question]);
 
   // --- Event Handlers ---
   const handleAnswerSelect = (answerId: string) => {
     if (!isAnswered) {
       setSelectedAnswer(answerId);
-      // Store the current player's selection
-       setPlayerSelections(prev => {
-        const newSelections = [...prev];
-        // In solo, player ID comes from state; use 'p1' as placeholder if needed, but currentUserId is better
-        const playerId = currentUserId || 'p1';
-        const existingIndex = newSelections.findIndex(s => s.playerId === playerId);
-        if (existingIndex >= 0) newSelections[existingIndex].answerId = answerId;
-        else newSelections.push({ playerId: playerId, answerId });
-        return newSelections;
-      });
-
-      // *** MODIFICATION: Only simulate AI players in crew mode ***
-      if (!isSoloMode) {
-          // Simulate other players (only relevant for potential future crew mode use here)
-          // This logic should ideally move to a crew-specific gameplay component or be fetched
-           setTimeout(() => {
-            // Placeholder for fetching/simulating other players in crew mode
-            console.log("Simulating other players (Crew Mode only)");
-           }, Math.random() * 1000 + 500);
+      if (currentUserId) {
+        setPlayerSelections([{ playerId: currentUserId, answerId }]);
       }
     }
-  };
-
-  // Function to handle moving to next question OR ending game
-  const advanceGame = () => {
-    if (!isLastQuestion) {
-      nextQuestion(); // Use the function from the hook
-    } else {
-      // End the game - navigate to results
-      // *** MODIFICATION: Change type to PlayerResult[] ***
-      let playerResultsArray: PlayerResult[] = [];
-
-      // *** MODIFICATION: Build results array based on mode ***
-      if (isSoloMode && currentUserId && currentUserDisplayName !== null) {
-        // Solo Mode: Use current user's data
-        playerResultsArray = [{
-          id: currentUserId,
-          name: currentUserDisplayName, // Use the display name from state
-          score: score // Use the final score from state - This is now valid
-        }];
-      } else {
-        // Crew Mode: This part needs proper implementation if used
-        // You would fetch final participant scores from the backend or use websocket data
-        // For now, it might use outdated/mock data if called in crew mode context
-        console.warn("Crew mode results calculation not fully implemented in this component.");
-        // Placeholder using current state (might be incorrect for crew)
-        if (currentUserId && currentUserDisplayName !== null) {
-            // Ensure this object also matches PlayerResult
-            playerResultsArray = [{ id: currentUserId, name: currentUserDisplayName, score: score }];
-        }
-      }
-
-      console.log("Navigating to Results with:", playerResultsArray); // Debug log
-      // Pass gameCode only if it exists (i.e., crew mode)
-      const resultsPath = gameCode ? `/results?gameCode=${gameCode}` : '/results';
-      navigate(resultsPath, { state: { results: playerResultsArray } });
-    }
-  };
-
-  // Handles both submit button click and timer timeout
-  const handleSubmit = () => {
-    if (isAnswered || !question || !currentUserId) return; // Prevent double submission or running without a question
-
-    setIsAnswered(true); // Mark as answered FIRST
-    const isAnswerCorrect = selectedAnswer === question.correctAnswer;
-    setIsCorrect(isAnswerCorrect);
-
-    // Update score for the current player (solo)
-    if (isAnswerCorrect) {
-      setScore(prev => prev + 1);
-    }
-
-    // No AI player score updates needed for solo mode
-
-    // Wait 3 seconds before advancing
-    setTimeout(() => {
-      advanceGame();
-    }, 3000);
   };
 
   // --- Derived Data ---
-  // Group player selections by answer (Only needed visually for crew mode)
   const playerSelectionsByAnswer = useMemo(() => {
-      if (isSoloMode || !question) return {}; // Don't calculate for solo
-
-      // Placeholder: In crew mode, this needs real data fetched from backend/websockets
-      const selections: Record<string, Player[]> = {}; // Using Player type here is fine for display
-       // Example structure if you had `crewMembers` state:
-       // question.answers.forEach(answer => {
-       //   selections[answer.id] = crewMembers.filter(m => playerSelections.find(ps => ps.playerId === m.id && ps.answerId === answer.id));
-       // });
+      if (isSoloMode || !question) return {};
+      const selections: Record<string, Player[]> = {};
       return selections;
-  }, [isSoloMode, question, playerSelections /*, crewMembers */ ]); // Add crewMembers if implemented
+  }, [isSoloMode, question, playerSelections]);
 
-
-  // Determine question text class (requires question to exist)
-  const questionTextClass = question ? getQuestionTextClass(question.text) : 'text-2xl md:text-3xl'; // Default class
+  const questionTextClass = question ? getQuestionTextClass(question.text) : 'text-2xl md:text-3xl';
 
   // --- Render ---
-  // Handle loading state or end of questions more gracefully
-  if (!question || !currentUserId) {
-     // Could show a loading spinner or a "Game Over" message before navigation
-    return <div className="min-h-screen flex items-center justify-center">Loading question...</div>;
+  if (isLoadingQuestions) {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-pirate-navy mb-4" />
+            <p className="text-pirate-navy/80">Loading Questions...</p>
+        </div>
+    );
   }
 
+  if (questionFetchError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <Card className="p-6 text-center border-destructive bg-destructive/10">
+            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-destructive mb-2">Error Loading Game</h2>
+            <p className="text-destructive/80 mb-4">{questionFetchError}</p>
+            <PirateButton onClick={() => navigate('/')} variant="secondary">
+                Return Home
+            </PirateButton>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!question || !currentUserId) {
+    // Check if fetching finished but yielded no questions
+    if (!isLoadingQuestions && gameQuestions.length === 0) {
+      return (
+         <div className="min-h-screen flex flex-col items-center justify-center p-4">
+           <Card className="p-6 text-center border-pirate-navy/20 bg-pirate-parchment">
+               <AlertTriangle className="h-12 w-12 text-pirate-navy/50 mx-auto mb-4" />
+               <h2 className="text-xl font-semibold text-pirate-navy mb-2">No Questions Found</h2>
+               <p className="text-pirate-navy/80 mb-4">
+                 There seem to be no questions available for this game session.
+               </p>
+               <PirateButton onClick={() => navigate('/')} variant="secondary">
+                   Return Home
+               </PirateButton>
+           </Card>
+         </div>
+       );
+    }
+    // Otherwise, it might be an intermediate state or an unexpected issue
+    console.log("GameplayScreen: No current question or user ID available. Current index:", currentQuestionIndex, "Total fetched:", gameQuestions.length);
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  // --- Main Gameplay Render ---
   return (
     <div className="min-h-screen flex flex-col">
       <GameHeader />
 
       <main className="flex-1 container mx-auto px-4 py-6 flex flex-col">
         <div className="text-center mb-2">
-          <h2 className="font-pirate text-3xl text-pirate-navy">
-            {question.category}
+          <h2 className="font-pirate text-3xl text-pirate-navy capitalize">
+             {question.category.replace(/-/g, ' ')}
           </h2>
-          {/* Use state from hook for question count */}
           <p className="text-pirate-navy/80 font-medium">Question {currentQuestionIndex + 1} of {totalQuestionsToPlay}</p>
         </div>
 
-        {/* Use timeRemaining from hook */}
         <QuestionTimer
           timeRemaining={timeRemaining}
           totalTime={question.timeLimit}
@@ -240,28 +321,26 @@ const GameplayScreen: React.FC = () => {
             answers={question.answers}
             selectedAnswer={selectedAnswer}
             isAnswered={isAnswered}
-            correctAnswer={question.correctAnswer}
+            correctAnswer={question.correctAnswer} // Pass the identified correct answer ID
             onAnswerSelect={handleAnswerSelect}
-            // *** MODIFICATION: Pass empty object for solo selections ***
-            playerSelectionsByAnswer={isSoloMode ? {} : playerSelectionsByAnswer}
+            playerSelectionsByAnswer={playerSelectionsByAnswer}
             maxHeight={maxHeight}
             questionTextClass={questionTextClass}
             answerRefs={answerRefs}
             answerButtonProps={{
-              onSubmit: handleSubmit, // Submit handler remains the same
-              disabled: !selectedAnswer && !isAnswered, // Disable logic remains
+              onSubmit: handleSubmit,
+              disabled: !selectedAnswer && !isAnswered,
               isAnswered: isAnswered,
-              isCorrect: isCorrect,
+              isCorrect: isCorrect, // Pass correctness state
             }}
           />
         </div>
       </main>
 
-      {/* Styles remain the same */}
       <style>
         {`
-        @keyframes shake { /* Keep shake animation */ 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
-        .animate-shake { /* Keep shake animation */ animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         `}
       </style>
 

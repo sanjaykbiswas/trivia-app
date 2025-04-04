@@ -29,6 +29,8 @@ from ..repositories.user_pack_history_repository import UserPackHistoryRepositor
 
 # Utils
 from ..utils import ensure_uuid
+# --- ADD API SCHEMA IMPORT ---
+from ..api.schemas.game import GamePlayQuestionResponse # Import the new response schema
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -70,7 +72,6 @@ class GameService:
     # --- END MODIFIED __init__ ---
 
     # create_game_session remains unchanged
-
     async def create_game_session(
         self,
         host_user_id: str,
@@ -322,6 +323,70 @@ class GameService:
         return selected_questions_for_game
     # --- END MODIFIED _select_questions_for_game ---
 
+    # --- NEW METHOD: get_questions_for_play ---
+    async def get_questions_for_play(self, game_session_id: str) -> List[GamePlayQuestionResponse]:
+        """
+        Retrieves the pre-selected questions for an active game session,
+        formats them with shuffled options for the frontend.
+        """
+        game_session_id = ensure_uuid(game_session_id)
+        game_session = await self.game_session_repo.get_by_id(game_session_id)
+        if not game_session:
+            raise ValueError(f"Game session {game_session_id} not found.")
+        # Potentially add check: if game_session.status != GameStatus.ACTIVE: raise ValueError("Game is not active.")
+
+        # Get the game questions linked to this session, ordered by index
+        game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
+        if not game_questions:
+            raise ValueError(f"No questions found linked to game session {game_session_id}.")
+
+        # Fetch original question details and incorrect answers concurrently
+        fetch_tasks = []
+        for gq in game_questions:
+            fetch_tasks.append(asyncio.gather(
+                self.question_repo.get_by_id(gq.question_id),
+                self.incorrect_answers_repo.get_by_question_id(gq.question_id),
+                return_exceptions=True # Handle potential errors for individual questions
+            ))
+
+        fetched_data = await asyncio.gather(*fetch_tasks)
+
+        # Prepare the response list
+        play_questions: List[GamePlayQuestionResponse] = []
+        for i, (gq, data) in enumerate(zip(game_questions, fetched_data)):
+            original_question, incorrect_answers_record = data
+
+            if isinstance(original_question, Exception) or not original_question:
+                logger.error(f"Failed to fetch original question {gq.question_id} for game {game_session_id}: {original_question}")
+                # Option: Skip this question or raise a more specific error? Let's skip for now.
+                continue
+            if isinstance(incorrect_answers_record, Exception):
+                 logger.error(f"Failed to fetch incorrect answers for {gq.question_id}: {incorrect_answers_record}")
+                 incorrect_options = [] # Default to empty if fetch fails
+            else:
+                 incorrect_options = incorrect_answers_record.incorrect_answers if incorrect_answers_record else []
+
+
+            # Combine and shuffle options
+            all_options = [original_question.answer] + incorrect_options
+            random.shuffle(all_options)
+
+            # Create response object
+            play_question = GamePlayQuestionResponse(
+                index=gq.question_index,
+                question_id=gq.question_id,
+                question_text=original_question.question,
+                options=all_options,
+                time_limit=game_session.time_limit_seconds # Use game's global time limit
+            )
+            play_questions.append(play_question)
+
+        # Final sort by index just in case fetches were out of order (shouldn't happen with zip)
+        play_questions.sort(key=lambda q: q.index)
+
+        return play_questions
+    # --- END NEW METHOD ---
+
 
     # _advance_to_next_question remains unchanged
     async def _advance_to_next_question(
@@ -400,8 +465,9 @@ class GameService:
                  if start_time.tzinfo is None: start_time = start_time.replace(tzinfo=timezone.utc)
                  try:
                      seconds_taken = (now - start_time).total_seconds()
-                     time_limit = max(game_session.time_limit_seconds, 1) # Avoid division by zero
-                     time_factor = max(0, 1 - (seconds_taken / time_limit))
+                     # Use the game session's time limit here for scoring
+                     time_limit = max(game_session.time_limit_seconds, 1) # Avoid division by zero if limit is 0
+                     time_factor = max(0, 1 - (seconds_taken / time_limit)) if time_limit > 0 else 1 # Score doesn't decrease if no time limit
                      score = int(max_score * time_factor)
                      score = max(score, 100) # Minimum score for correct answer
                  except Exception as e: logger.error(f"Time calculation error: {e}"); score = 100

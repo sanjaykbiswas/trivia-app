@@ -5,8 +5,10 @@ import {
     ApiGameSessionResponse,
     GameCreationPayload,
     ApiGameJoinRequest,
-    ApiParticipantListResponse, // Import new type
-    ApiGameStartResponse,      // Import new type
+    ApiParticipantListResponse,
+    ApiGameStartResponse,
+    // --- ADDED IMPORT ---
+    ApiGamePlayQuestionListResponse
 } from '@/types/apiTypes';
 
 /**
@@ -217,6 +219,54 @@ export const startGame = async (gameId: string, hostUserId: string): Promise<Api
         throw error;
     }
 };
+
+// --- NEW FUNCTION: getGamePlayQuestions ---
+/**
+ * Fetches the actual questions prepared for a specific game session.
+ * @param gameId - The ID of the game session.
+ * @returns A promise resolving to the list of questions for gameplay.
+ * @throws If the API request fails.
+ */
+export const getGamePlayQuestions = async (gameId: string): Promise<ApiGamePlayQuestionListResponse> => {
+    if (!gameId || typeof gameId !== 'string' || gameId.length < 5) {
+      console.error("Invalid gameId provided to getGamePlayQuestions:", gameId);
+      throw new Error("Invalid game ID provided.");
+    }
+    const url = `${API_BASE_URL}/games/${gameId}/play-questions`;
+    console.log("Fetching gameplay questions for game:", gameId, "URL:", url);
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+
+        console.log("API Response Status (Get Play Questions):", response.status);
+        const responseData = await response.json();
+        // console.log("API Response Data (Get Play Questions):", responseData); // Verbose logging
+
+        if (!response.ok) {
+            const errorDetail = responseData?.detail || response.statusText || `HTTP error ${response.status}`;
+            console.error("API Error Detail (Get Play Questions):", errorDetail);
+            throw new Error(`Failed to fetch gameplay questions: ${errorDetail}`);
+        }
+
+        // Validate response structure
+        if (!responseData || typeof responseData.game_id !== 'string' || !Array.isArray(responseData.questions) || typeof responseData.total_questions !== 'number') {
+            console.error("Invalid gameplay questions response structure:", responseData);
+            throw new Error("Received invalid gameplay questions data from server.");
+        }
+
+        return responseData as ApiGamePlayQuestionListResponse;
+
+    } catch (error) {
+        console.error("Error fetching gameplay questions:", error);
+        throw error;
+    }
+};
+// --- END NEW FUNCTION ---
 
 
 // --- END OF FILE ---
