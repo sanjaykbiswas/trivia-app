@@ -57,6 +57,7 @@ const WaitingRoom: React.FC = () => {
   const [packName, setPackName] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initializationError, setInitializationError] = useState<string | null>(null);
+  const [isStartingGame, setIsStartingGame] = useState(false); // <-- ADD THIS STATE
 
 
   // Refs
@@ -313,12 +314,30 @@ const WaitingRoom: React.FC = () => {
 
   // --- Other Handlers ---
   const handleStartGame = async () => {
-    // No change needed here
     if (!gameSession?.id || !currentUserId) { toast.error("Error", { description: "Cannot start game. Missing info." }); return; }
-    if (role === 'captain' && gameCode && crewMembers.length < 1) { toast.error("Need More Crew!", { description: "Usually, at least one other pirate must join." }); return; }
-    setIsInitializing(true); // Use initializing state for loading
-    try { await startGame(gameSession.id, currentUserId); }
-    catch (error) { console.error("Start game error:", error); toast.error("Start Failed", { description: error instanceof Error ? error.message : "Could not start." }); setIsInitializing(false); }
+     // Allow starting with 1 for easier testing if needed, adjust as necessary
+     // Original check: if (role === 'captain' && gameCode && crewMembers.length < 1) { toast.error("Need More Crew!", { description: "Usually, at least one other pirate must join." }); return; }
+     if (role === 'captain' && gameCode && crewMembers.length < 1) {
+          console.warn("Starting game with only the captain (less than 1 other member).")
+          // toast.warning("Starting Game Solo?", { description: "Usually, at least one other pirate must join." });
+          // return; // Uncomment return to enforce > 1 player
+     }
+
+    // setIsInitializing(true); // <-- REMOVE THIS LINE
+    setIsStartingGame(true);   // <-- USE THE NEW STATE
+
+    try {
+        await startGame(gameSession.id, currentUserId);
+        // Navigation will happen via WebSocket message ('game_started')
+        // No need to setIsStartingGame(false) here on success
+    }
+    catch (error) {
+        console.error("Start game error:", error);
+        toast.error("Start Failed", { description: error instanceof Error ? error.message : "Could not start." });
+        // setIsInitializing(false); // <-- REMOVE THIS LINE
+        setIsStartingGame(false);    // <-- ADD THIS LINE (reset on error)
+    }
+    // No finally block needed here for setIsStartingGame, as navigation handles the success case.
   };
 
   const handleEditNameSubmit = async (data: EditNameFormValues) => {
@@ -409,21 +428,33 @@ const WaitingRoom: React.FC = () => {
           </div>
 
           {/* Start Button / Waiting Message */}
-          {role === 'captain' ? (
-            <div className="mt-10">
-               <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!canStartGame || isInitializing}>
-                 {isInitializing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Anchor className="h-5 w-5" />}
-                 {isInitializing ? 'Initializing...' : 'All aboard? Set sail!'}
-               </PirateButton>
-               {!isInitializing && crewMembers.length < 1 && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
-            </div>
-          ) : ( // Scallywag's view
-            <div className="mt-10 text-center text-pirate-navy/80">
-              <p>Waiting for {hostDisplayName} to start the voyage...</p>
-               <div className="animate-pulse mt-2 text-2xl">{wsStatus === 'connected' ? '⚓️' : <Loader2 className="inline-block h-6 w-6 animate-spin"/>}</div>
-               {wsStatus !== 'connected' && <p className="text-xs mt-1">(Connecting...)</p>}
-            </div>
-          )}
+           {role === 'captain' ? (
+             <div className="mt-10">
+                <PirateButton
+                  onClick={handleStartGame}
+                  className="w-full py-3 text-lg"
+                  variant="accent"
+                  // Disable based on game state AND the new starting state
+                  disabled={!canStartGame || isInitializing || isStartingGame}
+                >
+                  {/* Show different loading indicator based on state */}
+                  {isInitializing ? <Loader2 className="h-5 w-5 animate-spin" /> :
+                   isStartingGame ? <Loader2 className="h-5 w-5 animate-spin" /> :
+                   <Anchor className="h-5 w-5" />}
+                  {isInitializing ? 'Initializing...' :
+                   isStartingGame ? 'Setting Sail...' :
+                   'All aboard? Set sail!'}
+                </PirateButton>
+                {/* Keep the crew count warning as is */}
+                {!isInitializing && !isStartingGame && crewMembers.length < 1 && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
+             </div>
+           ) : ( // Scallywag's view
+             <div className="mt-10 text-center text-pirate-navy/80">
+               <p>Waiting for {hostDisplayName} to start the voyage...</p>
+                <div className="animate-pulse mt-2 text-2xl">{wsStatus === 'connected' ? '⚓️' : <Loader2 className="inline-block h-6 w-6 animate-spin"/>}</div>
+                {wsStatus !== 'connected' && <p className="text-xs mt-1">(Connecting...)</p>}
+             </div>
+           )}
         </div>
 
         {/* Collapsible Voyage Details */}

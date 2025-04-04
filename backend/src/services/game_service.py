@@ -195,11 +195,13 @@ class GameService:
         if str(game_session.host_user_id) != str(host_user_id): raise ValueError("Only the host can start the game") # Compare as strings
         if game_session.status != GameStatus.PENDING: raise ValueError(f"Game cannot be started (current status: {game_session.status})")
 
-        # --- ADDED: WebSocket Connection Check for Host ---
-        if not self.connection_manager.is_user_connected(game_id=game_session_id, user_id=host_user_id):
-             logger.warning(f"Host {host_user_id} attempted to start game {game_session_id} but is not connected via WebSocket.")
-             raise ValueError("Host is not connected to the game room.")
-        # --- END ADDED ---
+        # --- REMOVE OR COMMENT OUT THIS BLOCK ---
+        # # --- WebSocket Connection Check for Host ---
+        # if not self.connection_manager.is_user_connected(game_id=game_session_id, user_id=host_user_id):
+        #      logger.warning(f"Host {host_user_id} attempted to start game {game_session_id} but is not connected via WebSocket.")
+        #      raise ValueError("Host is not connected to the game room.")
+        # # --- END WebSocket Connection Check ---
+        # --- END REMOVAL / COMMENTING ---
 
         # 2. Get Participants
         participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
