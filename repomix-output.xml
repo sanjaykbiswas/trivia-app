@@ -126,6 +126,7 @@ backend/
         text_utils.py
       __init__.py
     main.py
+    websocket_manager.py
   tests/
     test_api.py
     test_batch_generator.py
@@ -213,6 +214,7 @@ website/
       use-toast.ts
       useGameTimer.ts
       useQuestionManager.ts
+      useWebSocket.ts
     lib/
       utils.ts
     pages/
@@ -232,6 +234,7 @@ website/
     types/
       apiTypes.ts
       gameTypes.ts
+      websocketTypes.ts
     utils/
       gamePlayUtils.ts
     App.css
@@ -2252,6 +2255,11 @@ __all__ = []
 from fastapi import Depends, Request
 from supabase import AsyncClient
 
+# --- WebSocket Manager Import ---
+from ..websocket_manager import ConnectionManager # <<< ADDED
+# --- End WebSocket Manager Import ---
+
+
 # Ensure repositories are imported FIRST
 from ..repositories.pack_repository import PackRepository
 from ..repositories.question_repository import QuestionRepository
@@ -2261,10 +2269,9 @@ from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_question_repository import GameQuestionRepository
 from ..repositories.user_repository import UserRepository
 from ..repositories.topic_repository import TopicRepository
-# --- ADD HISTORY REPO IMPORTS ---
 from ..repositories.user_question_history_repository import UserQuestionHistoryRepository
 from ..repositories.user_pack_history_repository import UserPackHistoryRepository
-# --- END HISTORY REPO IMPORTS ---
+
 
 # Services
 from ..services.pack_service import PackService
@@ -2279,9 +2286,21 @@ from ..services.user_service import UserService
 
 async def get_supabase_client(request: Request) -> AsyncClient:
     """Get Supabase client from request state."""
+    # Ensure the client exists in state (initialized during lifespan)
+    if not hasattr(request.app.state, 'supabase') or not request.app.state.supabase:
+        raise RuntimeError("Supabase client not initialized or found in app state.")
     return request.app.state.supabase
 
-# --- Repository dependencies ---
+# --- ADD Dependency for ConnectionManager ---
+async def get_connection_manager(request: Request) -> ConnectionManager:
+    """Get the shared ConnectionManager instance from request state."""
+    if not hasattr(request.app.state, 'connection_manager') or not request.app.state.connection_manager:
+        # This should theoretically not happen if lifespan runs correctly
+        raise RuntimeError("ConnectionManager not initialized or found in app state.")
+    return request.app.state.connection_manager
+# --- END ADD ---
+
+# --- Repository dependencies (Unchanged) ---
 async def get_pack_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> PackRepository:
@@ -2322,7 +2341,6 @@ async def get_topic_repository(
 ) -> TopicRepository:
     return TopicRepository(supabase)
 
-# --- ADD HISTORY REPO DEPENDENCIES ---
 async def get_user_question_history_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserQuestionHistoryRepository:
@@ -2332,10 +2350,13 @@ async def get_user_pack_history_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> UserPackHistoryRepository:
     return UserPackHistoryRepository(supabase)
-# --- END HISTORY REPO DEPENDENCIES ---
 
 
-# --- Service dependencies ---
+# --- Service dependencies (Modified to inject ConnectionManager) ---
+
+# Pack, Topic, Difficulty, Seed, Question, IncorrectAnswer services remain unchanged
+# as they don't directly interact with WebSockets in this design.
+
 async def get_pack_service(
     pack_repository: PackRepository = Depends(get_pack_repository)
 ) -> PackService:
@@ -2386,16 +2407,20 @@ async def get_incorrect_answer_service(
         incorrect_answers_repository=incorrect_answers_repository
     )
 
+# --- MODIFIED get_user_service ---
 async def get_user_service(
     user_repository: UserRepository = Depends(get_user_repository),
     game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
-    game_session_repository: GameSessionRepository = Depends(get_game_session_repository)
+    game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
+    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< ADDED
 ) -> UserService:
     return UserService(
         user_repository=user_repository,
         game_participant_repository=game_participant_repository,
-        game_session_repository=game_session_repository
+        game_session_repository=game_session_repository,
+        connection_manager=connection_manager # <<< ADDED
     )
+# --- END MODIFIED get_user_service ---
 
 # --- MODIFIED get_game_service ---
 async def get_game_service(
@@ -2405,10 +2430,9 @@ async def get_game_service(
     question_repository: QuestionRepository = Depends(get_question_repository),
     incorrect_answers_repository: IncorrectAnswersRepository = Depends(get_incorrect_answers_repository),
     user_repository: UserRepository = Depends(get_user_repository),
-    # --- ADD HISTORY REPOS ---
     user_question_history_repository: UserQuestionHistoryRepository = Depends(get_user_question_history_repository),
-    user_pack_history_repository: UserPackHistoryRepository = Depends(get_user_pack_history_repository)
-    # --- END HISTORY REPOS ---
+    user_pack_history_repository: UserPackHistoryRepository = Depends(get_user_pack_history_repository),
+    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< ADDED
 ) -> GameService:
     """Get GameService instance."""
     return GameService(
@@ -2418,10 +2442,9 @@ async def get_game_service(
         question_repository=question_repository,
         incorrect_answers_repository=incorrect_answers_repository,
         user_repository=user_repository,
-        # --- ADD HISTORY REPOS ---
         user_question_history_repository=user_question_history_repository,
-        user_pack_history_repository=user_pack_history_repository
-        # --- END HISTORY REPOS ---
+        user_pack_history_repository=user_pack_history_repository,
+        connection_manager=connection_manager # <<< ADDED
     )
 # --- END MODIFIED get_game_service ---
 </file>
@@ -4933,12 +4956,11 @@ class DifficultyService:
 
 <file path="backend/src/services/game_service.py">
 # backend/src/services/game_service.py
-# --- START OF FULL MODIFIED FILE ---
 import random
 import string
 import logging
 import asyncio
-from typing import List, Optional, Tuple, Dict, Any, Set # Added Set
+from typing import List, Optional, Tuple, Dict, Any, Set
 from datetime import datetime, timedelta, timezone
 
 # Models
@@ -4946,9 +4968,7 @@ from ..models.game_session import GameSession, GameSessionCreate, GameSessionUpd
 from ..models.game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
 from ..models.game_question import GameQuestion, GameQuestionCreate, GameQuestionUpdate
 from ..models.question import Question
-# --- ADD HISTORY MODELS ---
 from ..models.user_question_history import UserQuestionHistoryCreate
-# --- END HISTORY MODELS ---
 
 # Repositories
 from ..repositories.game_session_repository import GameSessionRepository
@@ -4957,15 +4977,16 @@ from ..repositories.game_question_repository import GameQuestionRepository
 from ..repositories.question_repository import QuestionRepository
 from ..repositories.incorrect_answers_repository import IncorrectAnswersRepository
 from ..repositories.user_repository import UserRepository
-# --- ADD HISTORY REPOS ---
 from ..repositories.user_question_history_repository import UserQuestionHistoryRepository
 from ..repositories.user_pack_history_repository import UserPackHistoryRepository
-# --- END HISTORY REPOS ---
 
-# Utils
+# Utils & Schemas
 from ..utils import ensure_uuid
-# --- ADD API SCHEMA IMPORT ---
-from ..api.schemas.game import GamePlayQuestionResponse # Import the updated response schema
+from ..api.schemas.game import GamePlayQuestionResponse
+
+# --- WebSocket Integration ---
+from ..websocket_manager import ConnectionManager
+# --- End WebSocket Integration ---
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -4974,7 +4995,8 @@ class GameService:
     """
     Service for game management operations.
     Handles business logic related to creating, joining, and playing
-    multiplayer trivia games, including question selection and history tracking.
+    multiplayer trivia games, including question selection, history tracking,
+    and real-time updates via WebSockets.
     """
 
     # --- MODIFIED __init__ ---
@@ -4986,13 +5008,12 @@ class GameService:
         question_repository: QuestionRepository,
         incorrect_answers_repository: IncorrectAnswersRepository,
         user_repository: UserRepository,
-        # --- ADD HISTORY REPOS ---
         user_question_history_repository: UserQuestionHistoryRepository,
-        user_pack_history_repository: UserPackHistoryRepository
-        # --- END HISTORY REPOS ---
+        user_pack_history_repository: UserPackHistoryRepository,
+        connection_manager: ConnectionManager # <<< ADDED
     ):
         """
-        Initialize the service with required repositories.
+        Initialize the service with required repositories and connection manager.
         """
         self.game_session_repo = game_session_repository
         self.game_participant_repo = game_participant_repository
@@ -5000,13 +5021,13 @@ class GameService:
         self.question_repo = question_repository
         self.incorrect_answers_repo = incorrect_answers_repository
         self.user_repo = user_repository
-        # --- ADD HISTORY REPOS ---
         self.user_question_history_repo = user_question_history_repository
         self.user_pack_history_repo = user_pack_history_repository
-        # --- END HISTORY REPOS ---
+        self.connection_manager = connection_manager # <<< ADDED
     # --- END MODIFIED __init__ ---
 
-    # create_game_session remains unchanged
+    # create_game_session remains unchanged in its core logic,
+    # but the host joining implicitly adds them to the room via WebSocket connect.
     async def create_game_session(
         self,
         host_user_id: str,
@@ -5038,6 +5059,7 @@ class GameService:
         )
         await self.game_participant_repo.create(obj_in=host_participant_data)
         logger.info(f"Created host participant record for game {game_session.id} with name '{host_display_name}'")
+        # Note: Host will connect via WebSocket separately
         return game_session
 
     # _generate_unique_game_code remains unchanged
@@ -5052,53 +5074,83 @@ class GameService:
         logger.warning(f"Failed to generate unique code of length {length}, trying length {length+1}")
         return await self._generate_unique_game_code(length + 1)
 
-    # join_game remains unchanged
+    # --- MODIFIED join_game ---
     async def join_game(
         self,
         game_code: str,
         user_id: str,
         display_name: str
     ) -> Tuple[GameSession, GameParticipant]:
-        user_id = ensure_uuid(user_id)
+        user_id_str = ensure_uuid(user_id)
         game_session = await self.game_session_repo.get_by_code(game_code)
         if not game_session: raise ValueError(f"Game with code {game_code} not found")
         if game_session.status != GameStatus.PENDING: raise ValueError(f"Game is not accepting new players (status: {game_session.status})")
+
         participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
         if len(participants) >= game_session.max_participants: raise ValueError(f"Game with code {game_code} is full")
-        existing_participant = await self.game_participant_repo.get_by_user_and_game(user_id, game_session.id)
-        if existing_participant:
-            logger.info(f"User {user_id} ({display_name}) rejoining game {game_code}")
-            if existing_participant.display_name != display_name:
-                logger.info(f"Updating display name for rejoining user {user_id} to '{display_name}'")
-                updated_participant_record = await self.game_participant_repo.update(
-                    id=existing_participant.id, obj_in=GameParticipantUpdate(display_name=display_name) # type: ignore[call-arg]
-                )
-                if updated_participant_record: return game_session, updated_participant_record
-            return game_session, existing_participant
-        participant_data = GameParticipantCreate(
-            game_session_id=game_session.id, user_id=user_id,
-            display_name=display_name, is_host=False
-        )
-        participant = await self.game_participant_repo.create(obj_in=participant_data)
-        logger.info(f"User {user_id} ({display_name}) joined game {game_code} as participant {participant.id}")
-        return game_session, participant
 
-    # start_game remains unchanged
+        existing_participant = await self.game_participant_repo.get_by_user_and_game(user_id_str, game_session.id)
+        participant_record: GameParticipant
+        is_rejoin = False
+
+        if existing_participant:
+            logger.info(f"User {user_id_str} ({display_name}) rejoining game {game_code}")
+            is_rejoin = True
+            if existing_participant.display_name != display_name:
+                logger.info(f"Updating display name for rejoining user {user_id_str} to '{display_name}'")
+                updated_record = await self.game_participant_repo.update(
+                    id=existing_participant.id,
+                    obj_in=GameParticipantUpdate(display_name=display_name) # type: ignore[call-arg]
+                )
+                if updated_record:
+                     participant_record = updated_record
+                     # Broadcast name change on rejoin if needed (UserService also handles updates)
+                     await self._broadcast_participant_update(game_session.id, participant_record)
+                else:
+                     participant_record = existing_participant # Fallback if update fails
+            else:
+                 participant_record = existing_participant
+        else:
+            # New participant
+            participant_data = GameParticipantCreate(
+                game_session_id=game_session.id, user_id=user_id_str,
+                display_name=display_name, is_host=False
+            )
+            participant_record = await self.game_participant_repo.create(obj_in=participant_data)
+            logger.info(f"User {user_id_str} ({display_name}) joined game {game_code} as participant {participant_record.id}")
+
+        # --- Broadcast Join Event ---
+        if not is_rejoin: # Only broadcast for new joins here
+             await self._broadcast_participant_update(game_session.id, participant_record)
+
+        return game_session, participant_record
+    # --- END MODIFIED join_game ---
+
+    # --- Helper to broadcast participant updates ---
+    async def _broadcast_participant_update(self, game_id: str, participant: GameParticipant):
+        """Helper to format and broadcast participant join/update messages."""
+        message = {
+            "type": "participant_update",
+            "payload": {
+                "id": participant.id,
+                "user_id": participant.user_id,
+                "display_name": participant.display_name,
+                "score": participant.score,
+                "is_host": participant.is_host,
+            }
+        }
+        await self.connection_manager.broadcast(message, game_id)
+        logger.debug(f"Broadcasted participant update for user {participant.user_id} in game {game_id}")
+    # --- End Helper ---
+
+    # --- MODIFIED start_game ---
     async def start_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         """
         Start a game session: Select/prioritize questions based on user history,
-        populate game_questions, update user_pack_history, and set game to active.
-
-        Args:
-            game_session_id: ID of the game to start
-            host_user_id: ID of the user trying to start the game (must be host)
-
-        Returns:
-            Updated GameSession object
-
-        Raises:
-            ValueError: If the game cannot be started
+        populate game_questions, update user_pack_history, set game to active,
+        and broadcast the start event.
         """
+        # ... (Validation and Question Selection logic remains the same as before) ...
         game_session_id = ensure_uuid(game_session_id)
         host_user_id = ensure_uuid(host_user_id)
 
@@ -5113,74 +5165,78 @@ class GameService:
         participant_user_ids = [p.user_id for p in participants]
         if not participant_user_ids: raise ValueError("Cannot start a game with no participants")
 
-        # 3. Select and Prepare Game Questions (using new helper method)
+        # 3. Select and Prepare Game Questions
         selected_questions_for_game = await self._select_questions_for_game(
             pack_id=game_session.pack_id,
             target_count=game_session.question_count,
             participant_user_ids=participant_user_ids
         )
-
         actual_question_count = len(selected_questions_for_game)
         if actual_question_count == 0: raise ValueError("No questions available for this game pack.")
 
-        # Adjust game session count if fewer questions were available
+        # Adjust game session count if needed
         if actual_question_count < game_session.question_count:
-            logger.warning(
-                f"Only {actual_question_count} questions available for game {game_session_id}, " +
-                f"requested {game_session.question_count}. Updating game session."
-            )
             updated_session = await self.game_session_repo.update(
                  id=game_session_id,
                  obj_in=GameSessionUpdate(question_count=actual_question_count) # type: ignore[call-arg]
             )
             if not updated_session: raise ValueError(f"Failed to update question count for game {game_session_id}")
-            game_session = updated_session # Use the updated session object
+            game_session = updated_session
 
         # 4. Populate `game_questions` Table Concurrently
-        game_question_creation_tasks = []
-        for index, question in enumerate(selected_questions_for_game):
-            question_data = GameQuestionCreate(
-                game_session_id=game_session_id,
-                question_id=question.id,
-                question_index=index
-            )
-            game_question_creation_tasks.append(
-                asyncio.create_task(self.game_question_repo.create(obj_in=question_data))
-            )
+        game_question_creation_tasks = [
+            asyncio.create_task(self.game_question_repo.create(obj_in=GameQuestionCreate(
+                game_session_id=game_session_id, question_id=q.id, question_index=idx
+            ))) for idx, q in enumerate(selected_questions_for_game)
+        ]
         game_question_results = await asyncio.gather(*game_question_creation_tasks, return_exceptions=True)
-        # Check for errors during game_question creation
         failed_creations = [i for i, res in enumerate(game_question_results) if isinstance(res, Exception)]
         if failed_creations:
             logger.error(f"Failed to create {len(failed_creations)} game_question records for game {game_session_id}. Errors: {game_question_results}")
-            # Decide on error handling: Maybe cancel game or proceed with fewer questions? For now, raise error.
             raise ValueError("Failed to prepare all game questions.")
         logger.info(f"Created {actual_question_count} game question records for game {game_session_id}")
 
         # 5. Update `user_pack_history` Concurrently
         pack_history_tasks = [
-            asyncio.create_task(
-                self.user_pack_history_repo.increment_play_count(user_id, game_session.pack_id)
-            ) for user_id in participant_user_ids
+            asyncio.create_task(self.user_pack_history_repo.increment_play_count(user_id, game_session.pack_id))
+            for user_id in participant_user_ids
         ]
         pack_history_results = await asyncio.gather(*pack_history_tasks, return_exceptions=True)
-        # Log warnings for any failures but don't block game start
         failed_history_updates = [i for i, res in enumerate(pack_history_results) if isinstance(res, Exception) or res is None]
-        if failed_history_updates:
-            logger.warning(f"Failed to update pack history for {len(failed_history_updates)} users in game {game_session_id}.")
+        if failed_history_updates: logger.warning(f"Failed to update pack history for {len(failed_history_updates)} users in game {game_session_id}.")
 
         # 6. Update Game Status
         updated_game = await self.game_session_repo.update(
             id=game_session_id,
-            obj_in=GameSessionUpdate(
-                status=GameStatus.ACTIVE,
-                current_question_index=0,
-                updated_at=datetime.now(timezone.utc)
-            ) # type: ignore[call-arg]
+            obj_in=GameSessionUpdate(status=GameStatus.ACTIVE, current_question_index=0, updated_at=datetime.now(timezone.utc)) # type: ignore[call-arg]
         )
         if not updated_game: raise ValueError(f"Failed to update game status to ACTIVE for game {game_session_id}")
 
+        # --- 7. Broadcast Game Started Event ---
+        # Send game details and possibly the first question
+        # Fetch the formatted first question for the broadcast
+        play_questions = await self.get_questions_for_play(updated_game.id) # Use updated game ID
+        first_question_payload = play_questions[0] if play_questions else None
+
+        start_message = {
+            "type": "game_started",
+            "payload": {
+                "game_id": updated_game.id,
+                "status": updated_game.status.value,
+                "total_questions": updated_game.question_count,
+                "time_limit": updated_game.time_limit_seconds,
+                "pack_id": updated_game.pack_id,
+                # Include first question details directly in the start message
+                "current_question": first_question_payload
+            }
+        }
+        await self.connection_manager.broadcast(start_message, updated_game.id)
+        logger.info(f"Broadcasted game_started event for game {updated_game.id}")
+        # --- End Broadcast ---
+
         logger.info(f"Game {game_session_id} started with {actual_question_count} questions by host {host_user_id}")
         return updated_game
+    # --- END MODIFIED start_game ---
 
     # _select_questions_for_game remains unchanged
     async def _select_questions_for_game(
@@ -5189,162 +5245,61 @@ class GameService:
         target_count: int,
         participant_user_ids: List[str]
     ) -> List[Question]:
-        """
-        Selects questions for a game, prioritizing unseen questions by participants.
-
-        Args:
-            pack_id: The ID of the pack to select questions from.
-            target_count: The desired number of questions.
-            participant_user_ids: List of user IDs participating in the game.
-
-        Returns:
-            A list of selected Question objects, shuffled.
-        """
         pack_id_str = ensure_uuid(pack_id)
-
-        # 1. Fetch all questions in the pack
         all_pack_questions = await self.question_repo.get_by_pack_id(pack_id_str)
-        if not all_pack_questions:
-            logger.warning(f"No questions found in pack {pack_id_str}")
-            return []
-
-        # Effective count cannot exceed available questions
+        if not all_pack_questions: return []
         effective_count = min(target_count, len(all_pack_questions))
-        if effective_count < target_count:
-             logger.warning(f"Pack {pack_id_str} only has {len(all_pack_questions)} questions, requested {target_count}. Using {effective_count}.")
-
         pack_question_ids = [q.id for q in all_pack_questions]
-
-        # 2. Fetch seen question IDs for the participants within this pack
         seen_question_ids = await self.user_question_history_repo.get_seen_question_ids_for_users(
-            user_ids=participant_user_ids,
-            question_ids=pack_question_ids
+            user_ids=participant_user_ids, question_ids=pack_question_ids
         )
-        logger.info(f"Found {len(seen_question_ids)} previously seen questions by participants for pack {pack_id_str}.")
-
-        # 3. Partition questions
         unseen_questions: List[Question] = []
         seen_questions: List[Question] = []
-        for q in all_pack_questions:
-            if q.id in seen_question_ids:
-                seen_questions.append(q)
-            else:
-                unseen_questions.append(q)
-
-        # 4. Select questions, prioritizing unseen
+        for q in all_pack_questions: (seen_questions if q.id in seen_question_ids else unseen_questions).append(q)
         selected_questions_for_game: List[Question] = []
-        random.shuffle(unseen_questions) # Shuffle unseen questions
-        num_needed = effective_count
-
-        # Add from unseen pool first
-        take_from_unseen = min(num_needed, len(unseen_questions))
+        random.shuffle(unseen_questions); random.shuffle(seen_questions)
+        take_from_unseen = min(effective_count, len(unseen_questions))
         selected_questions_for_game.extend(unseen_questions[:take_from_unseen])
-        num_needed -= take_from_unseen
-        logger.info(f"Selected {take_from_unseen} unseen questions.")
-
-        # If still need more, add from seen pool
+        num_needed = effective_count - take_from_unseen
         if num_needed > 0:
-            logger.info(f"Needing {num_needed} more questions, selecting from seen pool ({len(seen_questions)} available).")
-            random.shuffle(seen_questions) # Shuffle seen questions
             take_from_seen = min(num_needed, len(seen_questions))
             selected_questions_for_game.extend(seen_questions[:take_from_seen])
-            num_needed -= take_from_seen
-
-        # 5. Final shuffle of the selected list
         random.shuffle(selected_questions_for_game)
-
-        logger.info(f"Final selected questions for game: {len(selected_questions_for_game)}")
         return selected_questions_for_game
 
-    # --- MODIFIED get_questions_for_play ---
+    # get_questions_for_play remains unchanged
     async def get_questions_for_play(self, game_session_id: str) -> List[GamePlayQuestionResponse]:
-        """
-        Retrieves the pre-selected questions for an active game session,
-        formats them with shuffled options for the frontend, INCLUDING the correct answer ID.
-        """
         game_session_id = ensure_uuid(game_session_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
-        if not game_session:
-            raise ValueError(f"Game session {game_session_id} not found.")
-        # Potentially add check: if game_session.status != GameStatus.ACTIVE: raise ValueError("Game is not active.")
-
-        # Get the game questions linked to this session, ordered by index
+        if not game_session: raise ValueError(f"Game session {game_session_id} not found.")
         game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
-        if not game_questions:
-            raise ValueError(f"No questions found linked to game session {game_session_id}.")
-
-        # Fetch original question details and incorrect answers concurrently
-        fetch_tasks = []
-        for gq in game_questions:
-            fetch_tasks.append(asyncio.gather(
-                self.question_repo.get_by_id(gq.question_id),
-                self.incorrect_answers_repo.get_by_question_id(gq.question_id),
-                return_exceptions=True # Handle potential errors for individual questions
-            ))
-
+        if not game_questions: raise ValueError(f"No questions found linked to game session {game_session_id}.")
+        fetch_tasks = [
+            asyncio.gather( self.question_repo.get_by_id(gq.question_id), self.incorrect_answers_repo.get_by_question_id(gq.question_id), return_exceptions=True )
+            for gq in game_questions
+        ]
         fetched_data = await asyncio.gather(*fetch_tasks)
-
-        # Prepare the response list
         play_questions: List[GamePlayQuestionResponse] = []
         for i, (gq, data) in enumerate(zip(game_questions, fetched_data)):
             original_question, incorrect_answers_record = data
-
-            if isinstance(original_question, Exception) or not original_question:
-                logger.error(f"Failed to fetch original question {gq.question_id} for game {game_session_id}: {original_question}")
-                # Option: Skip this question or raise a more specific error? Let's skip for now.
-                continue
-            if isinstance(incorrect_answers_record, Exception):
-                 logger.error(f"Failed to fetch incorrect answers for {gq.question_id}: {incorrect_answers_record}")
-                 incorrect_options = [] # Default to empty if fetch fails
-            else:
-                 incorrect_options = incorrect_answers_record.incorrect_answers if incorrect_answers_record else []
-
-
-            # --- Identify Correct Answer ID during Shuffling ---
-            correct_answer_text = original_question.answer
-            all_options_texts = [correct_answer_text] + incorrect_options
-            random.shuffle(all_options_texts) # Shuffle the texts
-
-            shuffled_options_with_ids = []
-            correct_answer_id = None # Initialize
+            if isinstance(original_question, Exception) or not original_question: logger.error(f"Failed to fetch original question {gq.question_id}: {original_question}"); continue
+            incorrect_options = []
+            if isinstance(incorrect_answers_record, Exception): logger.error(f"Failed to fetch incorrect answers for {gq.question_id}: {incorrect_answers_record}")
+            else: incorrect_options = incorrect_answers_record.incorrect_answers if incorrect_answers_record else []
+            correct_answer_text = original_question.answer; all_options_texts = [correct_answer_text] + incorrect_options; random.shuffle(all_options_texts)
+            correct_answer_id = None
             for index, option_text in enumerate(all_options_texts):
-                # Generate ID based on question_id and SHUFFLED index
-                answer_id = f"{gq.question_id}-{index}"
-                shuffled_options_with_ids.append({
-                    "id": answer_id,
-                    "text": option_text
-                })
-                # Check if this shuffled option is the correct one
-                if option_text == correct_answer_text:
-                    correct_answer_id = answer_id
-
-            if correct_answer_id is None:
-                logger.error(f"Could not determine correct_answer_id for question {gq.question_id} in game {game_session_id}. Original answer: '{correct_answer_text}', Shuffled options: {all_options_texts}")
-                # Skip this question if we can't identify the correct answer ID
-                continue
-            # --- End Correct Answer ID Logic ---
-
-            # Extract just the texts for the response 'options' field
-            shuffled_option_texts_only = [opt['text'] for opt in shuffled_options_with_ids]
-
-            # Create response object using the updated schema
-            play_question = GamePlayQuestionResponse(
-                index=gq.question_index,
-                question_id=gq.question_id,
-                question_text=original_question.question,
-                options=shuffled_option_texts_only, # Send only texts
-                correct_answer_id=correct_answer_id, # Send the identified correct ID
-                time_limit=game_session.time_limit_seconds
-            )
+                 answer_id = f"{gq.question_id}-{index}"
+                 if option_text == correct_answer_text: correct_answer_id = answer_id; break
+            if correct_answer_id is None: logger.error(f"Could not determine correct_answer_id for question {gq.question_id}"); continue
+            shuffled_option_texts_only = all_options_texts
+            play_question = GamePlayQuestionResponse( index=gq.question_index, question_id=gq.question_id, question_text=original_question.question, options=shuffled_option_texts_only, correct_answer_id=correct_answer_id, time_limit=game_session.time_limit_seconds )
             play_questions.append(play_question)
-
-        # Final sort by index just in case fetches were out of order (shouldn't happen with zip)
         play_questions.sort(key=lambda q: q.index)
-
         return play_questions
-    # --- END MODIFIED get_questions_for_play ---
 
     # _advance_to_next_question remains unchanged
+    # NOTE: Broadcast logic is moved to `end_current_question` which calls this.
     async def _advance_to_next_question(
         self,
         game_session_id: str,
@@ -5361,17 +5316,21 @@ class GameService:
                 if updated_session: logger.info(f"Game {game_session_id} completed")
                 else: logger.error(f"Failed to update game status to COMPLETED for {game_session_id}")
             else: logger.info(f"Game {game_session_id} already in status {game_session.status}")
-            return None
+            return None # Indicates game end
+        # Update the game session's current index
         updated_session = await self.game_session_repo.update(id=game_session_id, obj_in=GameSessionUpdate(current_question_index=next_index) )# type: ignore[call-arg]
         if not updated_session: logger.error(f"Failed to update current_question_index for game {game_session_id}"); return None
+        # Get the corresponding GameQuestion record
         next_game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id=game_session_id, question_index=next_index)
         if next_game_question:
+            # Mark the question as started (sets start_time) - Note: Timer start should be triggered by client receiving the WS message
             started_question = await self.game_question_repo.start_question(next_game_question.id)
             if started_question: logger.info(f"Game {game_session_id} advanced to question {next_index}"); return started_question
             else: logger.error(f"Failed to mark game question {next_game_question.id} as started for game {game_session_id}"); return None
         else: logger.error(f"Game {game_session_id}: Failed to find game question at index {next_index}"); return None
 
-    # submit_answer remains unchanged
+    # submit_answer remains unchanged in core logic, but could broadcast scores
+    # (For simplicity, we'll only broadcast on `end_current_question` for now)
     async def submit_answer(
         self,
         game_session_id: str,
@@ -5379,118 +5338,113 @@ class GameService:
         question_index: int,
         answer: str
     ) -> Dict[str, Any]:
-        """
-        Process a participant's submitted answer, calculate score, and update history.
-        """
-        game_session_id = ensure_uuid(game_session_id)
-        participant_id = ensure_uuid(participant_id)
-
-        # 1. Validation & Fetch Data
-        game_session = await self.game_session_repo.get_by_id(game_session_id)
+        game_session_id = ensure_uuid(game_session_id); participant_id = ensure_uuid(participant_id)
+        game_session = await self.game_session_repo.get_by_id(game_session_id);
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
         if game_session.status != GameStatus.ACTIVE: raise ValueError(f"Game not active")
-
-        participant = await self.game_participant_repo.get_by_id(participant_id)
+        participant = await self.game_participant_repo.get_by_id(participant_id);
         if not participant or participant.game_session_id != game_session_id: raise ValueError(f"Participant not found in game")
-
-        game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id, question_index)
+        game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id, question_index);
         if not game_question: raise ValueError(f"Question index {question_index} not found")
         if game_session.current_question_index != question_index: raise ValueError(f"Not the current question")
         if not game_question.start_time: raise ValueError(f"Question not started")
         if game_question.end_time: raise ValueError(f"Question ended")
         if participant_id in game_question.participant_answers: raise ValueError("Answer already submitted")
-
-        # Record answer in GameQuestion first
         await self.game_question_repo.record_participant_answer(game_question.id, participant_id, answer)
-
-        # 2. Check Correctness & Score
         original_question = await self.question_repo.get_by_id(game_question.question_id)
-        if not original_question:
-            logger.error(f"Original question {game_question.question_id} not found for score calculation")
-            return {"success": False, "error": "Original question data missing"}
-
-        is_correct = answer.lower().strip() == original_question.answer.lower().strip()
-        score = 0
+        if not original_question: logger.error(f"Original question {game_question.question_id} not found"); return {"success": False, "error": "Original question data missing"}
+        is_correct = answer.lower().strip() == original_question.answer.lower().strip(); score = 0
         if is_correct:
-            # Scoring logic (same as before)
-            max_score = 1000
-            now = datetime.now(timezone.utc)
-            start_time = game_question.start_time
+            max_score = 1000; now = datetime.now(timezone.utc); start_time = game_question.start_time
             if start_time:
                  if start_time.tzinfo is None: start_time = start_time.replace(tzinfo=timezone.utc)
                  try:
-                     seconds_taken = (now - start_time).total_seconds()
-                     # Use the game session's time limit here for scoring
-                     time_limit = max(game_session.time_limit_seconds, 1) # Avoid division by zero if limit is 0
-                     time_factor = max(0, 1 - (seconds_taken / time_limit)) if time_limit > 0 else 1 # Score doesn't decrease if no time limit
-                     score = int(max_score * time_factor)
-                     score = max(score, 100) # Minimum score for correct answer
+                     seconds_taken = (now - start_time).total_seconds(); time_limit = max(game_session.time_limit_seconds, 1)
+                     time_factor = max(0, 1 - (seconds_taken / time_limit)) if time_limit > 0 else 1
+                     score = max(int(max_score * time_factor), 100)
                  except Exception as e: logger.error(f"Time calculation error: {e}"); score = 100
             else: logger.warning("Start time missing"); score = 100
-
-        # 3. Update Scores (GameQuestion and Participant Total)
         await self.game_question_repo.record_participant_score(game_question.id, participant_id, score)
-        new_total_score = participant.score + score
-        updated_participant = await self.game_participant_repo.update_score(participant_id, new_total_score)
+        new_total_score = participant.score + score; updated_participant = await self.game_participant_repo.update_score(participant_id, new_total_score)
         final_total_score = updated_participant.score if updated_participant else new_total_score
-
-        # --- 4. Update User Question History ---
         try:
-            history_data = UserQuestionHistoryCreate(
-                user_id=participant.user_id,
-                question_id=game_question.question_id,
-                correct=is_correct
-                # incorrect_answer_selected not directly tracked here easily, could be added if needed
-            )
+            history_data = UserQuestionHistoryCreate(user_id=participant.user_id, question_id=game_question.question_id, correct=is_correct)
             await self.user_question_history_repo.create(obj_in=history_data)
-            logger.debug(f"Recorded question history for user {participant.user_id}, question {game_question.question_id}")
-        except Exception as hist_error:
-            # Log error but don't fail the whole request
-            logger.error(f"Failed to record question history for user {participant.user_id}, question {game_question.question_id}: {hist_error}", exc_info=True)
-        # --- END History Update ---
+        except Exception as hist_error: logger.error(f"Failed to record question history: {hist_error}", exc_info=True)
+        return {"success": True, "is_correct": is_correct, "correct_answer": original_question.answer, "score": score, "total_score": final_total_score}
 
-        return {
-            "success": True, "is_correct": is_correct,
-            "correct_answer": original_question.answer, "score": score,
-            "total_score": final_total_score
-        }
-
-    # end_current_question remains unchanged
+    # --- MODIFIED end_current_question ---
     async def end_current_question(
         self,
         game_session_id: str,
         host_user_id: str
     ) -> Dict[str, Any]:
+        """Ends the current question, calculates results/scores for it, advances the game, and broadcasts the next step."""
         game_session_id = ensure_uuid(game_session_id); host_user_id = ensure_uuid(host_user_id)
-        game_session = await self.game_session_repo.get_by_id(game_session_id);
+        game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
-        if game_session.host_user_id != host_user_id: raise ValueError("Only host can end question")
+        if game_session.host_user_id != host_user_id: raise ValueError("Only host can end question/advance game")
         if game_session.status != GameStatus.ACTIVE: raise ValueError(f"Game not active")
+
         current_index = game_session.current_question_index
         current_game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id, current_index)
+
+        # End the current question in DB if not already ended
         if current_game_question and current_game_question.start_time and not current_game_question.end_time:
-             await self.game_question_repo.end_question(current_game_question.id)
-        elif current_game_question and current_game_question.end_time: logger.info(f"Question {current_index} already ended.")
-        elif not current_game_question: logger.warning(f"Current game question (index {current_index}) not found.")
+             ended_question = await self.game_question_repo.end_question(current_game_question.id)
+             if ended_question: current_game_question = ended_question # Use updated record
+             else: logger.warning(f"Failed to mark question {current_index} as ended.")
+        elif not current_game_question: logger.warning(f"Current game question (index {current_index}) not found when trying to end it.")
+
+        # --- Broadcast Question Results/Scores ---
+        # (Optional - could make WS chatty, maybe only send on game end?)
+        # participant_scores = current_game_question.participant_scores if current_game_question else {}
+        # score_update_message = {
+        #     "type": "question_results",
+        #     "payload": {"question_index": current_index, "scores": participant_scores}
+        # }
+        # await self.connection_manager.broadcast(score_update_message, game_session_id)
+        # --- End Broadcast ---
+
+        # Advance to the next question or get game end signal
         next_game_question = await self._advance_to_next_question(game_session_id)
+
         if next_game_question:
-             original_question = await self.question_repo.get_by_id(next_game_question.question_id)
-             if not original_question: return {"game_complete": False, "error": "Failed to load next question data"}
-             incorrect_answers = await self.incorrect_answers_repo.get_by_question_id(next_game_question.question_id)
-             incorrect_options = incorrect_answers.incorrect_answers if incorrect_answers else []
-             all_options = [original_question.answer] + incorrect_options; random.shuffle(all_options)
-             updated_game_session = await self.game_session_repo.get_by_id(game_session_id)
-             time_limit = updated_game_session.time_limit_seconds if updated_game_session else game_session.time_limit_seconds
-             return {"game_complete": False, "next_question": {"index": next_game_question.question_index, "question_text": original_question.question, "options": all_options, "time_limit": time_limit}}
+            # Fetch formatted next question details
+            play_questions = await self.get_questions_for_play(game_session_id)
+            next_question_payload = next((q for q in play_questions if q.index == next_game_question.question_index), None)
+
+            if next_question_payload:
+                # --- Broadcast Next Question Event ---
+                next_q_message = {"type": "next_question", "payload": next_question_payload}
+                await self.connection_manager.broadcast(next_q_message, game_session_id)
+                logger.info(f"Broadcasted next_question event (index {next_game_question.question_index}) for game {game_session_id}")
+                # --- End Broadcast ---
+                return {"game_complete": False, "next_question_index": next_game_question.question_index} # Return minimal REST response
+            else:
+                 logger.error(f"Failed to format next question payload for index {next_game_question.question_index} in game {game_session_id}")
+                 # Consider broadcasting an error or ending game? For now, return error state.
+                 return {"game_complete": False, "error": "Failed to load next question data"}
         else:
-             logger.info(f"Advancing returned None. Game {game_session_id} should be complete.")
-             final_game_session = await self.game_session_repo.get_by_id(game_session_id)
-             if final_game_session and final_game_session.status == GameStatus.COMPLETED:
+            # Game has ended (or failed to advance)
+            final_game_session = await self.game_session_repo.get_by_id(game_session_id) # Re-fetch to confirm status
+            if final_game_session and final_game_session.status == GameStatus.COMPLETED:
                  final_results = await self.get_game_results(game_session_id)
-                 return {"game_complete": True, "results": final_results}
-             else:
-                 logger.warning(f"Game {game_session_id} advance returned None, but status is {final_game_session.status if final_game_session else 'Not Found'}.")
-                 return {"game_complete": True, "results": None}
+                 # --- Broadcast Game End Event ---
+                 end_message = {"type": "game_over", "payload": final_results}
+                 await self.connection_manager.broadcast(end_message, game_session_id)
+                 logger.info(f"Broadcasted game_over event for game {game_session_id}")
+                 # --- End Broadcast ---
+                 return {"game_complete": True} # Minimal REST response
+            else:
+                 logger.warning(f"Game {game_session_id} advance returned None, but status is {final_game_session.status if final_game_session else 'Not Found'}. Ending game.")
+                 # Force status update just in case
+                 await self.game_session_repo.update_game_status(game_id=game_session_id, status=GameStatus.COMPLETED)
+                 final_results = await self.get_game_results(game_session_id) # Get results again
+                 end_message = {"type": "game_over", "payload": final_results}
+                 await self.connection_manager.broadcast(end_message, game_session_id)
+                 return {"game_complete": True}
+    # --- END MODIFIED end_current_question ---
 
     # get_game_participants remains unchanged
     async def get_game_participants(self, game_session_id: str) -> List[Dict[str, Any]]:
@@ -5502,34 +5456,64 @@ class GameService:
     async def get_game_results(self, game_session_id: str) -> Dict[str, Any]:
         game_session_id = ensure_uuid(game_session_id); game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
-        if game_session.status != GameStatus.COMPLETED: logger.warning(f"Requesting results for non-completed game {game_session_id}")
+        # Allow fetching results even if not technically completed (e.g., if cancelled but want final scores)
+        # if game_session.status != GameStatus.COMPLETED: logger.warning(f"Requesting results for non-completed game {game_session_id}")
         participants = await self.game_participant_repo.get_by_game_session_id(game_session_id); participants.sort(key=lambda p: p.score, reverse=True)
         game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
         question_results = []
         for gq in game_questions:
              original_question = await self.question_repo.get_by_id(gq.question_id)
              if original_question:
-                 correct_count = sum(1 for score in gq.participant_scores.values() if score > 0)
-                 total_answered = len(gq.participant_answers)
+                 correct_count = sum(1 for score in gq.participant_scores.values() if score > 0); total_answered = len(gq.participant_answers)
                  correct_percentage = (correct_count / total_answered * 100) if total_answered > 0 else 0
                  question_results.append({"index": gq.question_index, "question_text": original_question.question, "correct_answer": original_question.answer, "correct_count": correct_count, "total_answered": total_answered, "correct_percentage": correct_percentage})
         participant_results = [{"id": p.id, "user_id": p.user_id, "display_name": p.display_name, "score": p.score, "is_host": p.is_host} for p in participants]
-        completion_time = game_session.updated_at if game_session.status == GameStatus.COMPLETED else datetime.now(timezone.utc)
-        return {"game_id": game_session_id, "game_code": game_session.code, "status": game_session.status, "participants": participant_results, "questions": question_results, "total_questions": len(game_questions), "completed_at": completion_time}
+        completion_time = game_session.updated_at if game_session.status in [GameStatus.COMPLETED, GameStatus.CANCELLED] else datetime.now(timezone.utc)
+        return {"game_id": game_session_id, "game_code": game_session.code, "status": game_session.status.value, "participants": participant_results, "questions": question_results, "total_questions": len(game_questions), "completed_at": completion_time.isoformat()}
 
-    # cancel_game remains unchanged
+    # --- MODIFIED cancel_game ---
     async def cancel_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         game_session_id = ensure_uuid(game_session_id); host_user_id = ensure_uuid(host_user_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
         if game_session.host_user_id != host_user_id: raise ValueError("Only host can cancel")
         if game_session.status not in [GameStatus.PENDING, GameStatus.ACTIVE]: raise ValueError(f"Game cannot be cancelled (status: {game_session.status})")
+
         updated_game = await self.game_session_repo.update_game_status(game_id=game_session_id, status=GameStatus.CANCELLED)
         if not updated_game: raise ValueError(f"Failed to cancel game {game_session_id}")
+
+        # --- Broadcast Cancel Event ---
+        cancel_message = {"type": "game_cancelled", "payload": {"game_id": game_session_id}}
+        await self.connection_manager.broadcast(cancel_message, game_session_id)
+        logger.info(f"Broadcasted game_cancelled event for game {game_session_id}")
+        # --- End Broadcast ---
+
         logger.info(f"Game {game_session_id} cancelled by host {host_user_id}")
         return updated_game
+    # --- END MODIFIED cancel_game ---
 
-    # get_user_games remains unchanged
+    # --- NEW: handle_disconnect ---
+    async def handle_disconnect(self, game_id: str, user_id: str):
+        """Handles logic when a user disconnects (called by WS endpoint)."""
+        logger.info(f"Handling disconnect for user {user_id} in game {game_id}")
+        # Find the participant record
+        participant = await self.game_participant_repo.get_by_user_and_game(user_id, game_id)
+        if participant:
+            # Broadcast user_left message
+            message = {"type": "participant_left", "payload": {"user_id": user_id, "participant_id": participant.id, "display_name": participant.display_name}}
+            await self.connection_manager.broadcast(message, game_id)
+            logger.debug(f"Broadcasted participant_left for user {user_id} in game {game_id}")
+
+            # Optional: Add logic if host disconnects (e.g., cancel game or promote new host)
+            # if participant.is_host:
+            #    logger.warning(f"Host {user_id} disconnected from game {game_id}. Implement host disconnect logic.")
+            #    # await self.cancel_game(game_id, user_id) # Example: cancel if host leaves
+
+        else:
+            logger.warning(f"Participant record not found for disconnected user {user_id} in game {game_id}")
+    # --- END NEW: handle_disconnect ---
+
+    # get_user_games remains unchanged (it's a REST utility, not real-time)
     async def get_user_games(self, user_id: str, include_completed: bool = False) -> List[Dict[str, Any]]:
         user_id = ensure_uuid(user_id); participations = await self.game_participant_repo.get_user_active_games(user_id)
         results = []; processed_game_ids = set()
@@ -5540,10 +5524,9 @@ class GameService:
              if not game_session: logger.warning(f"Game session {game_session_id} not found for participation {participation.id}"); continue
              if not include_completed and game_session.status in [GameStatus.COMPLETED, GameStatus.CANCELLED]: continue
              participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
-             game_info = {"id": game_session.id, "code": game_session.code, "status": game_session.status, "participant_count": len(participants), "max_participants": game_session.max_participants, "current_question": game_session.current_question_index, "total_questions": game_session.question_count, "is_host": participation.is_host, "created_at": game_session.created_at, "updated_at": game_session.updated_at}
+             game_info = {"id": game_session.id, "code": game_session.code, "status": game_session.status.value, "participant_count": len(participants), "max_participants": game_session.max_participants, "current_question": game_session.current_question_index, "total_questions": game_session.question_count, "is_host": participation.is_host, "created_at": game_session.created_at.isoformat(), "updated_at": game_session.updated_at.isoformat()}
              results.append(game_info); processed_game_ids.add(game_session_id)
         return results
-# --- END OF FULL MODIFIED FILE ---
 </file>
 
 <file path="backend/src/services/incorrect_answer_service.py">
@@ -6795,24 +6778,28 @@ class TopicService:
 </file>
 
 <file path="backend/src/services/user_service.py">
+# backend/src/services/user_service.py
 """
 Service for user management operations.
 
 This module provides business logic for user creation, authentication,
-and profile management.
+and profile management, including broadcasting updates via WebSockets.
 """
 import logging
 import traceback
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 
 from ..models.user import User, UserCreate, UserUpdate
-# --- ADDED IMPORTS ---
 from ..models.game_session import GameStatus
 from ..repositories.user_repository import UserRepository
 from ..repositories.game_participant_repository import GameParticipantRepository
 from ..repositories.game_session_repository import GameSessionRepository
 from ..models.game_participant import GameParticipantUpdate
-# --- END ADDED IMPORTS ---
+
+# --- WebSocket Integration ---
+from ..websocket_manager import ConnectionManager
+# --- End WebSocket Integration ---
+
 from ..utils import ensure_uuid
 
 # Configure logger
@@ -6823,27 +6810,25 @@ class UserService:
     Service for user management operations.
 
     Handles business logic related to creating, retrieving, updating,
-    and authenticating users.
+    and authenticating users. Propagates display name changes to games
+    via database updates and WebSocket broadcasts.
     """
 
     # --- MODIFIED __init__ ---
     def __init__(
         self,
         user_repository: UserRepository,
-        game_participant_repository: GameParticipantRepository, # <<< ADDED
-        game_session_repository: GameSessionRepository # <<< ADDED
+        game_participant_repository: GameParticipantRepository,
+        game_session_repository: GameSessionRepository,
+        connection_manager: ConnectionManager # <<< ADDED
     ):
         """
-        Initialize the service with required repositories.
-
-        Args:
-            user_repository: Repository for user operations
-            game_participant_repository: Repository for game participant operations
-            game_session_repository: Repository for game session operations
+        Initialize the service with required repositories and connection manager.
         """
         self.user_repository = user_repository
-        self.game_participant_repository = game_participant_repository # <<< ADDED
-        self.game_session_repository = game_session_repository # <<< ADDED
+        self.game_participant_repository = game_participant_repository
+        self.game_session_repository = game_session_repository
+        self.connection_manager = connection_manager # <<< ADDED
     # --- END MODIFIED __init__ ---
 
     async def create_user(
@@ -6855,8 +6840,7 @@ class UserService:
         auth_id: Optional[str] = None
     ) -> User:
         """
-        Create a new user.
-        (No changes to this method's logic)
+        Create a new user. (No changes needed here for WS)
         """
         try:
             if email:
@@ -6866,37 +6850,22 @@ class UserService:
                     raise ValueError(f"User with email {email} already exists")
 
             user_data = UserCreate(
-                displayname=displayname,
-                email=email,
-                is_temporary=is_temporary,
-                auth_provider=auth_provider,
-                auth_id=auth_id
+                displayname=displayname, email=email, is_temporary=is_temporary,
+                auth_provider=auth_provider, auth_id=auth_id
             )
-
             user = await self.user_repository.create(obj_in=user_data)
             logger.info(f"Created new user with ID: {user.id}")
-
             return user
 
-        except ValueError:
-            raise
-        except Exception as e:
-            logger.error(f"Error creating user: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        except ValueError: raise
+        except Exception as e: logger.error(f"Error creating user: {str(e)}"); logger.error(traceback.format_exc()); raise
 
     async def get_user(self, user_id: str) -> Optional[User]:
-        """
-        Get a user by ID.
-        (No changes to this method)
-        """
+        """ Get a user by ID. (No changes needed here) """
         try:
-            user_id = ensure_uuid(user_id)
-            return await self.user_repository.get_by_id(user_id)
-        except Exception as e:
-            logger.error(f"Error retrieving user {user_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+            user_id_str = ensure_uuid(user_id)
+            return await self.user_repository.get_by_id(user_id_str)
+        except Exception as e: logger.error(f"Error retrieving user {user_id}: {str(e)}"); logger.error(traceback.format_exc()); raise
 
     # --- MODIFIED update_user ---
     async def update_user(
@@ -6909,194 +6878,138 @@ class UserService:
         auth_id: Optional[str] = None
     ) -> Optional[User]:
         """
-        Update a user and their display name in active/pending games.
-
-        Args:
-            user_id: ID of the user to update
-            displayname: New display name (if provided)
-            email: New email address (if provided)
-            is_temporary: New temporary status (if provided)
-            auth_provider: New authentication provider (if provided)
-            auth_id: New authentication ID (if provided)
-
-        Returns:
-            Updated User object or None if user not found
+        Update a user and propagate display name changes via DB and WebSockets.
         """
-        updated_user: Optional[User] = None
+        updated_user_record: Optional[User] = None
+        name_changed = False
+        new_display_name: Optional[str] = None
+
         try:
-            user_id = ensure_uuid(user_id)
-            user = await self.user_repository.get_by_id(user_id)
-            if not user:
-                logger.warning(f"User with ID {user_id} not found for update")
-                return None
+            user_id_str = ensure_uuid(user_id)
+            user = await self.user_repository.get_by_id(user_id_str)
+            if not user: logger.warning(f"User with ID {user_id_str} not found for update"); return None
 
             if email and email != user.email:
-                existing_user = await self.user_repository.get_by_email(email)
-                if existing_user and existing_user.id != user_id:
-                    logger.warning(f"Email {email} already in use by another user")
+                existing_email_user = await self.user_repository.get_by_email(email)
+                if existing_email_user and existing_email_user.id != user_id_str:
                     raise ValueError(f"Email {email} already in use by another user")
 
-            # --- Only create update payload if there are actual changes ---
             update_data_dict = {}
             if displayname is not None and displayname != user.displayname:
                 update_data_dict['displayname'] = displayname
-            if email is not None and email != user.email:
-                update_data_dict['email'] = email
-            if is_temporary is not None and is_temporary != user.is_temporary:
-                update_data_dict['is_temporary'] = is_temporary
-            if auth_provider is not None and auth_provider != user.auth_provider:
-                update_data_dict['auth_provider'] = auth_provider
-            if auth_id is not None and auth_id != user.auth_id:
-                update_data_dict['auth_id'] = auth_id
-
-            new_display_name_to_propagate = update_data_dict.get('displayname') # Get the name being updated
+                name_changed = True
+                new_display_name = displayname
+            if email is not None and email != user.email: update_data_dict['email'] = email
+            if is_temporary is not None and is_temporary != user.is_temporary: update_data_dict['is_temporary'] = is_temporary
+            if auth_provider is not None and auth_provider != user.auth_provider: update_data_dict['auth_provider'] = auth_provider
+            if auth_id is not None and auth_id != user.auth_id: update_data_dict['auth_id'] = auth_id
 
             if not update_data_dict:
-                logger.info(f"No fields to update for user {user_id}")
-                # --- Propagate name change even if only displayname changed ---
-                if displayname is not None and displayname != user.displayname:
-                    new_display_name_to_propagate = displayname
-                else:
-                    return user # No user record update needed, and name didn't change
+                logger.info(f"No fields to update for user {user_id_str}")
+                updated_user_record = user # Return the original if no DB update needed
             else:
-                # Update the user record
                 update_data = UserUpdate(**update_data_dict)
-                updated_user = await self.user_repository.update(id=user_id, obj_in=update_data)
-                if updated_user:
-                    logger.info(f"Updated user record for ID: {user_id}")
-                else:
-                    logger.error(f"Failed to update user record for ID: {user_id}")
-                    # Don't proceed if the primary user update failed
-                    return None
+                updated_user_record = await self.user_repository.update(id=user_id_str, obj_in=update_data)
+                if updated_user_record: logger.info(f"Updated user record for ID: {user_id_str}")
+                else: logger.error(f"Failed to update user record for ID: {user_id_str}"); return None
 
-            # --- Propagate display name change to active/pending game participants ---
-            if new_display_name_to_propagate is not None:
-                logger.info(f"Propagating name change '{new_display_name_to_propagate}' for user {user_id} to relevant games.")
-                try:
-                    participant_records = await self.game_participant_repository.get_user_active_games(user_id)
-                    updated_count = 0
-                    for participant in participant_records:
-                        # Fetch game session to check status
-                        game_session = await self.game_session_repository.get_by_id(participant.game_session_id)
-                        if game_session and game_session.status in [GameStatus.PENDING, GameStatus.ACTIVE]:
-                            # Only update if the name is actually different
-                            if participant.display_name != new_display_name_to_propagate:
-                                participant_update_payload = GameParticipantUpdate(display_name=new_display_name_to_propagate) # type: ignore[call-arg] # Explicitly ignore if Pydantic complains about optional/required mismatch during partial update intention
-                                await self.game_participant_repository.update(id=participant.id, obj_in=participant_update_payload)
-                                updated_count += 1
-                        else:
-                            logger.debug(f"Skipping participant {participant.id} in game {participant.game_session_id} (status: {game_session.status if game_session else 'Not Found'})")
-                    logger.info(f"Updated display name for {updated_count} participant records for user {user_id}.")
-                except Exception as propagation_error:
-                     # Log the error but don't fail the whole user update
-                     logger.error(f"Error propagating name change for user {user_id}: {propagation_error}", exc_info=True)
+            # --- Propagate display name change ---
+            if name_changed and new_display_name is not None:
+                logger.info(f"Propagating name change '{new_display_name}' for user {user_id_str}")
+                await self._propagate_name_change(user_id_str, new_display_name)
 
-            # Return the updated user record (or original if only name propagation happened)
-            return updated_user if updated_user else user
+            return updated_user_record
 
-        except ValueError:
-            raise
-        except Exception as e:
-            logger.error(f"Error updating user {user_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        except ValueError: raise
+        except Exception as e: logger.error(f"Error updating user {user_id_str}: {str(e)}"); logger.error(traceback.format_exc()); raise
     # --- END MODIFIED update_user ---
 
+    # --- NEW Helper Method: _propagate_name_change ---
+    async def _propagate_name_change(self, user_id: str, new_display_name: str):
+        """Propagates name change to active/pending games via DB and WebSocket."""
+        try:
+            participant_records = await self.game_participant_repository.get_user_active_games(user_id)
+            game_ids_to_notify: List[str] = []
+            update_tasks = []
+
+            for participant in participant_records:
+                # Check game status before updating participant record
+                game_session = await self.game_session_repository.get_by_id(participant.game_session_id)
+                if game_session and game_session.status in [GameStatus.PENDING, GameStatus.ACTIVE]:
+                    if participant.display_name != new_display_name:
+                        # Schedule DB update
+                        participant_update_payload = GameParticipantUpdate(display_name=new_display_name) # type: ignore[call-arg]
+                        update_tasks.append(
+                           asyncio.create_task(self.game_participant_repository.update(id=participant.id, obj_in=participant_update_payload))
+                        )
+                        if participant.game_session_id not in game_ids_to_notify:
+                           game_ids_to_notify.append(participant.game_session_id)
+                    # Include game ID even if DB name was already correct, in case WS connection state is different
+                    elif participant.game_session_id not in game_ids_to_notify:
+                         game_ids_to_notify.append(participant.game_session_id)
+
+            # Execute DB updates concurrently
+            db_update_results = await asyncio.gather(*update_tasks, return_exceptions=True)
+            failed_db_updates = [res for res in db_update_results if isinstance(res, Exception) or res is None]
+            if failed_db_updates: logger.warning(f"Failed {len(failed_db_updates)} participant DB name updates for user {user_id}.")
+
+            # Broadcast WebSocket update to relevant game rooms
+            if game_ids_to_notify:
+                message = {
+                    "type": "user_name_updated",
+                    "payload": {"user_id": user_id, "new_display_name": new_display_name}
+                }
+                broadcast_tasks = [self.connection_manager.broadcast(message, game_id) for game_id in game_ids_to_notify]
+                await asyncio.gather(*broadcast_tasks, return_exceptions=True) # Log errors within broadcast
+                logger.info(f"Broadcasted name update for user {user_id} to {len(game_ids_to_notify)} games.")
+
+        except Exception as propagation_error:
+            logger.error(f"Error propagating name change for user {user_id}: {propagation_error}", exc_info=True)
+    # --- END NEW Helper Method ---
 
     async def delete_user(self, user_id: str) -> Optional[User]:
-        """
-        Delete a user.
-        (No changes to this method)
-        """
+        """ Delete a user. (No changes needed here) """
         try:
-            user_id = ensure_uuid(user_id)
-            deleted_user = await self.user_repository.delete(id=user_id)
-            if deleted_user: logger.info(f"Deleted user with ID: {user_id}")
-            else: logger.warning(f"User with ID {user_id} not found for deletion")
+            user_id_str = ensure_uuid(user_id)
+            deleted_user = await self.user_repository.delete(id=user_id_str)
+            if deleted_user: logger.info(f"Deleted user with ID: {user_id_str}")
+            else: logger.warning(f"User with ID {user_id_str} not found for deletion")
             return deleted_user
-        except Exception as e:
-            logger.error(f"Error deleting user {user_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        except Exception as e: logger.error(f"Error deleting user {user_id_str}: {str(e)}"); logger.error(traceback.format_exc()); raise
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """
-        Get a user by email address.
-        (No changes to this method)
-        """
-        try:
-            return await self.user_repository.get_by_email(email)
-        except Exception as e:
-            logger.error(f"Error retrieving user by email {email}: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        """ Get a user by email address. (No changes needed here) """
+        try: return await self.user_repository.get_by_email(email)
+        except Exception as e: logger.error(f"Error retrieving user by email {email}: {str(e)}"); logger.error(traceback.format_exc()); raise
 
     async def get_or_create_user_by_auth(
-        self,
-        auth_provider: str,
-        auth_id: str,
-        email: Optional[str] = None,
-        displayname: Optional[str] = None,
-        is_temporary: bool = False
+        self, auth_provider: str, auth_id: str, email: Optional[str] = None,
+        displayname: Optional[str] = None, is_temporary: bool = False
     ) -> Tuple[User, bool]:
-        """
-        Get a user by authentication details or create a new one if not found.
-        (No changes to this method)
-        """
+        """ Get/Create user by auth details. (No changes needed here) """
         try:
             user = await self.user_repository.get_by_auth_details(auth_provider, auth_id)
             if user: return user, False
-            new_user = await self.create_user(
-                displayname=displayname, email=email, is_temporary=is_temporary,
-                auth_provider=auth_provider, auth_id=auth_id
-            )
+            new_user = await self.create_user(displayname=displayname, email=email, is_temporary=is_temporary, auth_provider=auth_provider, auth_id=auth_id)
             return new_user, True
-        except Exception as e:
-            logger.error(f"Error in get_or_create_user_by_auth: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        except Exception as e: logger.error(f"Error in get_or_create_user_by_auth: {str(e)}"); logger.error(traceback.format_exc()); raise
 
     async def convert_temporary_user(
-        self,
-        user_id: str,
-        displayname: str,
-        email: Optional[str] = None,
-        auth_provider: Optional[str] = None,
-        auth_id: Optional[str] = None
+        self, user_id: str, displayname: str, email: Optional[str] = None,
+        auth_provider: Optional[str] = None, auth_id: Optional[str] = None
     ) -> Optional[User]:
-        """
-        Convert a temporary user to a permanent one.
-        (No changes to this method logic, but it now calls the modified update_user)
-        """
+        """ Convert temporary user. (No changes needed here, calls updated `update_user`) """
         try:
-            user_id = ensure_uuid(user_id)
-            user = await self.user_repository.get_by_id(user_id)
-            if not user:
-                logger.warning(f"User with ID {user_id} not found for conversion")
-                return None
-            if not user.is_temporary:
-                logger.warning(f"User with ID {user_id} is not a temporary user")
-                raise ValueError(f"User with ID {user_id} is not a temporary user")
-            if email:
-                existing_user = await self.user_repository.get_by_email(email)
-                if existing_user and existing_user.id != user_id:
-                    logger.warning(f"Email {email} already in use by another user")
-                    raise ValueError(f"Email {email} already in use by another user")
-
-            # This call now uses the modified update_user method
-            updated_user = await self.update_user(
-                user_id=user_id, displayname=displayname, email=email,
-                is_temporary=False, auth_provider=auth_provider, auth_id=auth_id
-            )
-
-            if updated_user: logger.info(f"Converted temporary user {user_id} to permanent account")
+            user_id_str = ensure_uuid(user_id)
+            user = await self.user_repository.get_by_id(user_id_str)
+            if not user: logger.warning(f"User with ID {user_id_str} not found for conversion"); return None
+            if not user.is_temporary: raise ValueError(f"User with ID {user_id_str} is not a temporary user")
+            # Update call will now handle propagation
+            updated_user = await self.update_user( user_id=user_id_str, displayname=displayname, email=email, is_temporary=False, auth_provider=auth_provider, auth_id=auth_id )
+            if updated_user: logger.info(f"Converted temporary user {user_id_str} to permanent account")
             return updated_user
-        except ValueError:
-            raise
-        except Exception as e:
-            logger.error(f"Error converting temporary user {user_id}: {str(e)}")
-            logger.error(traceback.format_exc())
-            raise
+        except ValueError: raise
+        except Exception as e: logger.error(f"Error converting temporary user {user_id_str}: {str(e)}"); logger.error(traceback.format_exc()); raise
 </file>
 
 <file path="backend/src/utils/document_processing/__init__.py">
@@ -10132,13 +10045,18 @@ def ensure_uuid(id_value: Union[str, uuid.UUID, bytes]) -> str:
 </file>
 
 <file path="backend/src/main.py">
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
+from typing import Dict
 
+# --- MODIFIED IMPORTS ---
 from .api.routes import router as api_router
 from .config.supabase_client import init_supabase_client, close_supabase_client
+from .websocket_manager import ConnectionManager # Import the manager
+from .utils import ensure_uuid # Import ensure_uuid
+# --- END MODIFIED IMPORTS ---
 
 # Configure logging
 logging.basicConfig(
@@ -10146,6 +10064,13 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+
+# --- ADD Connection Manager Instance ---
+# This instance will be shared across the application
+connection_manager = ConnectionManager()
+# --- END ADD ---
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -10157,10 +10082,15 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing Supabase client...")
     supabase = await init_supabase_client()
     app.state.supabase = supabase
-    
+
+    # --- ADD Manager to App State ---
+    # Make the manager instance available via app state for potential dependency injection
+    app.state.connection_manager = connection_manager
+    # --- END ADD ---
+
     logger.info("Application startup complete")
     yield
-    
+
     # Close the Supabase client on shutdown
     logger.info("Closing Supabase client...")
     await close_supabase_client(app.state.supabase)
@@ -10186,14 +10116,170 @@ app.add_middleware(
 # Include API routes
 app.include_router(api_router, prefix="/api")
 
+# --- ADD WebSocket Endpoint ---
+@app.websocket("/ws/{game_id}/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, game_id: str, user_id: str):
+    """WebSocket endpoint for real-time game communication."""
+    try:
+        # Basic validation (more robust validation might be needed depending on auth)
+        game_id_uuid = ensure_uuid(game_id)
+        user_id_uuid = ensure_uuid(user_id)
+    except ValueError:
+         logger.warning(f"WebSocket connection rejected: Invalid UUID format for game '{game_id}' or user '{user_id}'.")
+         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+         return
+
+    # Use the global connection manager instance
+    manager = app.state.connection_manager
+    await manager.connect(websocket, game_id_uuid, user_id_uuid)
+
+    # Example: Notify others that a user joined (moved this logic to GameService.join_game)
+    # await manager.broadcast(
+    #     {"type": "user_joined", "user_id": user_id_uuid, "game_id": game_id_uuid},
+    #     game_id_uuid
+    # )
+
+    try:
+        while True:
+            # Keep connection open, listen for messages (optional)
+            # If client sends messages, handle them here
+            data = await websocket.receive_text()
+            logger.debug(f"Received WebSocket message from {user_id_uuid} in {game_id_uuid}: {data}")
+            # Example: Echo message back or handle specific commands
+            # await manager.send_personal_message(f"You wrote: {data}", websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, game_id_uuid, user_id_uuid)
+        # Example: Notify others that a user left (move this logic to where disconnects are handled, e.g., GameService)
+        # await manager.broadcast(
+        #     {"type": "user_left", "user_id": user_id_uuid, "game_id": game_id_uuid},
+        #     game_id_uuid
+        # )
+        logger.info(f"WebSocket disconnected cleanly for User {user_id_uuid} in Game {game_id_uuid}.")
+    except Exception as e:
+        # Log unexpected errors during WebSocket communication
+        logger.error(f"WebSocket error for User {user_id_uuid} in Game {game_id_uuid}: {e}", exc_info=True)
+        # Attempt to disconnect cleanly if possible
+        manager.disconnect(websocket, game_id_uuid, user_id_uuid)
+        # Optionally broadcast an error or disconnect message
+
+# --- END ADD WebSocket Endpoint ---
+
+
 @app.get("/")
 async def root():
     """Root endpoint for health check."""
     return {"status": "ok", "message": "Trivia API is running"}
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
+# Removed uvicorn runner - use run_api_server.py instead
+# if __name__ == "__main__":
+#     import uvicorn
+#     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
+</file>
+
+<file path="backend/src/websocket_manager.py">
+# backend/src/websocket_manager.py
+import asyncio
+import json
+import logging
+from typing import Dict, List, Set, Optional
+from fastapi import WebSocket
+
+logger = logging.getLogger(__name__)
+
+class ConnectionManager:
+    """Manages active WebSocket connections for game rooms."""
+
+    def __init__(self):
+        # Structure: {game_id: {user_id: WebSocket}}
+        self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
+        logger.info("ConnectionManager initialized.")
+
+    async def connect(self, websocket: WebSocket, game_id: str, user_id: str):
+        """Accepts and stores a new WebSocket connection."""
+        await websocket.accept()
+        if game_id not in self.active_connections:
+            self.active_connections[game_id] = {}
+        self.active_connections[game_id][user_id] = websocket
+        logger.info(f"WebSocket connected: User {user_id} in Game {game_id}. Total in game: {len(self.active_connections[game_id])}")
+        # Optionally send a welcome message or current state upon connection
+        # await self.send_personal_message({"type": "status", "message": "Connected"}, websocket)
+
+    def disconnect(self, websocket: WebSocket, game_id: str, user_id: str):
+        """Removes a WebSocket connection."""
+        if game_id in self.active_connections:
+            if user_id in self.active_connections[game_id]:
+                # Ensure the websocket object matches before deleting, though user_id should be unique per game
+                if self.active_connections[game_id][user_id] == websocket:
+                    del self.active_connections[game_id][user_id]
+                    logger.info(f"WebSocket disconnected: User {user_id} from Game {game_id}.")
+                    if not self.active_connections[game_id]:
+                        del self.active_connections[game_id]
+                        logger.info(f"Game room {game_id} empty, removed.")
+            else:
+                 logger.warning(f"User {user_id} not found in game {game_id} during disconnect.")
+        else:
+             logger.warning(f"Game room {game_id} not found during disconnect for user {user_id}.")
+
+
+    async def send_personal_message(self, message: dict, websocket: WebSocket):
+        """Sends a JSON message to a specific WebSocket client."""
+        try:
+            await websocket.send_json(message)
+        except Exception as e:
+            # Log error, connection might be closed unexpectedly
+            logger.error(f"Failed to send personal message: {e}", exc_info=False) # Avoid full tb for send errors usually
+
+    async def broadcast(self, message: dict, game_id: str):
+        """Broadcasts a JSON message to all clients in a specific game room."""
+        if game_id in self.active_connections:
+            connections = list(self.active_connections[game_id].values()) # Create list to avoid issues if dict changes during iteration
+            message_json = json.dumps(message) # Serialize once
+            logger.debug(f"Broadcasting to {len(connections)} clients in game {game_id}: {message_json}")
+
+            # Use asyncio.gather for concurrent sending
+            results = await asyncio.gather(
+                *[conn.send_text(message_json) for conn in connections],
+                return_exceptions=True
+            )
+
+            # Log any exceptions that occurred during sending
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                     # Find the user_id associated with the failed connection if possible
+                     failed_user_id = "unknown"
+                     for uid, ws in self.active_connections.get(game_id, {}).items():
+                         if ws == connections[i]:
+                             failed_user_id = uid
+                             break
+                     logger.error(f"Failed to broadcast to user {failed_user_id} in game {game_id}: {result}", exc_info=False)
+                     # Consider removing the problematic connection here if appropriate
+                     # self.disconnect(connections[i], game_id, failed_user_id)
+        else:
+            logger.warning(f"Attempted to broadcast to non-existent game room: {game_id}")
+
+    async def broadcast_to_others(self, message: dict, game_id: str, sender_user_id: str):
+        """Broadcasts a JSON message to all clients in a room EXCEPT the sender."""
+        if game_id in self.active_connections:
+            message_json = json.dumps(message)
+            tasks = []
+            count = 0
+            for user_id, websocket in self.active_connections[game_id].items():
+                if user_id != sender_user_id:
+                    tasks.append(websocket.send_text(message_json))
+                    count += 1
+
+            logger.debug(f"Broadcasting to {count} others in game {game_id} (excluding {sender_user_id}): {message_json}")
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Log any exceptions
+            # (Error logging similar to broadcast can be added here if needed)
+
+
+    def get_connected_user_ids(self, game_id: str) -> List[str]:
+         """Returns a list of user IDs currently connected in a game room."""
+         if game_id in self.active_connections:
+             return list(self.active_connections[game_id].keys())
+         return []
 </file>
 
 <file path="backend/tests/test_api.py">
@@ -18271,6 +18357,189 @@ export const useQuestionManager = (
 };
 </file>
 
+<file path="website/src/hooks/useWebSocket.ts">
+// website/src/hooks/useWebSocket.ts
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { toast } from 'sonner';
+import { IncomingWsMessage } from '@/types/websocketTypes'; // Import message types
+import { API_BASE_URL } from '@/config';
+
+// Define WebSocket connection states
+type WebSocketStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
+
+interface UseWebSocketOptions {
+  gameId: string | null;
+  userId: string | null;
+  onMessage: (message: IncomingWsMessage) => void; // Callback to handle received messages
+  onError?: (event: Event) => void;
+  onOpen?: () => void;
+  onClose?: (event: CloseEvent) => void;
+  retryInterval?: number; // Time in ms between reconnection attempts
+  maxRetries?: number; // Max number of reconnection attempts (-1 for infinite)
+}
+
+const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || API_BASE_URL.replace(/^http/, 'ws');
+console.log("WebSocket Base URL:", WS_BASE_URL);
+
+
+/**
+ * Custom hook to manage a WebSocket connection for the game.
+ * Handles connection, disconnection, message sending/receiving, and basic reconnection.
+ */
+export const useWebSocket = ({
+  gameId,
+  userId,
+  onMessage,
+  onError,
+  onOpen,
+  onClose,
+  retryInterval = 5000, // Default 5 seconds
+  maxRetries = 5,       // Default 5 retries
+}: UseWebSocketOptions) => {
+  const [status, setStatus] = useState<WebSocketStatus>('disconnected');
+  const wsRef = useRef<WebSocket | null>(null);
+  const retryCountRef = useRef<number>(0);
+  const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const attemptingConnectionRef = useRef<boolean>(false); // Flag to prevent concurrent connection attempts
+
+  // Stable callback refs
+  const onMessageRef = useRef(onMessage);
+  const onErrorRef = useRef(onError);
+  const onOpenRef = useRef(onOpen);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => { onMessageRef.current = onMessage; }, [onMessage]);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  useEffect(() => { onOpenRef.current = onOpen; }, [onOpen]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  const connect = useCallback(() => {
+    // Prevent connection if missing required IDs or already connecting/connected
+    if (!gameId || !userId || attemptingConnectionRef.current || status === 'connected' || status === 'connecting') {
+      if (!gameId || !userId) console.log("WebSocket connect skipped: Missing gameId or userId");
+      else console.log(`WebSocket connect skipped: Status is ${status} or already attempting.`);
+      return;
+    }
+
+    // Construct WebSocket URL
+    const wsUrl = `${WS_BASE_URL}/ws/${gameId}/${userId}`;
+    console.log(`Attempting WebSocket connection to: ${wsUrl}`);
+
+    attemptingConnectionRef.current = true; // Set flag
+    setStatus('connecting');
+    retryCountRef.current = 0; // Reset retry count on new manual connect attempt
+
+    try {
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connection opened');
+        setStatus('connected');
+        retryCountRef.current = 0; // Reset retries on successful connection
+        if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+        attemptingConnectionRef.current = false; // Clear flag
+        if (onOpenRef.current) onOpenRef.current();
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const message: IncomingWsMessage = JSON.parse(event.data);
+          // console.log('WebSocket message received:', message); // Debug log
+          if (onMessageRef.current) onMessageRef.current(message);
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error, 'Data:', event.data);
+        }
+      };
+
+      wsRef.current.onerror = (event) => {
+        console.error('WebSocket error:', event);
+        setStatus('error');
+        attemptingConnectionRef.current = false; // Clear flag on error too
+        if (onErrorRef.current) onErrorRef.current(event);
+        // Optionally trigger reconnection logic here as well
+        handleClose(new CloseEvent('errorclose')); // Treat error as a close event for potential retry
+      };
+
+      wsRef.current.onclose = (event) => {
+        console.log('WebSocket connection closed:', event.code, event.reason);
+        handleClose(event);
+      };
+
+    } catch (error) {
+        console.error("Error creating WebSocket:", error);
+        setStatus('error');
+        attemptingConnectionRef.current = false; // Clear flag
+        // Handle creation error, maybe retry?
+    }
+
+  }, [gameId, userId, status]); // Depends on IDs and status to prevent multiple connects
+
+  const handleClose = useCallback((event: CloseEvent) => {
+      setStatus('disconnected');
+      attemptingConnectionRef.current = false; // Clear flag
+      wsRef.current = null; // Clear the ref
+      if (onCloseRef.current) onCloseRef.current(event);
+
+      // Reconnection logic
+      if ((maxRetries === -1 || retryCountRef.current < maxRetries)) {
+         retryCountRef.current++;
+         console.log(`WebSocket closed. Attempting reconnect ${retryCountRef.current}/${maxRetries === -1 ? 'infinite' : maxRetries}...`);
+         toast.info("Connection Lost", { description: `Attempting to reconnect (${retryCountRef.current})...`});
+         if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current); // Clear previous timeout
+         connectTimeoutRef.current = setTimeout(connect, retryInterval);
+      } else {
+         console.log("WebSocket closed. Max retries reached or retries disabled.");
+         toast.error("Connection Lost", { description: "Could not reconnect to the game server."});
+      }
+  }, [maxRetries, retryInterval, connect]); // Added `connect` to dependencies
+
+  const disconnect = useCallback(() => {
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current); // Cancel any pending reconnection attempts
+      connectTimeoutRef.current = null;
+    }
+    retryCountRef.current = maxRetries; // Prevent further retries after manual disconnect
+    if (wsRef.current) {
+      console.log('Manually closing WebSocket connection.');
+      wsRef.current.close(1000, 'User disconnected'); // Use standard code 1000
+      // wsRef.current = null; // Let onclose handle setting ref to null
+      // setStatus('disconnected'); // Let onclose handle status update
+    }
+  }, [maxRetries]);
+
+  // Effect to initiate connection when gameId and userId are available
+  useEffect(() => {
+    if (gameId && userId) {
+      connect();
+    } else {
+      // If IDs become null/undefined, ensure disconnection
+      disconnect();
+    }
+
+    // Cleanup on unmount or when IDs change significantly
+    return () => {
+      console.log("useWebSocket cleanup: Disconnecting...");
+      disconnect();
+    };
+  }, [gameId, userId, connect, disconnect]); // Add connect/disconnect
+
+  // Function to send messages (if needed later)
+  // const sendMessage = useCallback((message: any) => {
+  //   if (wsRef.current && status === 'connected') {
+  //     try {
+  //       wsRef.current.send(JSON.stringify(message));
+  //     } catch (error) {
+  //       console.error("Failed to send WebSocket message:", error);
+  //     }
+  //   } else {
+  //     console.warn("WebSocket not connected. Cannot send message:", message);
+  //   }
+  // }, [status]);
+
+  return { status }; // Expose status, maybe sendMessage later
+};
+</file>
+
 <file path="website/src/lib/utils.ts">
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
@@ -18555,14 +18824,20 @@ import GameHeader from '@/components/GameHeader';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionTimer from '@/components/QuestionTimer'; // Import the timer component
 import { Player, PlayerSelection, PlayerResult, Question, Answer } from '@/types/gameTypes';
-import { getGamePlayQuestions } from '@/services/gameApi';
-import { getPlayerById, getQuestionTextClass, getPirateNameForUserId } from '@/utils/gamePlayUtils';
-import { useGameTimer } from '@/hooks/useGameTimer'; // Import the updated hook
+import { getGamePlayQuestions, submitAnswer } from '@/services/gameApi'; // Corrected import
+import { getPlayerById, getQuestionTextClass, getPirateNameForUserId, getEmojiForPlayerId } from '@/utils/gamePlayUtils'; // Added getEmojiForPlayerId import
+import { useGameTimer } from '@/hooks/useGameTimer';
 import { useQuestionManager } from '@/hooks/useQuestionManager';
 import { toast } from 'sonner';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import PirateButton from '@/components/PirateButton';
+
+// --- WebSocket Imports ---
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { IncomingWsMessage } from '@/types/websocketTypes';
+import { ApiParticipant } from '@/types/apiTypes'; // Import ApiParticipant for game_over payload
+// --- End WebSocket Imports ---
 
 const GameplayScreen: React.FC = () => {
   const location = useLocation();
@@ -18581,9 +18856,8 @@ const GameplayScreen: React.FC = () => {
   const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [questionFetchError, setQuestionFetchError] = useState<string | null>(null);
-  // Removed fetchedCorrectAnswers state as it's now handled differently
 
-  // --- Fetch Game Questions ---
+  // --- Fetch Game Questions (Unchanged logic) ---
   useEffect(() => {
      if (!gameId || !packName) {
        console.error("GameplayScreen: Missing gameId or packName in location state!", location.state);
@@ -18591,49 +18865,20 @@ const GameplayScreen: React.FC = () => {
        navigate('/');
        return;
      }
-
     const fetchQuestions = async () => {
       setIsLoadingQuestions(true);
       setQuestionFetchError(null);
-      console.log(`Fetching questions for game ID: ${gameId}`);
       try {
-        const response = await getGamePlayQuestions(gameId); // Fetch raw API data
-        console.log("API response for questions:", response);
-
-        // --- START: Formatting Logic Moved Here ---
+        const response = await getGamePlayQuestions(gameId);
         const formattedQuestions: Question[] = response.questions.map((apiQ): Question => {
-            // Generate Answer objects with IDs based on the shuffled index
-            const answersWithOptions: Answer[] = apiQ.options.map((optionText, optionIndex): Answer => {
-                const answerId = `${apiQ.question_id}-${optionIndex}`; // ID based on index *after* shuffle
-                return {
-                    id: answerId,
-                    text: optionText,
-                    letter: String.fromCharCode(65 + optionIndex)
-                };
-            });
-
-            // Directly use the correct_answer_id from the API response
+            const answersWithOptions: Answer[] = apiQ.options.map((optionText, optionIndex): Answer => ({
+                id: `${apiQ.question_id}-${optionIndex}`, text: optionText, letter: String.fromCharCode(65 + optionIndex)
+            }));
             const correctAnswerId = apiQ.correct_answer_id;
-            if (!correctAnswerId) {
-                 console.error(`Missing correct_answer_id from backend for question ${apiQ.question_id}`);
-                 // Handle this error? Maybe skip the question or assign a default?
-                 // For now, we'll let it potentially fail downstream comparison, but log it.
-            }
-
-            return {
-                id: apiQ.question_id, // Original question ID
-                text: apiQ.question_text,
-                category: packId || 'Trivia', // Use packId if available
-                answers: answersWithOptions, // Array of Answer objects with generated IDs
-                correctAnswer: correctAnswerId, // Assign the ID from the backend
-                timeLimit: apiQ.time_limit,
-            };
+            if (!correctAnswerId) console.error(`Missing correct_answer_id for question ${apiQ.question_id}`);
+            return { id: apiQ.question_id, text: apiQ.question_text, category: packId || 'Trivia', answers: answersWithOptions, correctAnswer: correctAnswerId, timeLimit: apiQ.time_limit, };
         });
-        // --- END: Formatting Logic Moved Here ---
-
-        console.log("Formatted questions:", formattedQuestions);
         setGameQuestions(formattedQuestions);
-
       } catch (error) {
         console.error("Failed to fetch game questions:", error);
         const errorMsg = error instanceof Error ? error.message : "Could not load questions.";
@@ -18644,7 +18889,7 @@ const GameplayScreen: React.FC = () => {
       }
     };
     fetchQuestions();
-  }, [gameId, navigate, packId, packName, location.state]); // Dependencies are correct
+  }, [gameId, navigate, packId, packName, location.state]);
 
   // --- State Managed by Hooks ---
   const {
@@ -18665,225 +18910,228 @@ const GameplayScreen: React.FC = () => {
   const answerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
+  // --- ADD State for current participant ID ---
+  const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
 
-  // --- User Info Effect ---
+
+  // --- User Info Effect (Modified to fetch participant ID) ---
   useEffect(() => {
     const storedUserId = localStorage.getItem('tempUserId');
     const storedName = localStorage.getItem('tempUserDisplayName');
     if (storedUserId) {
       setCurrentUserId(storedUserId);
       setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId));
+
+      // --- Fetch participant ID once user ID and game ID are known ---
+      const fetchParticipantId = async () => {
+           if (gameId && storedUserId) {
+               try {
+                   // We need to fetch participants to find *our* participant record ID
+                   // This might be slightly inefficient if WaitingRoom already passed it,
+                   // but this makes GameplayScreen self-contained if navigated to directly (though less likely now).
+                   console.log(`Fetching participants in Gameplay to find participant ID for user ${storedUserId}...`);
+                   const response = await getGameParticipants(gameId); // Reuse existing API service function
+                   const currentUserParticipant = response.participants.find(p => p.user_id === storedUserId);
+                   if (currentUserParticipant) {
+                       setCurrentParticipantId(currentUserParticipant.id);
+                       console.log(`Found participant ID: ${currentUserParticipant.id}`);
+                   } else {
+                       console.error(`Could not find participant record for user ${storedUserId} in game ${gameId}.`);
+                       toast.error("Game Sync Error", { description: "Could not verify your participation. Submissions might fail." });
+                   }
+               } catch (error) {
+                   console.error("Error fetching participant ID:", error);
+                   toast.error("Game Sync Error", { description: "Could not verify participation." });
+               }
+           }
+      };
+      fetchParticipantId();
+      // --- End Fetch participant ID ---
+
     } else {
       console.error("Gameplay: User ID not found!");
       toast.error("Session Error", { description: "User ID missing. Please restart." });
       navigate('/');
     }
-  }, [navigate]);
+  }, [navigate, gameId]); // Added gameId dependency to trigger participant fetch
 
-  // --- Timer Hook & Submit Logic ---
-  const handleSubmit = useCallback(() => {
-    // Ensure we don't submit multiple times for the same question
-    if (isAnswered || !question || !currentUserId) {
-        console.log("Submit prevented: Already answered, no question, or no user ID.");
-        return;
-    }
-    console.log(`Submitting answer for question ID: ${question.id}, Index: ${currentQuestionIndex}`);
 
-    setIsAnswered(true); // Mark as answered immediately to pause timer and disable interactions
-    const isAnswerCorrect = selectedAnswer === question.correctAnswer;
-    setIsCorrect(isAnswerCorrect);
-    console.log(`Selected ID: ${selectedAnswer}, Correct ID: ${question.correctAnswer}, Is Correct: ${isAnswerCorrect}`);
-
-    if (isAnswerCorrect) {
-      setScore(prev => prev + 1); // Basic scoring
-    }
-
-    // Delay before moving on
-    setTimeout(() => {
-        console.log(`Timeout finished for question Index: ${currentQuestionIndex}. Is last: ${isLastQuestion}`);
-      if (!isLastQuestion) {
-        console.log("Moving to next question...");
-        nextQuestion(); // Call the function from the hook to advance the index
-      } else {
-        console.log("Last question answered. Navigating to results...");
-        // Prepare results data
-        let playerResultsArray: PlayerResult[] = [];
-        if (currentUserId && currentUserDisplayName !== null) {
-          playerResultsArray = [{ id: currentUserId, name: currentUserDisplayName, score: score }];
+  // --- WebSocket Message Handler (Unchanged logic) ---
+  const handleWebSocketMessage = useCallback((message: IncomingWsMessage) => {
+    console.log("GameplayScreen Received WebSocket Message:", message.type, message.payload);
+    switch (message.type) {
+      case 'next_question': {
+        const nextQuestionIndex = message.payload.index;
+        console.log(`WS: Received next_question signal for index ${nextQuestionIndex}. Current index: ${currentQuestionIndexRef.current}`);
+        if (nextQuestionIndex === currentQuestionIndexRef.current + 1) {
+            console.log("WS: Advancing to next question based on WS message.");
+            nextQuestionRef.current();
         } else {
-           console.warn("Solo/Crew mode ended but couldn't find user details for results.");
+            console.warn(`WS: Received next_question for index ${nextQuestionIndex}, but expected ${currentQuestionIndexRef.current + 1}. Ignoring.`);
         }
-        if (!isSoloMode) {
-           console.warn("Crew mode results calculation/fetching needed here.");
-        }
-
-        const resultsPath = gameCode ? `/results?gameCode=${gameCode}` : '/results';
-        navigate(resultsPath, { state: { results: playerResultsArray } });
+        break;
       }
-    }, 3000); // 3-second delay
-  }, [isAnswered, question, currentUserId, selectedAnswer, isLastQuestion, nextQuestion, isSoloMode, currentUserDisplayName, score, gameCode, navigate, currentQuestionIndex]); // Added currentQuestionIndex
+      case 'game_over': {
+        console.log("WS: Received game_over signal.");
+        const resultsPayload = message.payload;
+        const formattedResults: PlayerResult[] = resultsPayload.participants.map((p: ApiParticipant) => ({
+             id: p.user_id, name: p.display_name, score: p.score,
+             avatar: getEmojiForPlayerId(p.user_id) // Corrected usage
+        }));
+        const resultsPath = gameCode ? `/results?gameCode=${gameCode}` : '/results';
+        toast.info("Game Over!", { description: "Heading to the results..." });
+        navigate(resultsPath, { state: { results: formattedResults } });
+        break;
+      }
+       case 'game_cancelled': {
+         toast.error("Game Cancelled", { description: "The Captain has cancelled the game." });
+         navigate('/'); // Navigate home
+         break;
+       }
+       case 'error': {
+         toast.error("Server Error", { description: message.payload.message });
+         break;
+       }
+      default: break;
+    }
+  }, [navigate, gameCode]);
 
-  // *** MODIFIED useGameTimer CALL ***
+  // --- Refs for Stable Callbacks (Unchanged) ---
+  const nextQuestionRef = useRef(nextQuestion);
+  const currentQuestionIndexRef = useRef(currentQuestionIndex);
+  useEffect(() => { nextQuestionRef.current = nextQuestion; }, [nextQuestion]);
+  useEffect(() => { currentQuestionIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
+
+  // --- Initialize WebSocket Connection (Unchanged) ---
+  const { status: wsStatus } = useWebSocket({
+    gameId: gameId ?? null,
+    userId: currentUserId,
+    onMessage: handleWebSocketMessage,
+    onOpen: () => console.log("Gameplay WebSocket connected."),
+    onClose: (event) => console.log("Gameplay WebSocket closed:", event.code),
+    onError: (event) => toast.error("Connection Error", { description: "Lost connection during gameplay." }),
+  });
+
+  // --- handleSubmit (Corrected: Uses participant ID) ---
+  const handleSubmit = useCallback(async () => {
+    // Added currentParticipantId check
+    if (isAnswered || !question || !currentUserId || !gameId || !currentParticipantId) {
+      console.log("Submit prevented:", { isAnswered, question: !!question, currentUserId: !!currentUserId, gameId: !!gameId, participantId: !!currentParticipantId });
+      return;
+    }
+    console.log(`Handling submit for Q Index: ${currentQuestionIndex}, Q ID: ${question.id}`);
+
+    setIsAnswered(true);
+    const answerIsCorrect = selectedAnswer === question.correctAnswer;
+    setIsCorrect(answerIsCorrect);
+    console.log(`Answer marked locally. Selected: ${selectedAnswer}, Correct: ${question.correctAnswer}, IsCorrect: ${answerIsCorrect}`);
+
+    // Submit answer via API using participant ID
+    if (selectedAnswer) {
+        try {
+            console.log(`Submitting answer '${selectedAnswer}' via REST API (Participant: ${currentParticipantId})...`);
+            const submitResult = await submitAnswer(gameId, currentParticipantId, currentQuestionIndex, { // Pass payload object
+                question_index: currentQuestionIndex,
+                answer: selectedAnswer // Send the selected answer ID/text
+            });
+            console.log("Answer submission API response:", submitResult);
+            if (submitResult?.total_score !== undefined) { // Check if total_score is present
+                setScore(submitResult.total_score); // Update score from API
+            } else {
+                 console.warn("API submit response did not contain total_score.");
+                 // Keep local basic score update if needed
+                 if (answerIsCorrect) setScore(prev => prev + 1); // Fallback local score
+            }
+        } catch (error) {
+            console.error("Failed to submit answer via API:", error);
+            toast.error("Submission Failed", { description: error instanceof Error ? error.message : "Could not submit answer." });
+             // Fallback local score update on error
+             if (answerIsCorrect) setScore(prev => prev + 1);
+        }
+    } else {
+        console.log("No answer selected, submitting nothing (or timeout occurred).");
+        // API call for timeout could go here if needed
+    }
+
+    console.log("Submit handled locally. Waiting for WebSocket signal to advance...");
+
+    // NO setTimeout or navigation here - WS handles it
+
+  }, [ isAnswered, question, currentUserId, gameId, selectedAnswer, currentQuestionIndex, currentParticipantId ]); // Added currentParticipantId
+
+  // --- Timer Hook (Unchanged usage) ---
   const timeRemaining = useGameTimer(
-    question?.id || `loading-${currentQuestionIndex}`, // Pass question ID or a placeholder as the timerId
-    question?.timeLimit || 30,                         // initialTime
-    isAnswered,                                        // isPaused
-    handleSubmit                                       // onTimeout callback
+    question?.id || `loading-${currentQuestionIndex}`,
+    question?.timeLimit || 30,
+    isAnswered,
+    handleSubmit
   );
 
-  // --- Effects ---
-  // Reset local component state when the question changes
+  // --- Effects (Reset, Height Calculation - Unchanged) ---
   useEffect(() => {
     if (question) {
       console.log(`Component State Reset Effect: New question loaded - ID: ${question.id}, Index: ${currentQuestionIndex}`);
       setSelectedAnswer(null);
-      setIsAnswered(false); // Ensure interactions are enabled for the new question
+      setIsAnswered(false);
       setIsCorrect(false);
       setPlayerSelections([]);
       setMaxHeight(null);
       answerRefs.current = [];
     }
-  }, [question, currentQuestionIndex]); // Trigger on question change or index change
+  }, [question, currentQuestionIndex]);
 
-  // Calculate answer item heights for consistent layout
   useEffect(() => {
-    if (!question || !question.answers || maxHeight !== null) return; // Avoid recalculating if already set
+     if (!question || !question.answers || maxHeight !== null || !answerRefs.current) return;
+      answerRefs.current = answerRefs.current.slice(0, question.answers.length);
+      let animationFrameId: number;
+      const calculateHeight = () => {
+          if (answerRefs.current.length === question.answers.length && answerRefs.current.every(Boolean)) {
+              let highest = 0;
+              answerRefs.current.forEach(ref => { if (ref) { const currentHeight = ref.getBoundingClientRect().height; if (currentHeight > highest) highest = currentHeight; } });
+              if (highest > 0 && highest !== maxHeight) setMaxHeight(highest);
+          }
+      };
+      const timeoutId = setTimeout(() => { animationFrameId = requestAnimationFrame(calculateHeight); }, 200);
+      return () => { clearTimeout(timeoutId); if (animationFrameId) cancelAnimationFrame(animationFrameId); };
+  }, [question, maxHeight]);
 
-    // Ensure refs array is ready
-    answerRefs.current = answerRefs.current.slice(0, question.answers.length);
+  // --- Event Handlers (Unchanged) ---
+  const handleAnswerSelect = (answerId: string) => { if (!isAnswered) { setSelectedAnswer(answerId); if (currentUserId) setPlayerSelections([{ playerId: currentUserId, answerId }]); } };
 
-    // Use requestAnimationFrame to calculate height after layout stabilizes
-    let animationFrameId: number;
-    const calculateHeight = () => {
-        if (answerRefs.current.length === question.answers.length) {
-            let highest = 0;
-            answerRefs.current.forEach(ref => {
-                if (ref) {
-                     // Force browser reflow to get accurate height, might be intensive
-                     // ref.offsetHeight;
-                     const currentHeight = ref.getBoundingClientRect().height;
-                     if (currentHeight > highest) {
-                        highest = currentHeight;
-                     }
-                }
-            });
-             if (highest > 0 && highest !== maxHeight) {
-                 console.log(`Setting max answer height to: ${highest}px for question ${question.id}`);
-                setMaxHeight(highest);
-            } else if (highest === 0) {
-                console.warn(`Could not determine answer height for question ${question.id}. Refs available: ${answerRefs.current.filter(Boolean).length}/${question.answers.length}`);
-                // Maybe retry after another short delay if height is 0?
-            }
-        }
-    };
-
-    // Delay calculation slightly more robustly
-    const timeoutId = setTimeout(() => {
-         animationFrameId = requestAnimationFrame(calculateHeight);
-    }, 200); // Increased delay slightly
-
-
-    return () => {
-        clearTimeout(timeoutId);
-        if (animationFrameId) {
-             cancelAnimationFrame(animationFrameId);
-        }
-    };
-  // Recalculate only when the question changes
-  }, [question, maxHeight]); // Added maxHeight to dependencies to prevent recalculation loop
-
-  // --- Event Handlers ---
-  const handleAnswerSelect = (answerId: string) => {
-    if (!isAnswered) {
-      setSelectedAnswer(answerId);
-      if (currentUserId) {
-        setPlayerSelections([{ playerId: currentUserId, answerId }]);
-      }
-    }
-  };
-
-  // --- Derived Data ---
+  // --- Derived Data (Unchanged) ---
   const playerSelectionsByAnswer = useMemo(() => {
       if (isSoloMode || !question) return {};
       const selections: Record<string, Player[]> = {};
-      // Logic to populate selections for crew mode would go here (e.g., from WebSocket state)
+      playerSelections.forEach(sel => {
+          const player = getPlayerById([], sel.playerId); // Replace [] with actual player list if needed
+          if (player) { if (!selections[sel.answerId]) selections[sel.answerId] = []; selections[sel.answerId].push(player); }
+      });
       return selections;
   }, [isSoloMode, question, playerSelections]);
-
   const questionTextClass = question ? getQuestionTextClass(question.text) : 'text-2xl md:text-3xl';
 
-  // --- Loading and Error States ---
-  if (isLoadingQuestions) {
-    return (
-        <div className="min-h-screen flex flex-col items-center justify-center">
-            <Loader2 className="h-12 w-12 animate-spin text-pirate-navy mb-4" />
-            <p className="text-pirate-navy/80">Shuffling the Deck...</p> {/* More thematic */}
-        </div>
-    );
-  }
+  // --- Loading and Error States (Unchanged) ---
+  if (isLoadingQuestions) { return (<div className="min-h-screen flex flex-col items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-pirate-navy mb-4" /><p className="text-pirate-navy/80">Shuffling the Deck...</p></div>); }
+  if (questionFetchError) { return (<div className="min-h-screen flex flex-col items-center justify-center p-4"><Card className="p-6 text-center border-destructive bg-destructive/10"><AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" /><h2 className="text-xl font-semibold text-destructive mb-2">Stormy Seas Ahead!</h2><p className="text-destructive/80 mb-4">{questionFetchError}</p><PirateButton onClick={() => navigate('/')} variant="secondary">Abandon Ship (Return Home)</PirateButton></Card></div>); }
+  if (!question || !currentUserId || !packName) { if (!isLoadingQuestions && gameQuestions.length === 0) { return (<div className="min-h-screen flex flex-col items-center justify-center p-4"><Card className="p-6 text-center border-pirate-navy/20 bg-pirate-parchment"><AlertTriangle className="h-12 w-12 text-pirate-navy/50 mx-auto mb-4" /><h2 className="text-xl font-semibold text-pirate-navy mb-2">Empty Chest!</h2><p className="text-pirate-navy/80 mb-4">No questions found in this treasure map.</p><PirateButton onClick={() => navigate('/')} variant="secondary">Return Home</PirateButton></Card></div>); } return <div className="min-h-screen flex items-center justify-center">Chartin' the Course...</div>; }
 
-  if (questionFetchError) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <Card className="p-6 text-center border-destructive bg-destructive/10">
-            <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-destructive mb-2">Stormy Seas Ahead!</h2> {/* Thematic */}
-            <p className="text-destructive/80 mb-4">{questionFetchError}</p>
-            <PirateButton onClick={() => navigate('/')} variant="secondary">
-                Abandon Ship (Return Home)
-            </PirateButton>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!question || !currentUserId || !packName) {
-    if (!isLoadingQuestions && gameQuestions.length === 0) {
-      return (
-         <div className="min-h-screen flex flex-col items-center justify-center p-4">
-           <Card className="p-6 text-center border-pirate-navy/20 bg-pirate-parchment">
-               <AlertTriangle className="h-12 w-12 text-pirate-navy/50 mx-auto mb-4" />
-               <h2 className="text-xl font-semibold text-pirate-navy mb-2">Empty Chest!</h2> {/* Thematic */}
-               <p className="text-pirate-navy/80 mb-4">
-                 No questions found in this treasure map.
-               </p>
-               <PirateButton onClick={() => navigate('/')} variant="secondary">
-                   Return Home
-               </PirateButton>
-           </Card>
-         </div>
-       );
-    }
-    console.log("GameplayScreen: Rendering loading/error because question, userId, or packName is missing.", { question: !!question, currentUserId, packName });
-    return <div className="min-h-screen flex items-center justify-center">Chartin' the Course...</div>; // Thematic
-  }
-
-  // --- Main Gameplay Render ---
+  // --- Main Gameplay Render (Unchanged structure) ---
   return (
     <div className="min-h-screen flex flex-col">
       <GameHeader />
-
       <main className="flex-1 container mx-auto px-4 py-6 flex flex-col">
         <div className="text-center mb-2">
-          <h2 className="font-pirate text-3xl text-pirate-navy capitalize">
-             {packName.replace(/-/g, ' ')}
-          </h2>
+          <h2 className="font-pirate text-3xl text-pirate-navy capitalize">{packName.replace(/-/g, ' ')}</h2>
           <p className="text-pirate-navy/80 font-medium">Question {currentQuestionIndex + 1} of {totalQuestionsToPlay}</p>
         </div>
-
-        {/* Display the timer - NO KEY NEEDED HERE ANYMORE */}
-        <QuestionTimer
-          timeRemaining={timeRemaining}
-          totalTime={question.timeLimit}
-        />
-
+        <QuestionTimer timeRemaining={timeRemaining} totalTime={question.timeLimit} />
         <div className="map-container p-0 mb-6 flex-1 flex">
           <QuestionCard
             questionText={question.text}
             answers={question.answers}
             selectedAnswer={selectedAnswer}
             isAnswered={isAnswered}
-            correctAnswer={question.correctAnswer} // Pass the correct ID here
+            correctAnswer={question.correctAnswer}
             onAnswerSelect={handleAnswerSelect}
             playerSelectionsByAnswer={playerSelectionsByAnswer}
             maxHeight={maxHeight}
@@ -18893,25 +19141,13 @@ const GameplayScreen: React.FC = () => {
               onSubmit: handleSubmit,
               disabled: !selectedAnswer && !isAnswered,
               isAnswered: isAnswered,
-              isCorrect: isCorrect, // Pass the correct state here
+              isCorrect: isCorrect,
             }}
           />
         </div>
       </main>
-
-      <style>
-        {`
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
-        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        `}
-      </style>
-
-      <footer className="ocean-bg py-8">
-        <div className="container mx-auto text-center text-white relative z-10">
-          <p className="font-pirate text-xl mb-2">Answer wisely, matey!</p>
-          <p className="text-sm opacity-75">© 2023 Trivia Trove - All Rights Reserved</p>
-        </div>
-      </footer>
+      <style>{`@keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } } .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }`}</style>
+      <footer className="ocean-bg py-8"><div className="container mx-auto text-center text-white relative z-10"><p className="font-pirate text-xl mb-2">Answer wisely, matey!</p><p className="text-sm opacity-75">© 2023 Trivia Trove - All Rights Reserved</p></div></footer>
     </div>
   );
 };
@@ -19932,7 +20168,7 @@ export default RoleSelect;
 // website/src/pages/WaitingRoom.tsx
 // --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom'; // Added useLocation
+import { useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { Users, Copy, Anchor, ArrowLeft, ChevronDown, Settings, Loader2, RefreshCw, Pencil } from 'lucide-react';
 import Header from '@/components/Header';
 import PirateButton from '@/components/PirateButton';
@@ -19941,27 +20177,26 @@ import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import PlayerAvatar from '@/components/PlayerAvatar';
-import { Player } from '@/types/gameTypes';
-import { joinGameSession, getGameParticipants, startGame } from '@/services/gameApi';
+import { Player } from '@/types/gameTypes'; // Keep this if used indirectly or needed later
+import { joinGameSession, getGameParticipants, startGame } from '@/services/gameApi'; // Keep API calls for initial join/start
 import { updateUser } from '@/services/userApi';
 import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
 import { ApiParticipant, ApiGameSessionResponse, ApiGameJoinRequest } from '@/types/apiTypes';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    // DialogClose is NOT imported as we removed the explicit cancel button
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useForm } from "react-hook-form"
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useForm } from "react-hook-form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 
-const POLLING_INTERVAL = 5000;
+// --- WebSocket Imports ---
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { IncomingWsMessage } from '@/types/websocketTypes';
+// --- End WebSocket Imports ---
+
+// Remove polling interval constant
+// const POLLING_INTERVAL = 5000;
 
 interface EditNameFormValues {
   newName: string;
@@ -19970,203 +20205,182 @@ interface EditNameFormValues {
 const WaitingRoom: React.FC = () => {
   const { role } = useParams<{ role?: string }>();
   const [searchParams] = useSearchParams();
-  const location = useLocation(); // <-- Get location object
+  const location = useLocation();
   const gameCode = searchParams.get('gameCode');
-  const categoryParam = searchParams.get('category'); // Still useful for display if needed
-  const questionsParam = searchParams.get('questions'); // Still useful for display if needed
-  const timeParam = searchParams.get('time'); // Still useful for display if needed
-
   const navigate = useNavigate();
 
   // State
   const [gameSession, setGameSession] = useState<ApiGameSessionResponse | null>(null);
   const [crewMembers, setCrewMembers] = useState<ApiParticipant[]>([]);
   const [isVoyageDetailsOpen, setIsVoyageDetailsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingParticipants, setIsFetchingParticipants] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Used for initial join/load and game start
+  // const [isFetchingParticipants, setIsFetchingParticipants] = useState(false); // No longer needed for polling
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
   const [joinAttempted, setJoinAttempted] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
-  const [packName, setPackName] = useState<string | null>(location.state?.packName || null); // <-- ADD state for packName
+  const [packName, setPackName] = useState<string | null>(null); // Keep packName state
 
-  // Refs
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs - Remove polling ref
+  // const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const gameSessionRef = useRef(gameSession); // Keep for accessing latest session state in callbacks
 
-  // Form Hook for Edit Name
-  const editNameForm = useForm<EditNameFormValues>({
-    defaultValues: { newName: '' },
+  // Form Hook (Unchanged)
+  const editNameForm = useForm<EditNameFormValues>({ defaultValues: { newName: '' } });
+
+  // --- WebSocket Message Handler ---
+  const handleWebSocketMessage = useCallback((message: IncomingWsMessage) => {
+    console.log("Received WebSocket Message:", message.type, message.payload);
+    switch (message.type) {
+      case 'participant_update': {
+        const updatedParticipant = message.payload;
+        setCrewMembers(prev => {
+          const existingIndex = prev.findIndex(p => p.user_id === updatedParticipant.user_id);
+          if (existingIndex > -1) {
+            // Update existing participant (e.g., name change)
+            const newCrew = [...prev];
+            newCrew[existingIndex] = { ...newCrew[existingIndex], ...updatedParticipant }; // Merge updates
+            return newCrew;
+          } else {
+            // Add new participant
+            return [...prev, updatedParticipant];
+          }
+        });
+        // Update current user's display name if it changed
+        if (updatedParticipant.user_id === currentUserId && updatedParticipant.display_name !== currentUserDisplayName) {
+          console.log(`Updating current user name via WS: ${updatedParticipant.display_name}`);
+          setCurrentUserDisplayName(updatedParticipant.display_name);
+          localStorage.setItem('tempUserDisplayName', updatedParticipant.display_name);
+        }
+        break;
+      }
+      case 'participant_left': {
+        const { user_id } = message.payload;
+        setCrewMembers(prev => prev.filter(p => p.user_id !== user_id));
+        toast.info(`${message.payload.display_name} left the crew.`);
+        break;
+      }
+      case 'user_name_updated': { // Can likely remove this if participant_update handles it, but keep for robustness
+         const { user_id, new_display_name } = message.payload;
+         setCrewMembers(prev => prev.map(p => p.user_id === user_id ? { ...p, display_name: new_display_name } : p));
+         if (user_id === currentUserId) {
+           setCurrentUserDisplayName(new_display_name);
+           localStorage.setItem('tempUserDisplayName', new_display_name);
+         }
+         break;
+      }
+      case 'game_started': {
+        const { game_id, total_questions } = message.payload;
+        console.log(`Game ${game_id} started via WebSocket!`);
+        toast.success("Game Started!", { description: "Get ready to answer!" });
+        // Navigate to countdown, passing necessary state
+        navigate(`/countdown`, {
+          state: {
+            gameId: game_id,
+            packName: packName, // Pass packName from component state
+            totalQuestions: total_questions,
+            // Optionally pass gameSession details if needed by countdown/gameplay
+            gameSession: message.payload // Pass the full payload if helpful
+          }
+        });
+        break;
+      }
+      case 'game_cancelled': {
+        toast.error("Game Cancelled", { description: "The Captain has cancelled the game." });
+        // Navigate back or disable interactions
+        navigate(getBackLink());
+        break;
+      }
+      case 'error': {
+        toast.error("Server Error", { description: message.payload.message });
+        break;
+      }
+      default:
+        console.warn("Received unknown WebSocket message type:", message.type);
+    }
+  }, [currentUserId, currentUserDisplayName, navigate, packName]); // Include packName
+
+  // --- Initialize WebSocket Connection ---
+  const { status: wsStatus } = useWebSocket({
+    gameId: gameSession?.id && !gameSession.id.startsWith('unknown') ? gameSession.id : null, // Only connect with a valid game ID
+    userId: currentUserId,
+    onMessage: handleWebSocketMessage,
+    onOpen: () => {
+        console.log("WebSocket connected callback triggered.");
+        // Fetch initial participant list upon connection
+        if (gameSession?.id && !gameSession.id.startsWith('unknown')) {
+             fetchParticipants(gameSession.id);
+        }
+    },
+    onClose: (event) => console.log("WebSocket closed callback:", event.code),
+    onError: (event) => toast.error("Connection Error", { description: "Lost connection to the game server." }),
   });
 
-  // --- Participant Fetching and Polling Callbacks ---
-  const fetchParticipants = useCallback(async (gameIdToFetch?: string) => {
-      const targetGameId = gameIdToFetch || gameSession?.id;
-      // Allow fetching even with 'unknown' ID initially for captain, but not for solo
-      if (!targetGameId || targetGameId.startsWith('solo')) {
-        console.log("Skipping participant fetch: Solo game or no ID.", targetGameId);
-        return;
-      }
-      // Scallywags need to wait for the real ID from the session state after joining
-      if (role === 'scallywag' && targetGameId.startsWith('unknown')) {
-         console.log("Skipping participant fetch: Scallywag waiting for captain's real game ID.", targetGameId);
-         return;
-      }
-
-      console.log(`Fetching participants for game ID: ${targetGameId}`);
-      setIsFetchingParticipants(true);
-      try {
-          const response = await getGameParticipants(targetGameId);
-          // --- MODIFICATION: Update crewMembers AND currentUserDisplayName if needed ---
-          setCrewMembers(response.participants);
-          // Find the current user in the updated list and update their local name state if different
-          const currentUserData = response.participants.find(p => p.user_id === currentUserId);
-          if (currentUserData && currentUserData.display_name !== currentUserDisplayName) {
-              console.log(`Updating local display name from fetched participants: ${currentUserData.display_name}`);
-              setCurrentUserDisplayName(currentUserData.display_name);
-              // Optionally update localStorage too, though less critical if fetched on reload
-              localStorage.setItem('tempUserDisplayName', currentUserData.display_name);
-          }
-          // --- END MODIFICATION ---
-          setGameSession(prev => prev ? { ...prev, participant_count: response.total } : null);
-          console.log("Fetched participants:", response.participants);
-      } catch (error) {
-          if (error instanceof Error && error.message.includes('404')) {
-              console.warn(`Participant fetch failed (likely placeholder/old ID or game ended): ${error.message}`);
-              // If game not found during polling, maybe stop polling?
-              if (pollingIntervalRef.current) {
-                  console.log("Stopping polling due to 404.");
-                  clearInterval(pollingIntervalRef.current);
-                  pollingIntervalRef.current = null;
-                  // Optionally navigate back or show error message
-                  toast.error("Game Not Found", { description: "The game session seems to have ended or doesn't exist."});
-                  // Consider navigation: navigate(getBackLink());
-              }
-          } else {
-              console.error("Failed to fetch participants:", error);
-          }
-      } finally {
-          setIsFetchingParticipants(false);
-      }
-  // Added currentUserId and currentUserDisplayName to dependencies
-  }, [gameSession?.id, role, currentUserId, currentUserDisplayName]); // Removed fetchParticipants from dependencies
-
-  const startParticipantPolling = useCallback((gameIdToPoll?: string) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
-    const targetGameId = gameIdToPoll || gameSession?.id;
-    // Only poll if it's crew mode (gameCode exists) AND we have a targetGameId that isn't for solo
-    if (gameCode && targetGameId && !targetGameId.startsWith('solo')) {
-        console.log(`Starting participant polling for game ID: ${targetGameId}`);
-        fetchParticipants(targetGameId); // Initial fetch
-        pollingIntervalRef.current = setInterval(() => {
-            // Check inside interval if the session still exists and isn't solo
-            const currentSessionId = gameSessionRef.current?.id; // Use ref to get latest session ID
-            if (currentSessionId && !currentSessionId.startsWith('solo')) {
-                 fetchParticipants(currentSessionId);
-            } else {
-                console.log("Stopping polling inside interval: No valid game ID or session changed.");
-                if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current);
-            }
-        }, POLLING_INTERVAL);
+  // --- User Initialization Effect (Unchanged) ---
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('tempUserId');
+    const storedName = localStorage.getItem('tempUserDisplayName');
+    if (!storedUserId) {
+      console.error("Waiting Room: tempUserId not found in localStorage!");
+      toast.error("Session Error", { description: "Could not find your user ID. Please go back."});
+      navigate('/crew'); // Go back if no user ID
     } else {
-         console.log("Not starting polling (no gameCode, invalid gameId, or solo mode). ID:", targetGameId);
+      setCurrentUserId(storedUserId);
+      const nameToSet = storedName || getPirateNameForUserId(storedUserId);
+      setCurrentUserDisplayName(nameToSet);
+      editNameForm.setValue('newName', nameToSet);
     }
-    return () => {
-      if (pollingIntervalRef.current) {
-        console.log("Clearing participant polling interval.");
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-    };
-  // Use ref instead of state for gameSession ID inside interval
-  }, [gameCode, fetchParticipants]); // Removed gameSession?.id
+  }, [navigate, editNameForm]); // Removed role as it's not needed here
 
-  // Ref to store the latest gameSession ID for use in interval
-  const gameSessionRef = useRef(gameSession);
+  // --- Initialize Captain/Solo state from location (Mostly Unchanged) ---
   useEffect(() => {
-    gameSessionRef.current = gameSession;
-  }, [gameSession]);
-
-
-  // --- Effects ---
-  useEffect(() => {
-      const storedUserId = localStorage.getItem('tempUserId');
-      const storedName = localStorage.getItem('tempUserDisplayName');
-      if (!storedUserId) {
-          console.error("Waiting Room: tempUserId not found in localStorage!");
-          toast.error("Session Error", { description: "Could not find your user ID. Please go back."});
-      } else {
-        setCurrentUserId(storedUserId);
-        const nameToSet = storedName || getPirateNameForUserId(storedUserId);
-        setCurrentUserDisplayName(nameToSet);
-        editNameForm.setValue('newName', nameToSet);
-      }
-  }, [role, navigate, editNameForm]);
-
-  // Initialize Captain/Solo state from location
-  useEffect(() => {
-      const stateFromNavigation = location.state as { gameSession?: ApiGameSessionResponse, packName?: string } | undefined; // <-- Add packName to type
-
+      const stateFromNavigation = location.state as { gameSession?: ApiGameSessionResponse, packName?: string } | undefined;
       if (role === 'captain' && currentUserId && currentUserDisplayName && !gameSession) {
+          setIsLoading(true); // Start loading for captain init
           if (stateFromNavigation?.gameSession && stateFromNavigation.gameSession.code === gameCode) {
               console.log("Captain: Initializing with gameSession from navigation state:", stateFromNavigation);
               setGameSession(stateFromNavigation.gameSession);
-              setPackName(stateFromNavigation.packName || 'Unknown Pack'); // <-- Set packName from state
-              setCrewMembers([{
-                  id: 'captain-participant-' + currentUserId,
-                  user_id: currentUserId,
-                  display_name: currentUserDisplayName,
-                  score: 0,
-                  is_host: true
-              }]);
-              startParticipantPolling(stateFromNavigation.gameSession.id);
+              setPackName(stateFromNavigation.packName || 'Unknown Pack');
+              setCrewMembers([{ id: 'captain-participant-' + currentUserId, user_id: currentUserId, display_name: currentUserDisplayName, score: 0, is_host: true }]);
+              // Fetch initial participants maybe, but WS onOpen will also fetch
+              fetchParticipants(stateFromNavigation.gameSession.id);
           } else {
-              console.warn("Captain: gameSession missing/mismatched in navigation state. Using placeholder.");
-              const placeholderSession = {
-                 id: 'unknown-game-id-' + Date.now(),
-                 code: gameCode || 'UNKNOWN', status: 'pending', pack_id: categoryParam || 'unknown-pack',
-                 max_participants: 10, question_count: parseInt(questionsParam || '10'),
-                 time_limit_seconds: parseInt(timeParam || '30'), current_question_index: 0,
-                 participant_count: 1, is_host: true, created_at: new Date().toISOString(),
-              };
-              setGameSession(placeholderSession);
-              setPackName(categoryParam || 'Unknown Pack'); // <-- Use categoryParam as fallback
-              setCrewMembers([{
-                 id: 'temp-captain-part-id-' + currentUserId, user_id: currentUserId,
-                 display_name: currentUserDisplayName, score: 0, is_host: true
-             }]);
-             startParticipantPolling(placeholderSession.id);
+              console.warn("Captain: gameSession missing/mismatched in navigation state.");
+              // Consider if captain should *always* have a session from GameSelect
+              toast.error("Game Error", { description: "Could not load game session details." });
+              navigate('/crew'); // Go back if session is missing
           }
+          setIsLoading(false); // Finish loading after captain init
+      } else if (role !== 'captain' && !gameSession && location.state?.packName) {
+          // Preserve pack name if passed to scallywag via state (e.g., deep link scenario)
+          setPackName(location.state.packName);
       }
-      // Solo Mode Logic removed - handled by GameSelect navigation now
-  // Add location.state to dependencies
-  }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, location.state, categoryParam, questionsParam, timeParam, startParticipantPolling]); // Added location.state
+  // location.state added
+  }, [role, gameCode, currentUserId, currentUserDisplayName, gameSession, navigate, location.state, fetchParticipants]);
 
 
-  // Scallywag Join Game Logic
+  // --- Scallywag Join Game Logic (Modified: Fetch participants after join) ---
   useEffect(() => {
       if (role === 'scallywag' && gameCode && currentUserId && currentUserDisplayName && !joinAttempted && !gameSession) {
           setJoinAttempted(true);
           const performJoin = async () => {
               setIsLoading(true);
               try {
-                  const joinPayload: ApiGameJoinRequest = {
-                       game_code: gameCode,
-                       display_name: currentUserDisplayName
-                  };
+                  const joinPayload: ApiGameJoinRequest = { game_code: gameCode, display_name: currentUserDisplayName };
                   const sessionData = await joinGameSession(joinPayload, currentUserId);
-                  setGameSession(sessionData);
-                  // Fetch pack details IF packName wasn't passed (might happen if directly joining via URL)
-                  if (!packName && sessionData.pack_id) {
-                       // Ideally, fetch pack name here based on sessionData.pack_id
-                       // For now, we'll rely on it potentially being passed or fallback
-                       console.warn("Pack name not available for joined Scallywag initially.");
-                       // You might need an API call to get pack details based on ID here
-                       // setPackName(fetchedPackName);
+                  setGameSession(sessionData); // Set game session *before* fetching participants/connecting WS
+                  // Pack name might come from navigation state or needs fetching
+                  if (!packName && location.state?.packName) {
+                     setPackName(location.state.packName);
+                  } else if (!packName && sessionData.pack_id) {
+                     // TODO: Fetch pack details if needed
+                     console.warn("Scallywag joined, but pack name needs fetching (not implemented).");
+                     setPackName("Pack Loading..."); // Placeholder
                   }
-                  startParticipantPolling(sessionData.id);
+                  // WebSocket connection will be established by the main connect effect now that gameSession.id is set
+                  // Fetch initial participants immediately after join success
+                  fetchParticipants(sessionData.id);
               } catch (error) {
                   console.error("Failed to join game:", error);
                   const errorMsg = error instanceof Error ? error.message : "Could not join the game.";
@@ -20178,362 +20392,182 @@ const WaitingRoom: React.FC = () => {
           };
           performJoin();
       }
-  // Add packName to dependency array
-  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted, navigate, startParticipantPolling, gameSession, packName]);
-
-  // Cleanup polling on component unmount
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, []);
+  }, [role, gameCode, currentUserId, currentUserDisplayName, joinAttempted, navigate, gameSession, packName, location.state, fetchParticipants]); // Add fetchParticipants
 
 
-  // --- Game Start Logic ---
+  // --- Game Start Logic (Modified: Relies on WS for navigation trigger) ---
   const handleStartGame = async () => {
-    // Check if the game can be started (captain, valid session, enough players)
-    // *** MODIFICATION: Check crewMembers.length >= 2 for crew games ***
-    if (!gameSession?.id || !currentUserId || gameSession.id.startsWith('unknown') || (gameCode && crewMembers.length < 2)) {
-      if (gameCode && crewMembers.length < 2) {
-          toast.error("Need More Crew!", { description: "At least one other pirate must join before you can set sail." });
-      } else {
-          toast.error("Error", { description: "Cannot start game. Missing game or user information." });
-      }
+    if (!gameSession?.id || !currentUserId || gameSession.id.startsWith('unknown')) {
+      toast.error("Error", { description: "Cannot start game. Missing game or user information." });
       return;
     }
-    // Stop polling before starting
-    if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-        console.log("Stopped polling before starting game.");
+    // Crew Game: Check participant count
+    if (gameCode && crewMembers.length < 2) {
+        toast.error("Need More Crew!", { description: "At least one other pirate must join before you can set sail." });
+        return;
     }
-    setIsLoading(true);
+
+    setIsLoading(true); // Show loading on the start button
     try {
-        const currentSession = gameSession; // Use captured session
-        const startResponse = await startGame(currentSession.id, currentUserId);
-        if (startResponse.status === 'active') {
-            navigate(`/countdown`, {
-              state: {
-                gameId: currentSession.id,
-                totalQuestions: currentSession.question_count,
-                packName: packName // <-- ADD packName here
-              }
-            });
-        } else {
-            throw new Error(`Backend reported unexpected status after start: ${startResponse.status}`);
-        }
+        // Call the API to *request* the start
+        await startGame(gameSession.id, currentUserId);
+        // DO NOT NAVIGATE HERE. Wait for the 'game_started' WebSocket message.
+        console.log("Start game request sent successfully. Waiting for WebSocket confirmation...");
+        // Optionally disable button further or show a "Starting..." state locally
     } catch (error) {
-        console.error("Failed to start game:", error);
+        console.error("Failed to send start game request:", error);
         const errorMsg = error instanceof Error ? error.message : "Could not start the game.";
         toast.error("Start Failed", { description: errorMsg });
-        startParticipantPolling(gameSession.id); // Restart polling if start fails
-    } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Re-enable button if API call failed
     }
+    // Note: setIsLoading(false) is handled implicitly when navigation occurs via WebSocket message
   };
 
-  // --- Edit Name Logic ---
-  const handleOpenEditModal = () => {
-    if (currentUserDisplayName) {
-        editNameForm.setValue('newName', currentUserDisplayName);
-    }
-    setIsEditModalOpen(true);
-  };
-
+  // --- Edit Name Logic (Modified: Use WS broadcast indirectly via user service) ---
   const handleEditNameSubmit = async (data: EditNameFormValues) => {
-    if (!currentUserId) {
-        toast.error("Error", { description: "Cannot update name. User ID missing." });
-        return;
-    }
+    if (!currentUserId) { toast.error("Error", { description: "Cannot update name. User ID missing." }); return; }
     const newName = data.newName.trim();
-    if (!newName || newName === currentUserDisplayName) {
-        setIsEditModalOpen(false);
-        return;
-    }
+    if (!newName || newName === currentUserDisplayName) { setIsEditModalOpen(false); return; }
 
     setIsUpdatingName(true);
     try {
+        // Update backend (this service call now handles WS broadcast)
         await updateUser(currentUserId, { displayname: newName });
+        // Update local state immediately for responsiveness
         setCurrentUserDisplayName(newName);
         localStorage.setItem('tempUserDisplayName', newName);
+        // Update name in the local crew list as well
         setCrewMembers(prevCrew =>
             prevCrew.map(member =>
-                member.user_id === currentUserId
-                ? { ...member, display_name: newName }
-                : member
+                member.user_id === currentUserId ? { ...member, display_name: newName } : member
             )
         );
         toast.success("Name Changed!", { description: `Ye be known as ${newName} now!` });
         setIsEditModalOpen(false);
-
     } catch (error) {
         console.error("Failed to update name:", error);
         toast.error("Update Failed", { description: error instanceof Error ? error.message : "Could not change your name." });
-        setIsEditModalOpen(false);
+        setIsEditModalOpen(false); // Close modal even on error
     } finally {
         setIsUpdatingName(false);
     }
   };
 
 
-  // --- Helper Functions ---
-  const copyGameCodeToClipboard = () => {
-    if (gameCode) {
-      navigator.clipboard.writeText(gameCode)
-        .then(() => { toast.success('Copied to clipboard', { description: 'Game code copied successfully!' }); })
-        .catch(() => { toast.error('Failed to copy', { description: 'Could not copy code.' }); });
-    }
-  };
+  // --- Helper Functions (Unchanged) ---
+  const copyGameCodeToClipboard = () => { if (gameCode) { navigator.clipboard.writeText(gameCode).then(() => toast.success('Copied!')).catch(() => toast.error('Copy failed')); } };
+  const getBackLink = () => role === 'captain' || role === 'scallywag' ? '/crew' : '/';
+  const handleOpenEditModal = () => { if (currentUserDisplayName) { editNameForm.setValue('newName', currentUserDisplayName); } setIsEditModalOpen(true); };
 
- const getBackLink = () => {
-     if (role === 'captain') return `/crew`;
-     if (role === 'scallywag') return `/crew`;
-     // Solo mode shouldn't reach here now, but keep a fallback
-     return '/';
-  };
 
-  // --- Derived Data ---
+  // --- Derived Data (Mostly Unchanged) ---
   const hostParticipant = crewMembers.find(p => p.is_host);
   const isCurrentUserHost = currentUserId === hostParticipant?.user_id;
   const hostDisplayName = hostParticipant?.display_name || 'The Captain';
+  const displayCategory = packName || 'Unknown Pack';
+  const displayQuestions = gameSession?.question_count ?? 'N/A';
+  const displayTime = gameSession?.time_limit_seconds ?? 'N/A';
+  const settingsAvailable = !!gameSession && !gameSession.id.startsWith('unknown');
+  // Modify canStartGame check for crew mode
+  const canStartGame = settingsAvailable && !isLoading && isCurrentUserHost && (role === 'captain' ? crewMembers.length >= 2 : true);
 
-  // --- Use packName from state for display ---
-  const displayCategory = packName || categoryParam?.replace(/-/g, ' ') || 'Unknown Pack'; // Prioritize state packName
-  const displayQuestions = gameSession?.question_count ?? questionsParam ?? 'N/A';
-  const displayTime = gameSession?.time_limit_seconds ?? timeParam ?? 'N/A';
-  const settingsAvailable = !!gameSession;
-  const canStartGame = settingsAvailable && !isLoading && isCurrentUserHost && crewMembers.length >= 2; // *** ADDED crewMembers.length check ***
 
-  // --- Render ---
+  // --- Render Logic (Mostly Unchanged structure, some conditional text updates) ---
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         {/* Back Button and Game Code */}
         <div className="flex items-center justify-between mb-6">
-          <Link to={getBackLink()} className="flex items-center text-pirate-navy hover:text-pirate-accent">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            <span>Back</span>
-          </Link>
+          <Link to={getBackLink()} className="flex items-center text-pirate-navy hover:text-pirate-accent"><ArrowLeft className="h-4 w-4 mr-2" /><span>Back</span></Link>
           {gameCode && (
-            <div className="flex items-center">
-              <Users className="h-4 w-4 mr-2 text-pirate-navy" />
-              <span className="text-sm font-mono bg-pirate-navy/10 px-2 py-1 rounded">
-                {gameCode}
-              </span>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button onClick={copyGameCodeToClipboard} className="ml-2 p-1 text-pirate-navy hover:text-pirate-gold transition-colors rounded-full hover:bg-pirate-navy/10" aria-label="Copy game code"><Copy className="h-4 w-4" /></button>
-                  </TooltipTrigger>
-                  <TooltipContent><p>Copy game code</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
+             <div className="flex items-center">
+               <Users className="h-4 w-4 mr-2 text-pirate-navy" />
+               <span className="text-sm font-mono bg-pirate-navy/10 px-2 py-1 rounded">{gameCode}</span>
+               <TooltipProvider><Tooltip><TooltipTrigger asChild><button onClick={copyGameCodeToClipboard} className="ml-2 p-1 text-pirate-navy hover:text-pirate-gold transition-colors rounded-full hover:bg-pirate-navy/10" aria-label="Copy game code"><Copy className="h-4 w-4" /></button></TooltipTrigger><TooltipContent><p>Copy game code</p></TooltipContent></Tooltip></TooltipProvider>
+             </div>
           )}
         </div>
 
         {/* Main Content Area */}
         <div className="map-container p-6 md:p-8 mb-10 relative">
-           {/* Loading Overlay for Initial Join/Load */}
-           {(isLoading && !gameSession && role !== 'solo') && (
+           {(isLoading && !gameSession && role !== 'captain') && ( // Show loading only if not captain and no session yet
                <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
-                   <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" />
-                   <span className="ml-2 font-semibold text-pirate-navy">{role === 'scallywag' ? 'Joining Crew...' : 'Setting Course...'}</span>
+                   <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" /><span className="ml-2 font-semibold text-pirate-navy">{role === 'scallywag' ? 'Joining Crew...' : 'Loading...'}</span>
                </div>
            )}
 
           {/* Player List */}
           <div className="mb-8">
             <div className='flex justify-between items-center mb-6'>
-                <h2 className="font-pirate text-3xl md:text-4xl text-pirate-navy">
-                  {gameCode ? `Crew Members (${gameSession?.participant_count ?? crewMembers.length})` : 'Your Voyage'}
-                </h2>
-                {gameCode && ( // Only show refresh for crew games
-                    <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => fetchParticipants(gameSession?.id)} disabled={isFetchingParticipants} className='text-pirate-navy/70 hover:text-pirate-navy disabled:opacity-50'>
-                            <RefreshCw className={`h-4 w-4 ${isFetchingParticipants ? 'animate-spin' : ''}`} />
-                        </Button>
-                        </TooltipTrigger>
-                        <TooltipContent> <p>Refresh List</p> </TooltipContent>
-                    </Tooltip>
-                    </TooltipProvider>
-                )}
+              <h2 className="font-pirate text-3xl md:text-4xl text-pirate-navy">Crew Members ({crewMembers.length})</h2>
+              {/* Refresh button removed - relies on WS now */}
             </div>
-              <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 ${!gameCode ? 'justify-center' : ''}`}>
-                {crewMembers.map((member) => {
-                  const isYou = member.user_id === currentUserId;
-                  return (
-                    <Card
-                      key={member.id || member.user_id}
-                      className={cn(
-                        "p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md relative",
-                        isYou && "bg-pirate-navy text-white border-pirate-gold border-2"
-                      )}
-                    >
-                      <PlayerAvatar playerId={member.user_id} name={member.display_name} size="md" />
-                      <div className="flex-1 overflow-hidden">
-                        <p className={cn(
-                            "font-medium truncate",
-                            isYou ? "text-white" : "text-pirate-navy"
-                          )}
-                        >
-                          {member.display_name}
-                        </p>
-                        {gameCode && (
-                          <p className={cn( "text-xs", isYou ? "text-white/80" : "text-pirate-navy/70" )}>
-                            {member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''}
-                          </p>
-                        )}
-                      </div>
-                      {isYou && gameCode && (
-                         <Button
-                           variant="ghost"
-                           size="icon"
-                           className="shrink-0 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10 p-0"
-                           onClick={handleOpenEditModal}
-                           aria-label="Edit name"
-                           disabled={isUpdatingName}
-                         >
-                           <Pencil className="h-4 w-4" />
-                         </Button>
-                       )}
-                    </Card>
-                  )
-                 })}
-                {isFetchingParticipants && crewMembers.length === 0 && gameCode && (
-                     <Card className="p-4 flex items-center justify-center space-x-3 border-pirate-navy/20 border-dashed shadow-inner bg-pirate-parchment/50 min-h-[76px]">
-                       <Loader2 className="h-5 w-5 animate-spin text-pirate-navy/50"/>
-                       <p className="text-xs text-pirate-navy/50">Loading Crew...</p>
-                     </Card>
-                )}
-                {!isFetchingParticipants && crewMembers.length === 0 && role === 'scallywag' && gameCode && (
-                    <div className="col-span-full text-center py-4">
-                        <p className="text-pirate-navy/60">Waiting for the Captain and crew...</p>
+            {/* Participant Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+             {crewMembers.map((member) => {
+                const isYou = member.user_id === currentUserId;
+                return (
+                  <Card key={member.id || member.user_id} className={cn("p-4 flex items-center space-x-3 border-pirate-navy/20 shadow-md relative", isYou && "bg-pirate-navy text-white border-pirate-gold border-2")}>
+                    <PlayerAvatar playerId={member.user_id} name={member.display_name} size="md" />
+                    <div className="flex-1 overflow-hidden">
+                      <p className={cn("font-medium truncate", isYou ? "text-white" : "text-pirate-navy")}>{member.display_name}</p>
+                      <p className={cn("text-xs", isYou ? "text-white/80" : "text-pirate-navy/70")}>{member.is_host ? 'Captain' : 'Crew Member'} {isYou ? '(You)' : ''}</p>
                     </div>
-                )}
-                {!isFetchingParticipants && crewMembers.length <= 1 && role === 'captain' && gameCode && (
-                    <div className="col-span-full text-center py-4">
-                        <p className="text-pirate-navy/60">Waiting for crew to join...</p>
-                    </div>
-                )}
-              </div>
-           </div>
+                    {isYou && (<Button variant="ghost" size="icon" className="shrink-0 h-6 w-6 text-white/70 hover:text-white hover:bg-white/10 p-0" onClick={handleOpenEditModal} aria-label="Edit name" disabled={isUpdatingName}><Pencil className="h-4 w-4" /></Button>)}
+                  </Card>
+                );
+             })}
+             {/* Placeholder/Waiting messages */}
+             {crewMembers.length === 0 && role === 'scallywag' && (<div className="col-span-full text-center py-4"><p className="text-pirate-navy/60">Waiting for the Captain and crew...</p></div>)}
+             {crewMembers.length <= 1 && role === 'captain' && (<div className="col-span-full text-center py-4"><p className="text-pirate-navy/60">Waiting for crew to join...</p></div>)}
+            </div>
+          </div>
 
-           {/* Action Button / Waiting Message */}
-           {gameCode ? ( // Crew Mode
-             isCurrentUserHost ? ( // Captain's view
-                <div className="mt-10">
-                  {/* *** MODIFIED: Added disabled condition crewMembers.length < 2 *** */}
-                  <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!settingsAvailable || crewMembers.length < 2 || isLoading} >
-                    {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Anchor className="h-5 w-5" />}
-                    {isLoading ? 'Starting...' : 'All aboard? Set sail!'}
-                  </PirateButton>
-                  {!settingsAvailable && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for voyage details...</p>}
-                  {/* *** MODIFIED: Added waiting for crew message *** */}
-                  {settingsAvailable && !isLoading && crewMembers.length < 2 && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
-                </div>
-              ) : ( // Scallywag's view
-                <div className="mt-10 text-center text-pirate-navy/80">
-                  <p>Waiting for {hostDisplayName} to start the voyage...</p>
-                  <div className="animate-pulse mt-2 text-2xl">⚓️</div>
-                </div>
-              )
-            ) : null /* Solo Mode Start Button Removed */
-           }
-         </div>
-
-        {/* Collapsible Voyage Details */}
-         {settingsAvailable && (
-            <Collapsible open={isVoyageDetailsOpen} onOpenChange={setIsVoyageDetailsOpen} className="mb-8">
-              <Card className="p-4 flex items-center min-h-[60px] bg-pirate-parchment/50">
-                <CollapsibleTrigger className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-2"> <Settings className="h-5 w-5 text-pirate-black" /> <h3 className="font-pirate text-2xl text-pirate-black">Voyage Details</h3> </div>
-                  <ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isVoyageDetailsOpen ? 'rotate-180' : ''}`} />
-                </CollapsibleTrigger>
-              </Card>
-              <CollapsibleContent className="mt-2">
-                <Card className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="border border-pirate-navy/10 rounded p-3">
-                      <p className="text-xs text-pirate-navy/50 mb-1">Category</p>
-                      <p className="font-medium capitalize">{displayCategory}</p> {/* Use displayCategory */}
-                    </div>
-                    <div className="border border-pirate-navy/10 rounded p-3">
-                      <p className="text-xs text-pirate-navy/50 mb-1">Questions</p>
-                      <p className="font-medium">{displayQuestions}</p>
-                    </div>
-                    <div className="border border-pirate-navy/10 rounded p-3">
-                      <p className="text-xs text-pirate-navy/50 mb-1">Time per Question</p>
-                      <p className="font-medium">{displayTime ? `${displayTime} seconds` : 'N/A'}</p>
-                    </div>
-                  </div>
-                </Card>
-              </CollapsibleContent>
-            </Collapsible>
+          {/* Start Button / Waiting Message */}
+          {role === 'captain' ? (
+            <div className="mt-10">
+              <PirateButton onClick={handleStartGame} className="w-full py-3 text-lg" variant="accent" disabled={!canStartGame || isLoading}>
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Anchor className="h-5 w-5" />}
+                {isLoading ? 'Starting...' : 'All aboard? Set sail!'}
+              </PirateButton>
+              {!settingsAvailable && <p className="text-xs text-center mt-2 text-pirate-navy/60">Loading game details...</p>}
+              {settingsAvailable && crewMembers.length < 2 && !isLoading && <p className="text-xs text-center mt-2 text-pirate-navy/60">Waiting for at least one crew member to join...</p>}
+            </div>
+          ) : ( // Scallywag's view
+            <div className="mt-10 text-center text-pirate-navy/80">
+              <p>Waiting for {hostDisplayName} to start the voyage...</p>
+              <div className="animate-pulse mt-2 text-2xl">⚓️</div>
+            </div>
           )}
-       </main>
+        </div>
 
-       {/* --- Edit Name Dialog --- */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-            <DialogContent className="sm:max-w-[425px] bg-pirate-parchment border-pirate-wood">
-            <DialogHeader>
-                <DialogTitle className="font-pirate text-pirate-navy text-2xl">Change Yer Pirate Name</DialogTitle>
-            </DialogHeader>
-            <Form {...editNameForm}>
-                <form onSubmit={editNameForm.handleSubmit(handleEditNameSubmit)} className="space-y-4 py-4">
-                <FormField
-                    control={editNameForm.control}
-                    name="newName"
-                    rules={{
-                    required: "A pirate needs a name!",
-                    maxLength: { value: 18, message: "Name be too long! (Max 18 chars)" },
-                    minLength: { value: 1, message: "Name cannot be empty." }
-                    }}
-                    render={({ field }) => (
-                    <FormItem>
-                        <Label htmlFor="newName" className="text-left text-pirate-navy/90">New Name</Label>
-                        <FormControl>
-                         <Input
-                           id="newName"
-                           {...field}
-                           className="border-pirate-navy/30 focus-visible:ring-pirate-gold"
-                           maxLength={18}
-                           autoComplete="off"
-                         />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <DialogFooter>
-                    <PirateButton type="submit" variant="primary" disabled={isUpdatingName}>
-                    {isUpdatingName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Change Name
-                    </PirateButton>
-                </DialogFooter>
-                </form>
-            </Form>
-            </DialogContent>
-        </Dialog>
-       {/* --- End Edit Name Dialog --- */}
+        {/* Collapsible Voyage Details (Unchanged) */}
+        {settingsAvailable && (
+          <Collapsible open={isVoyageDetailsOpen} onOpenChange={setIsVoyageDetailsOpen} className="mb-8">
+            <Card className="p-4 flex items-center min-h-[60px] bg-pirate-parchment/50"><CollapsibleTrigger className="flex items-center justify-between w-full"><div className="flex items-center gap-2"> <Settings className="h-5 w-5 text-pirate-black" /> <h3 className="font-pirate text-2xl text-pirate-black">Voyage Details</h3> </div><ChevronDown className={`h-5 w-5 transition-transform duration-200 ${isVoyageDetailsOpen ? 'rotate-180' : ''}`} /></CollapsibleTrigger></Card>
+            <CollapsibleContent className="mt-2"><Card className="p-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Category</p><p className="font-medium capitalize">{displayCategory}</p></div><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Questions</p><p className="font-medium">{displayQuestions}</p></div><div className="border border-pirate-navy/10 rounded p-3"><p className="text-xs text-pirate-navy/50 mb-1">Time per Question</p><p className="font-medium">{displayTime ? `${displayTime} seconds` : 'N/A'}</p></div></div></Card></CollapsibleContent>
+          </Collapsible>
+        )}
+      </main>
 
-       {/* Footer */}
-       <footer className="ocean-bg py-8">
-         <div className="container mx-auto text-center text-white relative z-10">
-           <p className="font-pirate text-xl mb-2">Ready the cannons!</p>
-           <p className="text-sm opacity-75">© 2023 Trivia Trove - All Rights Reserved</p>
-         </div>
-       </footer>
-     </div>
-   );
- };
+      {/* Edit Name Dialog (Unchanged) */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-pirate-parchment border-pirate-wood"><DialogHeader><DialogTitle className="font-pirate text-pirate-navy text-2xl">Change Yer Pirate Name</DialogTitle></DialogHeader>
+          <Form {...editNameForm}><form onSubmit={editNameForm.handleSubmit(handleEditNameSubmit)} className="space-y-4 py-4">
+            <FormField control={editNameForm.control} name="newName" rules={{ required: "A pirate needs a name!", maxLength: { value: 18, message: "Name be too long! (Max 18 chars)" }, minLength: { value: 1, message: "Name cannot be empty." } }} render={({ field }) => (<FormItem><Label htmlFor="newName" className="text-left text-pirate-navy/90">New Name</Label><FormControl><Input id="newName" {...field} className="border-pirate-navy/30 focus-visible:ring-pirate-gold" maxLength={18} autoComplete="off" /></FormControl><FormMessage /></FormItem>)} />
+            <DialogFooter><PirateButton type="submit" variant="primary" disabled={isUpdatingName}>{isUpdatingName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Change Name</PirateButton></DialogFooter>
+          </form></Form>
+        </DialogContent>
+      </Dialog>
 
- export default WaitingRoom;
+      {/* Footer (Unchanged) */}
+      <footer className="ocean-bg py-8"><div className="container mx-auto text-center text-white relative z-10"><p className="font-pirate text-xl mb-2">Ready the cannons!</p><p className="text-sm opacity-75">© 2023 Trivia Trove - All Rights Reserved</p></div></footer>
+    </div>
+  );
+};
+
+export default WaitingRoom;
 // --- END OF FULL MODIFIED FILE ---
 </file>
 
@@ -21178,6 +21212,125 @@ export interface PlayerSelection {
 }
 </file>
 
+<file path="website/src/types/websocketTypes.ts">
+// website/src/types/websocketTypes.ts
+
+import { ApiParticipant, ApiGameSessionResponse, ApiGamePlayQuestion } from './apiTypes'; // Assuming these are defined
+
+// --------- Message Types Sent FROM Backend TO Frontend ---------
+
+/** Message indicating a user joined or their info updated (e.g., name change) */
+export interface WsParticipantUpdatePayload extends ApiParticipant {}
+export interface WsParticipantUpdateMessage {
+    type: 'participant_update';
+    payload: WsParticipantUpdatePayload;
+}
+
+/** Message indicating a user left the game */
+export interface WsParticipantLeftPayload {
+    user_id: string; // ID of the user who left
+    participant_id: string; // ID of the participant record
+    display_name: string; // Name of the user who left (for potential notification)
+}
+export interface WsParticipantLeftMessage {
+    type: 'participant_left';
+    payload: WsParticipantLeftPayload;
+}
+
+/** Message indicating a user's display name changed */
+export interface WsUserNameUpdatedPayload {
+    user_id: string;
+    new_display_name: string;
+}
+export interface WsUserNameUpdatedMessage {
+    type: 'user_name_updated';
+    payload: WsUserNameUpdatedPayload;
+}
+
+/** Message indicating the game has started (sent by host action) */
+export interface WsGameStartedPayload {
+    game_id: string;
+    status: string; // Should be 'active'
+    total_questions: number;
+    time_limit: number;
+    pack_id: string;
+    current_question: ApiGamePlayQuestion | null; // Include the first question
+}
+export interface WsGameStartedMessage {
+    type: 'game_started';
+    payload: WsGameStartedPayload;
+}
+
+/** Message indicating the next question is ready */
+export interface WsNextQuestionPayload extends ApiGamePlayQuestion {} // Re-use the existing API type
+export interface WsNextQuestionMessage {
+    type: 'next_question';
+    payload: WsNextQuestionPayload;
+}
+
+/** Message indicating the game is over and includes final results */
+export interface WsGameOverPayload {
+    // Structure should match the response from GET /games/{game_id}/results
+    game_id: string;
+    game_code: string;
+    status: string; // Should be 'completed' or 'cancelled'
+    participants: ApiParticipant[]; // Final scores included here
+    questions: any[]; // Include question result summaries if needed
+    total_questions: number;
+    completed_at: string; // ISO date string
+}
+export interface WsGameOverMessage {
+    type: 'game_over';
+    payload: WsGameOverPayload;
+}
+
+/** Message indicating the game was cancelled by the host */
+export interface WsGameCancelledPayload {
+    game_id: string;
+}
+export interface WsGameCancelledMessage {
+    type: 'game_cancelled';
+    payload: WsGameCancelledPayload;
+}
+
+/** Generic error message from the backend via WebSocket */
+export interface WsErrorPayload {
+    message: string;
+    detail?: string;
+}
+export interface WsErrorMessage {
+    type: 'error';
+    payload: WsErrorPayload;
+}
+
+// --------- Union Type for ALL Incoming Messages ---------
+export type IncomingWsMessage =
+    | WsParticipantUpdateMessage
+    | WsParticipantLeftMessage
+    | WsUserNameUpdatedMessage
+    | WsGameStartedMessage
+    | WsNextQuestionMessage
+    | WsGameOverMessage
+    | WsGameCancelledMessage
+    | WsErrorMessage;
+
+
+// --------- Message Types Sent FROM Frontend TO Backend ---------
+// (Currently, we are not planning to send messages from client to server,
+// but you could define them here if needed, e.g., for submitting answers via WS)
+
+// Example:
+// export interface WsSubmitAnswerPayload {
+//     question_index: number;
+//     answer_id: string;
+// }
+// export interface WsSubmitAnswerMessage {
+//     type: 'submit_answer';
+//     payload: WsSubmitAnswerPayload;
+// }
+// export type OutgoingWsMessage = WsSubmitAnswerMessage;
+</file>
+
 <file path="website/src/utils/gamePlayUtils.ts">
 // src/utils/gamePlayUtils.ts
 import { Question, Player } from '@/types/gameTypes';
@@ -21517,7 +21670,8 @@ createRoot(document.getElementById("root")!).render(<App />);
 </file>
 
 <file path="website/.env.development">
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_API_BASE_URL=http://0.0.0.0:8000
+VITE_WS_BASE_URL=ws://127.0.0.1:8000
 </file>
 
 <file path="website/.gitignore">

@@ -7,8 +7,10 @@ import {
     ApiGameJoinRequest,
     ApiParticipantListResponse,
     ApiGameStartResponse,
-    // --- ADDED IMPORT ---
-    ApiGamePlayQuestionListResponse
+    ApiGamePlayQuestionListResponse,
+    // --- ADDED IMPORTS ---
+    ApiGameSubmitAnswerRequest,
+    ApiQuestionResultResponse
 } from '@/types/apiTypes';
 
 /**
@@ -220,7 +222,6 @@ export const startGame = async (gameId: string, hostUserId: string): Promise<Api
     }
 };
 
-// --- NEW FUNCTION: getGamePlayQuestions ---
 /**
  * Fetches the actual questions prepared for a specific game session.
  * @param gameId - The ID of the game session.
@@ -272,7 +273,63 @@ export const getGamePlayQuestions = async (gameId: string): Promise<ApiGamePlayQ
         throw error;
     }
 };
-// --- END NEW FUNCTION ---
 
+// --- *** ADDED FUNCTION *** ---
+/**
+ * Submits a player's answer for a specific question in a game session.
+ * @param gameId - The ID of the game session.
+ * @param participantId - The ID of the participant submitting the answer.
+ * @param payload - The answer data (question index and the answer itself).
+ * @returns A promise resolving to the result of the submission (correctness, scores).
+ * @throws If the API request fails.
+ */
+export const submitAnswer = async (
+    gameId: string,
+    participantId: string,
+    payload: ApiGameSubmitAnswerRequest
+): Promise<ApiQuestionResultResponse> => {
+    if (!gameId || !participantId) {
+        throw new Error("Game ID and Participant ID are required to submit an answer.");
+    }
+    const url = new URL(`${API_BASE_URL}/games/${gameId}/submit`);
+    url.searchParams.append('participant_id', participantId);
+
+    console.log("Attempting to submit answer:", payload, "to URL:", url.toString());
+
+    try {
+        const response = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        console.log("API Response Status (Submit Answer):", response.status);
+        const responseData = await response.json();
+        // console.log("API Response Data (Submit Answer):", responseData); // Verbose logging
+
+        if (!response.ok) {
+            const errorDetail = responseData?.detail || response.statusText || `HTTP error ${response.status}`;
+            console.error("API Error Detail (Submit Answer):", errorDetail);
+            throw new Error(`Failed to submit answer: ${errorDetail}`);
+        }
+
+        // Validate response structure
+        if (responseData === null || typeof responseData !== 'object' || typeof responseData.is_correct !== 'boolean' || typeof responseData.correct_answer !== 'string' || typeof responseData.score !== 'number' || typeof responseData.total_score !== 'number') {
+           console.error("Invalid answer result structure received:", responseData);
+           throw new Error("Received invalid answer result data from server.");
+        }
+
+
+        return responseData as ApiQuestionResultResponse;
+
+    } catch (error) {
+        console.error("Error submitting answer:", error);
+        throw error;
+    }
+};
+// --- *** END ADDED FUNCTION *** ---
 
 // --- END OF FILE ---

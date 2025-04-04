@@ -6,8 +6,9 @@ import GameHeader from '@/components/GameHeader';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionTimer from '@/components/QuestionTimer'; // Import the timer component
 import { Player, PlayerSelection, PlayerResult, Question, Answer } from '@/types/gameTypes';
-import { getGamePlayQuestions, submitAnswer } from '@/services/gameApi'; // Corrected import
-import { getPlayerById, getQuestionTextClass, getPirateNameForUserId, getEmojiForPlayerId } from '@/utils/gamePlayUtils'; // Added getEmojiForPlayerId import
+// --- MODIFIED IMPORT: Added getGameParticipants ---
+import { getGamePlayQuestions, submitAnswer as submitAnswerApi, getGameParticipants } from '@/services/gameApi';
+import { getPlayerById, getQuestionTextClass, getPirateNameForUserId, getEmojiForPlayerId } from '@/utils/gamePlayUtils';
 import { useGameTimer } from '@/hooks/useGameTimer';
 import { useQuestionManager } from '@/hooks/useQuestionManager';
 import { toast } from 'sonner';
@@ -18,7 +19,7 @@ import PirateButton from '@/components/PirateButton';
 // --- WebSocket Imports ---
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { IncomingWsMessage } from '@/types/websocketTypes';
-import { ApiParticipant } from '@/types/apiTypes'; // Import ApiParticipant for game_over payload
+import { ApiParticipant, ApiGameSessionResponse, ApiGameSubmitAnswerRequest } from '@/types/apiTypes';
 // --- End WebSocket Imports ---
 
 const GameplayScreen: React.FC = () => {
@@ -39,7 +40,7 @@ const GameplayScreen: React.FC = () => {
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [questionFetchError, setQuestionFetchError] = useState<string | null>(null);
 
-  // --- Fetch Game Questions (Unchanged logic) ---
+  // --- Fetch Game Questions ---
   useEffect(() => {
      if (!gameId || !packName) {
        console.error("GameplayScreen: Missing gameId or packName in location state!", location.state);
@@ -92,11 +93,10 @@ const GameplayScreen: React.FC = () => {
   const answerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
-  // --- ADD State for current participant ID ---
   const [currentParticipantId, setCurrentParticipantId] = useState<string | null>(null);
 
 
-  // --- User Info Effect (Modified to fetch participant ID) ---
+  // --- User Info Effect (Calls getGameParticipants) ---
   useEffect(() => {
     const storedUserId = localStorage.getItem('tempUserId');
     const storedName = localStorage.getItem('tempUserDisplayName');
@@ -104,15 +104,12 @@ const GameplayScreen: React.FC = () => {
       setCurrentUserId(storedUserId);
       setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId));
 
-      // --- Fetch participant ID once user ID and game ID are known ---
       const fetchParticipantId = async () => {
            if (gameId && storedUserId) {
                try {
-                   // We need to fetch participants to find *our* participant record ID
-                   // This might be slightly inefficient if WaitingRoom already passed it,
-                   // but this makes GameplayScreen self-contained if navigated to directly (though less likely now).
                    console.log(`Fetching participants in Gameplay to find participant ID for user ${storedUserId}...`);
-                   const response = await getGameParticipants(gameId); // Reuse existing API service function
+                   // --- MODIFIED: Use imported function ---
+                   const response = await getGameParticipants(gameId);
                    const currentUserParticipant = response.participants.find(p => p.user_id === storedUserId);
                    if (currentUserParticipant) {
                        setCurrentParticipantId(currentUserParticipant.id);
@@ -128,17 +125,15 @@ const GameplayScreen: React.FC = () => {
            }
       };
       fetchParticipantId();
-      // --- End Fetch participant ID ---
 
     } else {
       console.error("Gameplay: User ID not found!");
       toast.error("Session Error", { description: "User ID missing. Please restart." });
       navigate('/');
     }
-  }, [navigate, gameId]); // Added gameId dependency to trigger participant fetch
+  }, [navigate, gameId]);
 
-
-  // --- WebSocket Message Handler (Unchanged logic) ---
+  // --- WebSocket Message Handler ---
   const handleWebSocketMessage = useCallback((message: IncomingWsMessage) => {
     console.log("GameplayScreen Received WebSocket Message:", message.type, message.payload);
     switch (message.type) {
@@ -158,7 +153,7 @@ const GameplayScreen: React.FC = () => {
         const resultsPayload = message.payload;
         const formattedResults: PlayerResult[] = resultsPayload.participants.map((p: ApiParticipant) => ({
              id: p.user_id, name: p.display_name, score: p.score,
-             avatar: getEmojiForPlayerId(p.user_id) // Corrected usage
+             avatar: getEmojiForPlayerId(p.user_id)
         }));
         const resultsPath = gameCode ? `/results?gameCode=${gameCode}` : '/results';
         toast.info("Game Over!", { description: "Heading to the results..." });
@@ -167,7 +162,7 @@ const GameplayScreen: React.FC = () => {
       }
        case 'game_cancelled': {
          toast.error("Game Cancelled", { description: "The Captain has cancelled the game." });
-         navigate('/'); // Navigate home
+         navigate('/');
          break;
        }
        case 'error': {
@@ -178,13 +173,13 @@ const GameplayScreen: React.FC = () => {
     }
   }, [navigate, gameCode]);
 
-  // --- Refs for Stable Callbacks (Unchanged) ---
+  // --- Refs for Stable Callbacks ---
   const nextQuestionRef = useRef(nextQuestion);
   const currentQuestionIndexRef = useRef(currentQuestionIndex);
   useEffect(() => { nextQuestionRef.current = nextQuestion; }, [nextQuestion]);
   useEffect(() => { currentQuestionIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
 
-  // --- Initialize WebSocket Connection (Unchanged) ---
+  // --- Initialize WebSocket Connection ---
   const { status: wsStatus } = useWebSocket({
     gameId: gameId ?? null,
     userId: currentUserId,
@@ -194,9 +189,8 @@ const GameplayScreen: React.FC = () => {
     onError: (event) => toast.error("Connection Error", { description: "Lost connection during gameplay." }),
   });
 
-  // --- handleSubmit (Corrected: Uses participant ID) ---
+  // --- handleSubmit ---
   const handleSubmit = useCallback(async () => {
-    // Added currentParticipantId check
     if (isAnswered || !question || !currentUserId || !gameId || !currentParticipantId) {
       console.log("Submit prevented:", { isAnswered, question: !!question, currentUserId: !!currentUserId, gameId: !!gameId, participantId: !!currentParticipantId });
       return;
@@ -208,40 +202,35 @@ const GameplayScreen: React.FC = () => {
     setIsCorrect(answerIsCorrect);
     console.log(`Answer marked locally. Selected: ${selectedAnswer}, Correct: ${question.correctAnswer}, IsCorrect: ${answerIsCorrect}`);
 
-    // Submit answer via API using participant ID
     if (selectedAnswer) {
         try {
             console.log(`Submitting answer '${selectedAnswer}' via REST API (Participant: ${currentParticipantId})...`);
-            const submitResult = await submitAnswer(gameId, currentParticipantId, currentQuestionIndex, { // Pass payload object
+            const submitPayload: ApiGameSubmitAnswerRequest = {
                 question_index: currentQuestionIndex,
-                answer: selectedAnswer // Send the selected answer ID/text
-            });
+                answer: selectedAnswer
+            };
+            const submitResult = await submitAnswerApi(gameId, currentParticipantId, submitPayload);
             console.log("Answer submission API response:", submitResult);
-            if (submitResult?.total_score !== undefined) { // Check if total_score is present
-                setScore(submitResult.total_score); // Update score from API
+            if (submitResult?.total_score !== undefined) {
+                setScore(submitResult.total_score);
             } else {
                  console.warn("API submit response did not contain total_score.");
-                 // Keep local basic score update if needed
-                 if (answerIsCorrect) setScore(prev => prev + 1); // Fallback local score
+                 if (answerIsCorrect) setScore(prev => prev + 1);
             }
         } catch (error) {
             console.error("Failed to submit answer via API:", error);
             toast.error("Submission Failed", { description: error instanceof Error ? error.message : "Could not submit answer." });
-             // Fallback local score update on error
              if (answerIsCorrect) setScore(prev => prev + 1);
         }
     } else {
         console.log("No answer selected, submitting nothing (or timeout occurred).");
-        // API call for timeout could go here if needed
     }
 
     console.log("Submit handled locally. Waiting for WebSocket signal to advance...");
 
-    // NO setTimeout or navigation here - WS handles it
+  }, [ isAnswered, question, currentUserId, gameId, selectedAnswer, currentQuestionIndex, currentParticipantId ]);
 
-  }, [ isAnswered, question, currentUserId, gameId, selectedAnswer, currentQuestionIndex, currentParticipantId ]); // Added currentParticipantId
-
-  // --- Timer Hook (Unchanged usage) ---
+  // --- Timer Hook ---
   const timeRemaining = useGameTimer(
     question?.id || `loading-${currentQuestionIndex}`,
     question?.timeLimit || 30,
@@ -249,7 +238,7 @@ const GameplayScreen: React.FC = () => {
     handleSubmit
   );
 
-  // --- Effects (Reset, Height Calculation - Unchanged) ---
+  // --- Effects (Reset, Height Calculation) ---
   useEffect(() => {
     if (question) {
       console.log(`Component State Reset Effect: New question loaded - ID: ${question.id}, Index: ${currentQuestionIndex}`);
@@ -277,27 +266,27 @@ const GameplayScreen: React.FC = () => {
       return () => { clearTimeout(timeoutId); if (animationFrameId) cancelAnimationFrame(animationFrameId); };
   }, [question, maxHeight]);
 
-  // --- Event Handlers (Unchanged) ---
+  // --- Event Handlers ---
   const handleAnswerSelect = (answerId: string) => { if (!isAnswered) { setSelectedAnswer(answerId); if (currentUserId) setPlayerSelections([{ playerId: currentUserId, answerId }]); } };
 
-  // --- Derived Data (Unchanged) ---
+  // --- Derived Data ---
   const playerSelectionsByAnswer = useMemo(() => {
       if (isSoloMode || !question) return {};
       const selections: Record<string, Player[]> = {};
       playerSelections.forEach(sel => {
-          const player = getPlayerById([], sel.playerId); // Replace [] with actual player list if needed
+          const player = getPlayerById([], sel.playerId);
           if (player) { if (!selections[sel.answerId]) selections[sel.answerId] = []; selections[sel.answerId].push(player); }
       });
       return selections;
   }, [isSoloMode, question, playerSelections]);
   const questionTextClass = question ? getQuestionTextClass(question.text) : 'text-2xl md:text-3xl';
 
-  // --- Loading and Error States (Unchanged) ---
+  // --- Loading and Error States ---
   if (isLoadingQuestions) { return (<div className="min-h-screen flex flex-col items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-pirate-navy mb-4" /><p className="text-pirate-navy/80">Shuffling the Deck...</p></div>); }
   if (questionFetchError) { return (<div className="min-h-screen flex flex-col items-center justify-center p-4"><Card className="p-6 text-center border-destructive bg-destructive/10"><AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" /><h2 className="text-xl font-semibold text-destructive mb-2">Stormy Seas Ahead!</h2><p className="text-destructive/80 mb-4">{questionFetchError}</p><PirateButton onClick={() => navigate('/')} variant="secondary">Abandon Ship (Return Home)</PirateButton></Card></div>); }
   if (!question || !currentUserId || !packName) { if (!isLoadingQuestions && gameQuestions.length === 0) { return (<div className="min-h-screen flex flex-col items-center justify-center p-4"><Card className="p-6 text-center border-pirate-navy/20 bg-pirate-parchment"><AlertTriangle className="h-12 w-12 text-pirate-navy/50 mx-auto mb-4" /><h2 className="text-xl font-semibold text-pirate-navy mb-2">Empty Chest!</h2><p className="text-pirate-navy/80 mb-4">No questions found in this treasure map.</p><PirateButton onClick={() => navigate('/')} variant="secondary">Return Home</PirateButton></Card></div>); } return <div className="min-h-screen flex items-center justify-center">Chartin' the Course...</div>; }
 
-  // --- Main Gameplay Render (Unchanged structure) ---
+  // --- Main Gameplay Render ---
   return (
     <div className="min-h-screen flex flex-col">
       <GameHeader />
