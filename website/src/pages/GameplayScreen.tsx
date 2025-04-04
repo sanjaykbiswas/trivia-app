@@ -6,7 +6,6 @@ import GameHeader from '@/components/GameHeader';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionTimer from '@/components/QuestionTimer'; // Import the timer component
 import { Player, PlayerSelection, PlayerResult, Question, Answer } from '@/types/gameTypes';
-// --- MODIFIED IMPORT: Added getGameParticipants ---
 import { getGamePlayQuestions, submitAnswer as submitAnswerApi, getGameParticipants } from '@/services/gameApi';
 import { getPlayerById, getQuestionTextClass, getPirateNameForUserId, getEmojiForPlayerId } from '@/utils/gamePlayUtils';
 import { useGameTimer } from '@/hooks/useGameTimer';
@@ -19,7 +18,7 @@ import PirateButton from '@/components/PirateButton';
 // --- WebSocket Imports ---
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { IncomingWsMessage } from '@/types/websocketTypes';
-import { ApiParticipant, ApiGameSessionResponse, ApiGameSubmitAnswerRequest } from '@/types/apiTypes';
+import { ApiParticipant, ApiGameSessionResponse, ApiGameSubmitAnswerRequest, ApiQuestionResultResponse } from '@/types/apiTypes'; // Added ApiQuestionResultResponse
 // --- End WebSocket Imports ---
 
 const GameplayScreen: React.FC = () => {
@@ -33,7 +32,7 @@ const GameplayScreen: React.FC = () => {
   const packName = location.state?.packName as string | undefined;
   const totalQuestionsSetting = location.state?.totalQuestions as number | undefined;
   const gameCode = searchParams.get('gameCode');
-  const isSoloMode = !gameCode;
+  const isSoloMode = !gameCode; // Determine mode based on gameCode presence
 
   // --- State for Fetched Questions and Loading/Error ---
   const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
@@ -108,7 +107,6 @@ const GameplayScreen: React.FC = () => {
            if (gameId && storedUserId) {
                try {
                    console.log(`Fetching participants in Gameplay to find participant ID for user ${storedUserId}...`);
-                   // --- MODIFIED: Use imported function ---
                    const response = await getGameParticipants(gameId);
                    const currentUserParticipant = response.participants.find(p => p.user_id === storedUserId);
                    if (currentUserParticipant) {
@@ -124,6 +122,8 @@ const GameplayScreen: React.FC = () => {
                }
            }
       };
+      // Fetch participant ID only if it's *not* solo mode OR if needed for API submissions even in solo
+      // Let's fetch it always for now, as submitAnswer API needs it.
       fetchParticipantId();
 
     } else {
@@ -133,8 +133,11 @@ const GameplayScreen: React.FC = () => {
     }
   }, [navigate, gameId]);
 
-  // --- WebSocket Message Handler ---
+  // --- WebSocket Message Handler (Only relevant for Crew mode) ---
   const handleWebSocketMessage = useCallback((message: IncomingWsMessage) => {
+    // Skip handling if in solo mode
+    if (isSoloMode) return;
+
     console.log("GameplayScreen Received WebSocket Message:", message.type, message.payload);
     switch (message.type) {
       case 'next_question': {
@@ -169,9 +172,10 @@ const GameplayScreen: React.FC = () => {
          toast.error("Server Error", { description: message.payload.message });
          break;
        }
+      // We don't need participant join/leave/name messages on the gameplay screen itself
       default: break;
     }
-  }, [navigate, gameCode]);
+  }, [navigate, gameCode, isSoloMode]); // Added isSoloMode dependency
 
   // --- Refs for Stable Callbacks ---
   const nextQuestionRef = useRef(nextQuestion);
@@ -179,63 +183,102 @@ const GameplayScreen: React.FC = () => {
   useEffect(() => { nextQuestionRef.current = nextQuestion; }, [nextQuestion]);
   useEffect(() => { currentQuestionIndexRef.current = currentQuestionIndex; }, [currentQuestionIndex]);
 
-  // --- Initialize WebSocket Connection ---
+  // --- Initialize WebSocket Connection (Conditional) ---
   const { status: wsStatus } = useWebSocket({
-    gameId: gameId ?? null,
-    userId: currentUserId,
+    gameId: !isSoloMode ? gameId : null, // Pass null if solo
+    userId: !isSoloMode ? currentUserId : null, // Pass null if solo
     onMessage: handleWebSocketMessage,
     onOpen: () => console.log("Gameplay WebSocket connected."),
     onClose: (event) => console.log("Gameplay WebSocket closed:", event.code),
-    onError: (event) => toast.error("Connection Error", { description: "Lost connection during gameplay." }),
+    onError: (event) => {
+        // Only show connection error toast in crew mode
+        if (!isSoloMode) {
+            toast.error("Connection Error", { description: "Lost connection during gameplay." })
+        } else {
+            console.log("Ignoring WS connection error in solo mode.");
+        }
+    },
   });
+  // --- End WebSocket Initialization ---
 
   // --- handleSubmit ---
   const handleSubmit = useCallback(async () => {
-    if (isAnswered || !question || !currentUserId || !gameId || !currentParticipantId) {
-      console.log("Submit prevented:", { isAnswered, question: !!question, currentUserId: !!currentUserId, gameId: !!gameId, participantId: !!currentParticipantId });
-      return;
+    if (isAnswered || !question || !currentUserId || !gameId) {
+       console.log("Submit prevented (GameplayScreen):", { isAnswered, question: !!question, currentUserId: !!currentUserId, gameId: !!gameId });
+       return;
     }
-    console.log(`Handling submit for Q Index: ${currentQuestionIndex}, Q ID: ${question.id}`);
 
+    console.log(`Handling submit for Q Index: ${currentQuestionIndex}, Q ID: ${question.id}`);
     setIsAnswered(true);
     const answerIsCorrect = selectedAnswer === question.correctAnswer;
     setIsCorrect(answerIsCorrect);
-    console.log(`Answer marked locally. Selected: ${selectedAnswer}, Correct: ${question.correctAnswer}, IsCorrect: ${answerIsCorrect}`);
 
-    if (selectedAnswer) {
-        try {
-            console.log(`Submitting answer '${selectedAnswer}' via REST API (Participant: ${currentParticipantId})...`);
-            const submitPayload: ApiGameSubmitAnswerRequest = {
-                question_index: currentQuestionIndex,
-                answer: selectedAnswer
-            };
-            const submitResult = await submitAnswerApi(gameId, currentParticipantId, submitPayload);
-            console.log("Answer submission API response:", submitResult);
-            if (submitResult?.total_score !== undefined) {
-                setScore(submitResult.total_score);
-            } else {
-                 console.warn("API submit response did not contain total_score.");
-                 if (answerIsCorrect) setScore(prev => prev + 1);
-            }
-        } catch (error) {
-            console.error("Failed to submit answer via API:", error);
-            toast.error("Submission Failed", { description: error instanceof Error ? error.message : "Could not submit answer." });
-             if (answerIsCorrect) setScore(prev => prev + 1);
-        }
+    // Submit score/history via API (Required for both modes if tracking history/score on backend)
+    let finalScoreAfterSubmit = score; // Start with current score
+    if (selectedAnswer && currentParticipantId) {
+       try {
+           console.log(`${isSoloMode ? 'SOLO' : 'CREW'}: Submitting answer '${selectedAnswer}' via REST API (Participant: ${currentParticipantId})...`);
+           const submitPayload: ApiGameSubmitAnswerRequest = { question_index: currentQuestionIndex, answer: selectedAnswer };
+           const submitResult: ApiQuestionResultResponse = await submitAnswerApi(gameId, currentParticipantId, submitPayload);
+           console.log(`${isSoloMode ? 'SOLO' : 'CREW'}: Answer submission API response:`, submitResult);
+           if (submitResult?.total_score !== undefined) {
+               finalScoreAfterSubmit = submitResult.total_score; // Update score based on API response
+               setScore(finalScoreAfterSubmit);
+           } else {
+                console.warn("API submit response did not contain total_score.");
+                // Simple local fallback score update if API fails/is weird
+                if (answerIsCorrect) { finalScoreAfterSubmit = score + 1; setScore(finalScoreAfterSubmit); }
+           }
+       } catch (error) {
+           console.error(`${isSoloMode ? 'SOLO' : 'CREW'}: Failed to submit answer via API:`, error);
+           toast.error("Sync Failed", { description: "Could not record your answer." });
+           // Simple local fallback score update if API fails
+           if (answerIsCorrect) { finalScoreAfterSubmit = score + 1; setScore(finalScoreAfterSubmit); }
+       }
     } else {
-        console.log("No answer selected, submitting nothing (or timeout occurred).");
+       console.log(`${isSoloMode ? 'SOLO' : 'CREW'}: No answer selected or participant ID missing, skipping API submit.`);
+       // Keep finalScoreAfterSubmit as the current score
     }
 
-    console.log("Submit handled locally. Waiting for WebSocket signal to advance...");
 
-  }, [ isAnswered, question, currentUserId, gameId, selectedAnswer, currentQuestionIndex, currentParticipantId ]);
+    // *** ADDED SOLO Advancement Logic ***
+    if (isSoloMode) {
+        console.log("SOLO MODE: Triggering advancement locally.");
+        // Use a short delay to allow the user to see the result feedback briefly
+        setTimeout(() => {
+            if (isLastQuestion) {
+                console.log("SOLO MODE: Last question answered. Navigating to results.");
+                // Prepare results locally for solo mode
+                const finalResult: PlayerResult = {
+                    id: currentUserId, // Use the actual user ID
+                    name: currentUserDisplayName || 'Solo Player',
+                    score: finalScoreAfterSubmit, // Use the score AFTER potential API update/fallback
+                    avatar: getEmojiForPlayerId(currentUserId) // Assign avatar
+                };
+                navigate('/results', { state: { results: [finalResult] } }); // Pass single result
+            } else {
+                console.log("SOLO MODE: Advancing to next question locally.");
+                nextQuestionRef.current(); // Use the ref to the hook's function
+            }
+        }, 1500); // 1.5 second delay
+    } else {
+         console.log("CREW MODE: Submit handled. Waiting for WebSocket signal to advance.");
+         // In crew mode, advancement is handled by the 'next_question' or 'game_over' WS message
+    }
+  }, [
+      isAnswered, question, currentUserId, gameId, selectedAnswer,
+      currentQuestionIndex, currentParticipantId, isSoloMode, isLastQuestion,
+      score, currentUserDisplayName, navigate // Keep dependencies
+  ]);
+  // --- End Solo Advancement Logic ---
+
 
   // --- Timer Hook ---
   const timeRemaining = useGameTimer(
     question?.id || `loading-${currentQuestionIndex}`,
     question?.timeLimit || 30,
     isAnswered,
-    handleSubmit
+    handleSubmit // Pass the potentially modified handleSubmit
   );
 
   // --- Effects (Reset, Height Calculation) ---
@@ -271,10 +314,11 @@ const GameplayScreen: React.FC = () => {
 
   // --- Derived Data ---
   const playerSelectionsByAnswer = useMemo(() => {
+      // This is only relevant for crew mode display, safe to keep as is
       if (isSoloMode || !question) return {};
       const selections: Record<string, Player[]> = {};
       playerSelections.forEach(sel => {
-          const player = getPlayerById([], sel.playerId);
+          const player = getPlayerById([], sel.playerId); // Note: getPlayerById currently uses mock data
           if (player) { if (!selections[sel.answerId]) selections[sel.answerId] = []; selections[sel.answerId].push(player); }
       });
       return selections;
@@ -301,7 +345,7 @@ const GameplayScreen: React.FC = () => {
             questionText={question.text}
             answers={question.answers}
             selectedAnswer={selectedAnswer}
-            isAnswered={isAnswered}
+            isAnswered={isAnswered} // Pass down isAnswered state
             correctAnswer={question.correctAnswer}
             onAnswerSelect={handleAnswerSelect}
             playerSelectionsByAnswer={playerSelectionsByAnswer}

@@ -4,13 +4,14 @@ import string
 import logging
 import asyncio
 from typing import List, Optional, Tuple, Dict, Any, Set
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone # Ensure timezone is imported
 
 # Models
 from ..models.game_session import GameSession, GameSessionCreate, GameSessionUpdate, GameStatus
 from ..models.game_participant import GameParticipant, GameParticipantCreate, GameParticipantUpdate
 from ..models.game_question import GameQuestion, GameQuestionCreate, GameQuestionUpdate
-from ..models.question import Question
+# Corrected import path for Question model if needed (assuming it's directly under models)
+from ..models.question import Question # Ensure Question model is imported correctly
 from ..models.user_question_history import UserQuestionHistoryCreate
 
 # Repositories
@@ -25,6 +26,7 @@ from ..repositories.user_pack_history_repository import UserPackHistoryRepositor
 
 # Utils & Schemas
 from ..utils import ensure_uuid
+# Import GamePlayQuestionResponse for type hint if used internally, else remove
 from ..api.schemas.game import GamePlayQuestionResponse
 
 # --- WebSocket Integration ---
@@ -42,7 +44,6 @@ class GameService:
     and real-time updates via WebSockets.
     """
 
-    # --- MODIFIED __init__ ---
     def __init__(
         self,
         game_session_repository: GameSessionRepository,
@@ -53,7 +54,7 @@ class GameService:
         user_repository: UserRepository,
         user_question_history_repository: UserQuestionHistoryRepository,
         user_pack_history_repository: UserPackHistoryRepository,
-        connection_manager: ConnectionManager # <<< ADDED
+        connection_manager: ConnectionManager
     ):
         """
         Initialize the service with required repositories and connection manager.
@@ -66,11 +67,8 @@ class GameService:
         self.user_repo = user_repository
         self.user_question_history_repo = user_question_history_repository
         self.user_pack_history_repo = user_pack_history_repository
-        self.connection_manager = connection_manager # <<< ADDED
-    # --- END MODIFIED __init__ ---
+        self.connection_manager = connection_manager
 
-    # create_game_session remains unchanged in its core logic,
-    # but the host joining implicitly adds them to the room via WebSocket connect.
     async def create_game_session(
         self,
         host_user_id: str,
@@ -105,7 +103,6 @@ class GameService:
         # Note: Host will connect via WebSocket separately
         return game_session
 
-    # _generate_unique_game_code remains unchanged
     async def _generate_unique_game_code(self, length: int = 6) -> str:
         characters = string.ascii_uppercase + string.digits
         characters = characters.replace('O', '').replace('0', '').replace('I', '').replace('1', '')
@@ -117,7 +114,6 @@ class GameService:
         logger.warning(f"Failed to generate unique code of length {length}, trying length {length+1}")
         return await self._generate_unique_game_code(length + 1)
 
-    # --- MODIFIED join_game ---
     async def join_game(
         self,
         game_code: str,
@@ -143,6 +139,7 @@ class GameService:
                 logger.info(f"Updating display name for rejoining user {user_id_str} to '{display_name}'")
                 updated_record = await self.game_participant_repo.update(
                     id=existing_participant.id,
+                    # Type hinting might complain, ignore or adjust Update schema
                     obj_in=GameParticipantUpdate(display_name=display_name) # type: ignore[call-arg]
                 )
                 if updated_record:
@@ -167,9 +164,7 @@ class GameService:
              await self._broadcast_participant_update(game_session.id, participant_record)
 
         return game_session, participant_record
-    # --- END MODIFIED join_game ---
 
-    # --- Helper to broadcast participant updates ---
     async def _broadcast_participant_update(self, game_id: str, participant: GameParticipant):
         """Helper to format and broadcast participant join/update messages."""
         message = {
@@ -184,23 +179,20 @@ class GameService:
         }
         await self.connection_manager.broadcast(message, game_id)
         logger.debug(f"Broadcasted participant update for user {participant.user_id} in game {game_id}")
-    # --- End Helper ---
 
-    # --- MODIFIED start_game ---
     async def start_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         """
         Start a game session: Select/prioritize questions based on user history,
         populate game_questions, update user_pack_history, set game to active,
         and broadcast the start event.
         """
-        # ... (Validation and Question Selection logic remains the same as before) ...
         game_session_id = ensure_uuid(game_session_id)
         host_user_id = ensure_uuid(host_user_id)
 
         # 1. Validation
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game with ID {game_session_id} not found")
-        if game_session.host_user_id != host_user_id: raise ValueError("Only the host can start the game")
+        if str(game_session.host_user_id) != str(host_user_id): raise ValueError("Only the host can start the game") # Compare as strings
         if game_session.status != GameStatus.PENDING: raise ValueError(f"Game cannot be started (current status: {game_session.status})")
 
         # 2. Get Participants
@@ -221,6 +213,7 @@ class GameService:
         if actual_question_count < game_session.question_count:
             updated_session = await self.game_session_repo.update(
                  id=game_session_id,
+                 # Type hinting might complain, ignore or adjust Update schema
                  obj_in=GameSessionUpdate(question_count=actual_question_count) # type: ignore[call-arg]
             )
             if not updated_session: raise ValueError(f"Failed to update question count for game {game_session_id}")
@@ -251,12 +244,12 @@ class GameService:
         # 6. Update Game Status
         updated_game = await self.game_session_repo.update(
             id=game_session_id,
+            # Type hinting might complain, ignore or adjust Update schema
             obj_in=GameSessionUpdate(status=GameStatus.ACTIVE, current_question_index=0, updated_at=datetime.now(timezone.utc)) # type: ignore[call-arg]
         )
         if not updated_game: raise ValueError(f"Failed to update game status to ACTIVE for game {game_session_id}")
 
         # --- 7. Broadcast Game Started Event ---
-        # Send game details and possibly the first question
         # Fetch the formatted first question for the broadcast
         play_questions = await self.get_questions_for_play(updated_game.id) # Use updated game ID
         first_question_payload = play_questions[0] if play_questions else None
@@ -279,9 +272,7 @@ class GameService:
 
         logger.info(f"Game {game_session_id} started with {actual_question_count} questions by host {host_user_id}")
         return updated_game
-    # --- END MODIFIED start_game ---
 
-    # _select_questions_for_game remains unchanged
     async def _select_questions_for_game(
         self,
         pack_id: str,
@@ -292,13 +283,13 @@ class GameService:
         all_pack_questions = await self.question_repo.get_by_pack_id(pack_id_str)
         if not all_pack_questions: return []
         effective_count = min(target_count, len(all_pack_questions))
-        pack_question_ids = [q.id for q in all_pack_questions]
+        pack_question_ids = [str(q.id) for q in all_pack_questions] # Ensure string IDs
         seen_question_ids = await self.user_question_history_repo.get_seen_question_ids_for_users(
             user_ids=participant_user_ids, question_ids=pack_question_ids
         )
         unseen_questions: List[Question] = []
         seen_questions: List[Question] = []
-        for q in all_pack_questions: (seen_questions if q.id in seen_question_ids else unseen_questions).append(q)
+        for q in all_pack_questions: (seen_questions if str(q.id) in seen_question_ids else unseen_questions).append(q) # Compare as strings
         selected_questions_for_game: List[Question] = []
         random.shuffle(unseen_questions); random.shuffle(seen_questions)
         take_from_unseen = min(effective_count, len(unseen_questions))
@@ -310,7 +301,6 @@ class GameService:
         random.shuffle(selected_questions_for_game)
         return selected_questions_for_game
 
-    # get_questions_for_play remains unchanged
     async def get_questions_for_play(self, game_session_id: str) -> List[GamePlayQuestionResponse]:
         game_session_id = ensure_uuid(game_session_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
@@ -328,21 +318,43 @@ class GameService:
             if isinstance(original_question, Exception) or not original_question: logger.error(f"Failed to fetch original question {gq.question_id}: {original_question}"); continue
             incorrect_options = []
             if isinstance(incorrect_answers_record, Exception): logger.error(f"Failed to fetch incorrect answers for {gq.question_id}: {incorrect_answers_record}")
-            else: incorrect_options = incorrect_answers_record.incorrect_answers if incorrect_answers_record else []
-            correct_answer_text = original_question.answer; all_options_texts = [correct_answer_text] + incorrect_options; random.shuffle(all_options_texts)
+            elif incorrect_answers_record: incorrect_options = incorrect_answers_record.incorrect_answers
+
+            # Use correctAnswer field from Question model
+            correct_answer_text = original_question.answer
+            all_options_texts = [correct_answer_text] + incorrect_options
+            random.shuffle(all_options_texts)
+
+            # Create answer IDs like "qID-optionIndex"
+            answer_options_with_ids = [
+                {"id": f"{gq.question_id}-{idx}", "text": text}
+                for idx, text in enumerate(all_options_texts)
+            ]
+
+            # Find the ID of the correct option after shuffling
             correct_answer_id = None
-            for index, option_text in enumerate(all_options_texts):
-                 answer_id = f"{gq.question_id}-{index}"
-                 if option_text == correct_answer_text: correct_answer_id = answer_id; break
-            if correct_answer_id is None: logger.error(f"Could not determine correct_answer_id for question {gq.question_id}"); continue
-            shuffled_option_texts_only = all_options_texts
-            play_question = GamePlayQuestionResponse( index=gq.question_index, question_id=gq.question_id, question_text=original_question.question, options=shuffled_option_texts_only, correct_answer_id=correct_answer_id, time_limit=game_session.time_limit_seconds )
+            for option in answer_options_with_ids:
+                if option["text"] == correct_answer_text:
+                    correct_answer_id = option["id"]
+                    break
+
+            if correct_answer_id is None:
+                logger.error(f"Could not determine correct_answer_id for question {gq.question_id}. Correct text: '{correct_answer_text}'. Options: {answer_options_with_ids}")
+                continue
+
+            play_question = GamePlayQuestionResponse(
+                index=gq.question_index,
+                question_id=gq.question_id,
+                question_text=original_question.question,
+                options=[opt["text"] for opt in answer_options_with_ids], # Pass only texts
+                correct_answer_id=correct_answer_id, # Pass the generated correct ID
+                time_limit=game_session.time_limit_seconds
+            )
             play_questions.append(play_question)
+
         play_questions.sort(key=lambda q: q.index)
         return play_questions
 
-    # _advance_to_next_question remains unchanged
-    # NOTE: Broadcast logic is moved to `end_current_question` which calls this.
     async def _advance_to_next_question(
         self,
         game_session_id: str,
@@ -361,7 +373,7 @@ class GameService:
             else: logger.info(f"Game {game_session_id} already in status {game_session.status}")
             return None # Indicates game end
         # Update the game session's current index
-        updated_session = await self.game_session_repo.update(id=game_session_id, obj_in=GameSessionUpdate(current_question_index=next_index) )# type: ignore[call-arg]
+        updated_session = await self.game_session_repo.update(id=game_session_id, obj_in=GameSessionUpdate(current_question_index=next_index) ) # type: ignore[call-arg]
         if not updated_session: logger.error(f"Failed to update current_question_index for game {game_session_id}"); return None
         # Get the corresponding GameQuestion record
         next_game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id=game_session_id, question_index=next_index)
@@ -372,51 +384,106 @@ class GameService:
             else: logger.error(f"Failed to mark game question {next_game_question.id} as started for game {game_session_id}"); return None
         else: logger.error(f"Game {game_session_id}: Failed to find game question at index {next_index}"); return None
 
-    # submit_answer remains unchanged in core logic, but could broadcast scores
-    # (For simplicity, we'll only broadcast on `end_current_question` for now)
+    # --- METHOD WITH FIXES APPLIED ---
     async def submit_answer(
         self,
         game_session_id: str,
         participant_id: str,
         question_index: int,
-        answer: str
+        answer: str # Frontend sends answer ID like "qID-optionIndex"
     ) -> Dict[str, Any]:
-        game_session_id = ensure_uuid(game_session_id); participant_id = ensure_uuid(participant_id)
-        game_session = await self.game_session_repo.get_by_id(game_session_id);
+        # Ensure UUIDs are strings
+        game_session_id = ensure_uuid(game_session_id)
+        participant_id = ensure_uuid(participant_id)
+
+        # 1. Fetch game session and participant
+        game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
         if game_session.status != GameStatus.ACTIVE: raise ValueError(f"Game not active")
-        participant = await self.game_participant_repo.get_by_id(participant_id);
-        if not participant or participant.game_session_id != game_session_id: raise ValueError(f"Participant not found in game")
-        game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id, question_index);
-        if not game_question: raise ValueError(f"Question index {question_index} not found")
-        if game_session.current_question_index != question_index: raise ValueError(f"Not the current question")
-        if not game_question.start_time: raise ValueError(f"Question not started")
-        if game_question.end_time: raise ValueError(f"Question ended")
-        if participant_id in game_question.participant_answers: raise ValueError("Answer already submitted")
-        await self.game_question_repo.record_participant_answer(game_question.id, participant_id, answer)
-        original_question = await self.question_repo.get_by_id(game_question.question_id)
-        if not original_question: logger.error(f"Original question {game_question.question_id} not found"); return {"success": False, "error": "Original question data missing"}
-        is_correct = answer.lower().strip() == original_question.answer.lower().strip(); score = 0
-        if is_correct:
-            max_score = 1000; now = datetime.now(timezone.utc); start_time = game_question.start_time
-            if start_time:
-                 if start_time.tzinfo is None: start_time = start_time.replace(tzinfo=timezone.utc)
-                 try:
-                     seconds_taken = (now - start_time).total_seconds(); time_limit = max(game_session.time_limit_seconds, 1)
-                     time_factor = max(0, 1 - (seconds_taken / time_limit)) if time_limit > 0 else 1
-                     score = max(int(max_score * time_factor), 100)
-                 except Exception as e: logger.error(f"Time calculation error: {e}"); score = 100
-            else: logger.warning("Start time missing"); score = 100
-        await self.game_question_repo.record_participant_score(game_question.id, participant_id, score)
-        new_total_score = participant.score + score; updated_participant = await self.game_participant_repo.update_score(participant_id, new_total_score)
-        final_total_score = updated_participant.score if updated_participant else new_total_score
-        try:
-            history_data = UserQuestionHistoryCreate(user_id=participant.user_id, question_id=game_question.question_id, correct=is_correct)
-            await self.user_question_history_repo.create(obj_in=history_data)
-        except Exception as hist_error: logger.error(f"Failed to record question history: {hist_error}", exc_info=True)
-        return {"success": True, "is_correct": is_correct, "correct_answer": original_question.answer, "score": score, "total_score": final_total_score}
 
-    # --- MODIFIED end_current_question ---
+        participant = await self.game_participant_repo.get_by_id(participant_id)
+        if not participant or str(participant.game_session_id) != str(game_session_id):
+            raise ValueError(f"Participant not found in game")
+
+        # 2. Fetch the specific GameQuestion
+        game_question = await self.game_question_repo.get_by_game_session_and_index(game_session_id, question_index)
+        if not game_question: raise ValueError(f"Question index {question_index} not found for this game")
+
+        # 3. Check question timing and if already answered
+        # *** REMOVED THE start_time CHECK ***
+        # if not game_question.start_time: raise ValueError(f"Question {question_index} not started yet")
+        # *** KEEP THE end_time CHECK ***
+        if game_question.end_time: raise ValueError(f"Question {question_index} has already ended")
+
+        # Check if this participant already answered
+        if participant_id in game_question.participant_answers:
+            raise ValueError("Answer already submitted for this question")
+
+        # 5. Record answer
+        await self.game_question_repo.record_participant_answer(game_question.id, participant_id, str(answer))
+
+        # 6. Check correctness and calculate score
+        original_question = await self.question_repo.get_by_id(game_question.question_id)
+        if not original_question:
+            logger.error(f"Original question {game_question.question_id} not found for game question {game_question.id}")
+            return {"success": False, "error": "Original question data missing"}
+
+        # --- Correctness check (requires reconstructing options/IDs) ---
+        incorrect_answers_record = await self.incorrect_answers_repo.get_by_question_id(original_question.id)
+        incorrect_options = incorrect_answers_record.incorrect_answers if incorrect_answers_record else []
+        all_options_texts = [original_question.answer] + incorrect_options
+        # We need a deterministic way to map submitted ID back to text or compare IDs.
+        # Let's reconstruct the potential IDs based on the order the backend knows.
+        answer_options_with_ids = [
+             {"id": f"{original_question.id}-{idx}", "text": text}
+             for idx, text in enumerate(all_options_texts)
+        ]
+        correct_answer_option = next((opt for opt in answer_options_with_ids if opt["text"] == original_question.answer), None)
+        correct_answer_id_generated = correct_answer_option["id"] if correct_answer_option else None
+
+        if not correct_answer_id_generated:
+             logger.error(f"Could not reconstruct correct answer ID for question {original_question.id}")
+             return {"success": False, "error": "Internal error checking answer"}
+
+        is_correct = str(answer) == str(correct_answer_id_generated)
+        logger.info(f"Correctness check for Q{question_index}: Submitted='{answer}', Correct ID='{correct_answer_id_generated}', Result={is_correct}")
+        # --- End Correctness Check ---
+
+        # --- Simplified Score Calculation ---
+        score = 1 if is_correct else 0
+        # --- End Simplified Score Calculation ---
+
+        # 7. Record score for this question
+        await self.game_question_repo.record_participant_score(game_question.id, participant_id, score)
+
+        # 8. Update participant's total score
+        current_total_score = participant.score if participant.score is not None else 0
+        new_total_score = current_total_score + score
+        updated_participant = await self.game_participant_repo.update_score(participant_id, new_total_score)
+        final_total_score = updated_participant.score if updated_participant else new_total_score
+
+        # 9. Record in user history
+        try:
+            history_data = UserQuestionHistoryCreate(
+                user_id=participant.user_id,
+                question_id=game_question.question_id,
+                correct=is_correct,
+            )
+            await self.user_question_history_repo.create(obj_in=history_data)
+        except Exception as hist_error:
+            logger.error(f"Failed to record question history for user {participant.user_id}, question {game_question.question_id}: {hist_error}", exc_info=True)
+
+        # 10. Return result
+        return {
+            "success": True,
+            "is_correct": is_correct,
+            "correct_answer": original_question.answer, # Return correct text
+            "score": score, # Score for this question (now 1 or 0)
+            "total_score": final_total_score # Participant's new total score
+        }
+    # --- END METHOD WITH FIXES APPLIED ---
+
+
     async def end_current_question(
         self,
         game_session_id: str,
@@ -426,7 +493,7 @@ class GameService:
         game_session_id = ensure_uuid(game_session_id); host_user_id = ensure_uuid(host_user_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
-        if game_session.host_user_id != host_user_id: raise ValueError("Only host can end question/advance game")
+        if str(game_session.host_user_id) != str(host_user_id): raise ValueError("Only host can end question/advance game") # Compare as strings
         if game_session.status != GameStatus.ACTIVE: raise ValueError(f"Game not active")
 
         current_index = game_session.current_question_index
@@ -438,16 +505,6 @@ class GameService:
              if ended_question: current_game_question = ended_question # Use updated record
              else: logger.warning(f"Failed to mark question {current_index} as ended.")
         elif not current_game_question: logger.warning(f"Current game question (index {current_index}) not found when trying to end it.")
-
-        # --- Broadcast Question Results/Scores ---
-        # (Optional - could make WS chatty, maybe only send on game end?)
-        # participant_scores = current_game_question.participant_scores if current_game_question else {}
-        # score_update_message = {
-        #     "type": "question_results",
-        #     "payload": {"question_index": current_index, "scores": participant_scores}
-        # }
-        # await self.connection_manager.broadcast(score_update_message, game_session_id)
-        # --- End Broadcast ---
 
         # Advance to the next question or get game end signal
         next_game_question = await self._advance_to_next_question(game_session_id)
@@ -463,11 +520,13 @@ class GameService:
                 await self.connection_manager.broadcast(next_q_message, game_session_id)
                 logger.info(f"Broadcasted next_question event (index {next_game_question.question_index}) for game {game_session_id}")
                 # --- End Broadcast ---
-                return {"game_complete": False, "next_question_index": next_game_question.question_index} # Return minimal REST response
+                # Return minimal REST response containing the next question payload
+                return {"game_complete": False, "next_question": next_question_payload}
             else:
                  logger.error(f"Failed to format next question payload for index {next_game_question.question_index} in game {game_session_id}")
-                 # Consider broadcasting an error or ending game? For now, return error state.
-                 return {"game_complete": False, "error": "Failed to load next question data"}
+                 # If formatting fails, we might still need to end the game gracefully
+                 await self.game_session_repo.update_game_status(game_id=game_session_id, status=GameStatus.COMPLETED) # Force complete
+                 return {"game_complete": True, "error": "Failed to load next question data"}
         else:
             # Game has ended (or failed to advance)
             final_game_session = await self.game_session_repo.get_by_id(game_session_id) # Re-fetch to confirm status
@@ -487,39 +546,56 @@ class GameService:
                  end_message = {"type": "game_over", "payload": final_results}
                  await self.connection_manager.broadcast(end_message, game_session_id)
                  return {"game_complete": True}
-    # --- END MODIFIED end_current_question ---
 
-    # get_game_participants remains unchanged
     async def get_game_participants(self, game_session_id: str) -> List[Dict[str, Any]]:
         game_session_id_str = ensure_uuid(game_session_id)
         participants: List[GameParticipant] = await self.game_participant_repo.get_by_game_session_id(game_session_id_str)
+        # Use model_dump for Pydantic V2 serialization if needed, or manual dict creation
         return [{"id": p.id, "user_id": p.user_id, "display_name": p.display_name, "score": p.score, "is_host": p.is_host} for p in participants]
 
-    # get_game_results remains unchanged
     async def get_game_results(self, game_session_id: str) -> Dict[str, Any]:
-        game_session_id = ensure_uuid(game_session_id); game_session = await self.game_session_repo.get_by_id(game_session_id)
+        game_session_id = ensure_uuid(game_session_id)
+        game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
-        # Allow fetching results even if not technically completed (e.g., if cancelled but want final scores)
-        # if game_session.status != GameStatus.COMPLETED: logger.warning(f"Requesting results for non-completed game {game_session_id}")
-        participants = await self.game_participant_repo.get_by_game_session_id(game_session_id); participants.sort(key=lambda p: p.score, reverse=True)
+
+        participants = await self.game_participant_repo.get_by_game_session_id(game_session_id)
+        participants.sort(key=lambda p: p.score, reverse=True) # Sort by score desc
+
         game_questions = await self.game_question_repo.get_by_game_session_id(game_session_id)
         question_results = []
         for gq in game_questions:
              original_question = await self.question_repo.get_by_id(gq.question_id)
              if original_question:
-                 correct_count = sum(1 for score in gq.participant_scores.values() if score > 0); total_answered = len(gq.participant_answers)
+                 correct_count = sum(1 for score in gq.participant_scores.values() if score > 0)
+                 total_answered = len(gq.participant_answers)
                  correct_percentage = (correct_count / total_answered * 100) if total_answered > 0 else 0
-                 question_results.append({"index": gq.question_index, "question_text": original_question.question, "correct_answer": original_question.answer, "correct_count": correct_count, "total_answered": total_answered, "correct_percentage": correct_percentage})
+                 question_results.append({
+                     "index": gq.question_index,
+                     "question_text": original_question.question,
+                     "correct_answer": original_question.answer, # Return correct answer text
+                     "correct_count": correct_count,
+                     "total_answered": total_answered,
+                     "correct_percentage": round(correct_percentage, 1) # Round percentage
+                 })
+
         participant_results = [{"id": p.id, "user_id": p.user_id, "display_name": p.display_name, "score": p.score, "is_host": p.is_host} for p in participants]
         completion_time = game_session.updated_at if game_session.status in [GameStatus.COMPLETED, GameStatus.CANCELLED] else datetime.now(timezone.utc)
-        return {"game_id": game_session_id, "game_code": game_session.code, "status": game_session.status.value, "participants": participant_results, "questions": question_results, "total_questions": len(game_questions), "completed_at": completion_time.isoformat()}
 
-    # --- MODIFIED cancel_game ---
+        return {
+            "game_id": game_session_id,
+            "game_code": game_session.code,
+            "status": game_session.status.value,
+            "participants": participant_results,
+            "questions": question_results,
+            "total_questions": len(game_questions),
+            "completed_at": completion_time.isoformat() # Use ISO format
+        }
+
     async def cancel_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         game_session_id = ensure_uuid(game_session_id); host_user_id = ensure_uuid(host_user_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
-        if game_session.host_user_id != host_user_id: raise ValueError("Only host can cancel")
+        if str(game_session.host_user_id) != str(host_user_id): raise ValueError("Only host can cancel") # Compare as strings
         if game_session.status not in [GameStatus.PENDING, GameStatus.ACTIVE]: raise ValueError(f"Game cannot be cancelled (status: {game_session.status})")
 
         updated_game = await self.game_session_repo.update_game_status(game_id=game_session_id, status=GameStatus.CANCELLED)
@@ -533,9 +609,7 @@ class GameService:
 
         logger.info(f"Game {game_session_id} cancelled by host {host_user_id}")
         return updated_game
-    # --- END MODIFIED cancel_game ---
 
-    # --- NEW: handle_disconnect ---
     async def handle_disconnect(self, game_id: str, user_id: str):
         """Handles logic when a user disconnects (called by WS endpoint)."""
         logger.info(f"Handling disconnect for user {user_id} in game {game_id}")
@@ -547,26 +621,19 @@ class GameService:
             await self.connection_manager.broadcast(message, game_id)
             logger.debug(f"Broadcasted participant_left for user {user_id} in game {game_id}")
 
-            # Optional: Add logic if host disconnects (e.g., cancel game or promote new host)
-            # if participant.is_host:
-            #    logger.warning(f"Host {user_id} disconnected from game {game_id}. Implement host disconnect logic.")
-            #    # await self.cancel_game(game_id, user_id) # Example: cancel if host leaves
-
         else:
             logger.warning(f"Participant record not found for disconnected user {user_id} in game {game_id}")
-    # --- END NEW: handle_disconnect ---
 
-    # get_user_games remains unchanged (it's a REST utility, not real-time)
     async def get_user_games(self, user_id: str, include_completed: bool = False) -> List[Dict[str, Any]]:
         user_id = ensure_uuid(user_id); participations = await self.game_participant_repo.get_user_active_games(user_id)
         results = []; processed_game_ids = set()
         for participation in participations:
-             game_session_id = participation.game_session_id
+             game_session_id = str(participation.game_session_id) # Ensure string
              if game_session_id in processed_game_ids: continue
              game_session = await self.game_session_repo.get_by_id(game_session_id)
              if not game_session: logger.warning(f"Game session {game_session_id} not found for participation {participation.id}"); continue
              if not include_completed and game_session.status in [GameStatus.COMPLETED, GameStatus.CANCELLED]: continue
-             participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
-             game_info = {"id": game_session.id, "code": game_session.code, "status": game_session.status.value, "participant_count": len(participants), "max_participants": game_session.max_participants, "current_question": game_session.current_question_index, "total_questions": game_session.question_count, "is_host": participation.is_host, "created_at": game_session.created_at.isoformat(), "updated_at": game_session.updated_at.isoformat()}
+             participants_in_game = await self.game_participant_repo.get_by_game_session_id(game_session.id)
+             game_info = {"id": game_session.id, "code": game_session.code, "status": game_session.status.value, "participant_count": len(participants_in_game), "max_participants": game_session.max_participants, "current_question": game_session.current_question_index, "total_questions": game_session.question_count, "is_host": participation.is_host, "created_at": game_session.created_at.isoformat(), "updated_at": game_session.updated_at.isoformat()}
              results.append(game_info); processed_game_ids.add(game_session_id)
         return results
