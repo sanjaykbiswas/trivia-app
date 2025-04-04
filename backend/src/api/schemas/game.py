@@ -1,4 +1,5 @@
 # backend/src/api/schemas/game.py
+# --- START OF FULL MODIFIED FILE ---
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -55,7 +56,6 @@ class GameSessionListResponse(BaseModel):
 
 # --- MODIFIED / ADDED Schemas ---
 
-# Removed GameQuestionResponse - not directly used by API endpoints now
 # Renamed GameQuestionInfo -> ApiGameQuestionInfo to avoid frontend naming conflicts potentially
 class ApiGameQuestionInfo(BaseModel):
     """Schema for the current question info returned on game start or next question."""
@@ -101,6 +101,9 @@ class GamePlayQuestionResponse(BaseModel):
     question_id: str = Field(..., description="Original ID of the question")
     question_text: str = Field(..., description="The text of the question")
     options: List[str] = Field(..., description="Shuffled list of answer options (correct + incorrect)")
+    # --- ADDED FIELD ---
+    correct_answer_id: str = Field(..., description="The ID (e.g., 'qID-optionIndex') of the correct option within the shuffled list")
+    # --- END ADDED FIELD ---
     time_limit: int = Field(..., description="Time limit for this question in seconds (from game settings)")
 
     class Config:
@@ -112,3 +115,4 @@ class GamePlayQuestionListResponse(BaseModel):
     questions: List[GamePlayQuestionResponse]
     total_questions: int # Actual number of questions in this game
 # --- END NEW SCHEMAS ---
+# --- END OF FULL MODIFIED FILE ---

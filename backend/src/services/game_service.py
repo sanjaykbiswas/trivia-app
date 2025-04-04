@@ -1,4 +1,5 @@
 # backend/src/services/game_service.py
+# --- START OF FULL MODIFIED FILE ---
 import random
 import string
 import logging
@@ -30,7 +31,7 @@ from ..repositories.user_pack_history_repository import UserPackHistoryRepositor
 # Utils
 from ..utils import ensure_uuid
 # --- ADD API SCHEMA IMPORT ---
-from ..api.schemas.game import GamePlayQuestionResponse # Import the new response schema
+from ..api.schemas.game import GamePlayQuestionResponse # Import the updated response schema
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ class GameService:
         logger.info(f"User {user_id} ({display_name}) joined game {game_code} as participant {participant.id}")
         return game_session, participant
 
-    # --- MODIFIED start_game ---
+    # start_game remains unchanged
     async def start_game(self, game_session_id: str, host_user_id: str) -> GameSession:
         """
         Start a game session: Select/prioritize questions based on user history,
@@ -246,9 +247,8 @@ class GameService:
 
         logger.info(f"Game {game_session_id} started with {actual_question_count} questions by host {host_user_id}")
         return updated_game
-    # --- END MODIFIED start_game ---
 
-    # --- MODIFIED _select_questions_for_game ---
+    # _select_questions_for_game remains unchanged
     async def _select_questions_for_game(
         self,
         pack_id: str,
@@ -321,13 +321,12 @@ class GameService:
 
         logger.info(f"Final selected questions for game: {len(selected_questions_for_game)}")
         return selected_questions_for_game
-    # --- END MODIFIED _select_questions_for_game ---
 
-    # --- NEW METHOD: get_questions_for_play ---
+    # --- MODIFIED get_questions_for_play ---
     async def get_questions_for_play(self, game_session_id: str) -> List[GamePlayQuestionResponse]:
         """
         Retrieves the pre-selected questions for an active game session,
-        formats them with shuffled options for the frontend.
+        formats them with shuffled options for the frontend, INCLUDING the correct answer ID.
         """
         game_session_id = ensure_uuid(game_session_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
@@ -367,17 +366,41 @@ class GameService:
                  incorrect_options = incorrect_answers_record.incorrect_answers if incorrect_answers_record else []
 
 
-            # Combine and shuffle options
-            all_options = [original_question.answer] + incorrect_options
-            random.shuffle(all_options)
+            # --- Identify Correct Answer ID during Shuffling ---
+            correct_answer_text = original_question.answer
+            all_options_texts = [correct_answer_text] + incorrect_options
+            random.shuffle(all_options_texts) # Shuffle the texts
 
-            # Create response object
+            shuffled_options_with_ids = []
+            correct_answer_id = None # Initialize
+            for index, option_text in enumerate(all_options_texts):
+                # Generate ID based on question_id and SHUFFLED index
+                answer_id = f"{gq.question_id}-{index}"
+                shuffled_options_with_ids.append({
+                    "id": answer_id,
+                    "text": option_text
+                })
+                # Check if this shuffled option is the correct one
+                if option_text == correct_answer_text:
+                    correct_answer_id = answer_id
+
+            if correct_answer_id is None:
+                logger.error(f"Could not determine correct_answer_id for question {gq.question_id} in game {game_session_id}. Original answer: '{correct_answer_text}', Shuffled options: {all_options_texts}")
+                # Skip this question if we can't identify the correct answer ID
+                continue
+            # --- End Correct Answer ID Logic ---
+
+            # Extract just the texts for the response 'options' field
+            shuffled_option_texts_only = [opt['text'] for opt in shuffled_options_with_ids]
+
+            # Create response object using the updated schema
             play_question = GamePlayQuestionResponse(
                 index=gq.question_index,
                 question_id=gq.question_id,
                 question_text=original_question.question,
-                options=all_options,
-                time_limit=game_session.time_limit_seconds # Use game's global time limit
+                options=shuffled_option_texts_only, # Send only texts
+                correct_answer_id=correct_answer_id, # Send the identified correct ID
+                time_limit=game_session.time_limit_seconds
             )
             play_questions.append(play_question)
 
@@ -385,8 +408,7 @@ class GameService:
         play_questions.sort(key=lambda q: q.index)
 
         return play_questions
-    # --- END NEW METHOD ---
-
+    # --- END MODIFIED get_questions_for_play ---
 
     # _advance_to_next_question remains unchanged
     async def _advance_to_next_question(
@@ -394,7 +416,6 @@ class GameService:
         game_session_id: str,
         next_index: Optional[int] = None
     ) -> Optional[GameQuestion]:
-        # ... (implementation remains the same as before) ...
         game_session_id = ensure_uuid(game_session_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: logger.error(f"Game session {game_session_id} not found during advance"); return None
@@ -416,7 +437,7 @@ class GameService:
             else: logger.error(f"Failed to mark game question {next_game_question.id} as started for game {game_session_id}"); return None
         else: logger.error(f"Game {game_session_id}: Failed to find game question at index {next_index}"); return None
 
-    # --- MODIFIED submit_answer ---
+    # submit_answer remains unchanged
     async def submit_answer(
         self,
         game_session_id: str,
@@ -499,7 +520,6 @@ class GameService:
             "correct_answer": original_question.answer, "score": score,
             "total_score": final_total_score
         }
-    # --- END MODIFIED submit_answer ---
 
     # end_current_question remains unchanged
     async def end_current_question(
@@ -507,7 +527,6 @@ class GameService:
         game_session_id: str,
         host_user_id: str
     ) -> Dict[str, Any]:
-        # ... (implementation remains the same as before) ...
         game_session_id = ensure_uuid(game_session_id); host_user_id = ensure_uuid(host_user_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id);
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
@@ -541,14 +560,12 @@ class GameService:
 
     # get_game_participants remains unchanged
     async def get_game_participants(self, game_session_id: str) -> List[Dict[str, Any]]:
-        # ... (implementation remains the same as before) ...
         game_session_id_str = ensure_uuid(game_session_id)
         participants: List[GameParticipant] = await self.game_participant_repo.get_by_game_session_id(game_session_id_str)
         return [{"id": p.id, "user_id": p.user_id, "display_name": p.display_name, "score": p.score, "is_host": p.is_host} for p in participants]
 
     # get_game_results remains unchanged
     async def get_game_results(self, game_session_id: str) -> Dict[str, Any]:
-        # ... (implementation remains the same as before) ...
         game_session_id = ensure_uuid(game_session_id); game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
         if game_session.status != GameStatus.COMPLETED: logger.warning(f"Requesting results for non-completed game {game_session_id}")
@@ -568,7 +585,6 @@ class GameService:
 
     # cancel_game remains unchanged
     async def cancel_game(self, game_session_id: str, host_user_id: str) -> GameSession:
-        # ... (implementation remains the same as before) ...
         game_session_id = ensure_uuid(game_session_id); host_user_id = ensure_uuid(host_user_id)
         game_session = await self.game_session_repo.get_by_id(game_session_id)
         if not game_session: raise ValueError(f"Game {game_session_id} not found")
@@ -581,7 +597,6 @@ class GameService:
 
     # get_user_games remains unchanged
     async def get_user_games(self, user_id: str, include_completed: bool = False) -> List[Dict[str, Any]]:
-        # ... (implementation remains the same as before) ...
         user_id = ensure_uuid(user_id); participations = await self.game_participant_repo.get_user_active_games(user_id)
         results = []; processed_game_ids = set()
         for participation in participations:
@@ -594,3 +609,4 @@ class GameService:
              game_info = {"id": game_session.id, "code": game_session.code, "status": game_session.status, "participant_count": len(participants), "max_participants": game_session.max_participants, "current_question": game_session.current_question_index, "total_questions": game_session.question_count, "is_host": participation.is_host, "created_at": game_session.created_at, "updated_at": game_session.updated_at}
              results.append(game_info); processed_game_ids.add(game_session_id)
         return results
+# --- END OF FULL MODIFIED FILE ---

@@ -1,5 +1,5 @@
 // website/src/pages/GameplayScreen.tsx
-// --- START OF FULL FILE WITH MODIFIED HOOK CALL ---
+// --- START OF FULL MODIFIED FILE ---
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import GameHeader from '@/components/GameHeader';
@@ -32,7 +32,7 @@ const GameplayScreen: React.FC = () => {
   const [gameQuestions, setGameQuestions] = useState<Question[]>([]);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
   const [questionFetchError, setQuestionFetchError] = useState<string | null>(null);
-  const [fetchedCorrectAnswers, setFetchedCorrectAnswers] = useState<Record<string, string>>({});
+  // Removed fetchedCorrectAnswers state as it's now handled differently
 
   // --- Fetch Game Questions ---
   useEffect(() => {
@@ -48,37 +48,43 @@ const GameplayScreen: React.FC = () => {
       setQuestionFetchError(null);
       console.log(`Fetching questions for game ID: ${gameId}`);
       try {
-        const response = await getGamePlayQuestions(gameId);
+        const response = await getGamePlayQuestions(gameId); // Fetch raw API data
         console.log("API response for questions:", response);
 
-        // Assume backend might provide correct answer text - adjust if needed
-        const correctAnswersMap: Record<string, string> = {};
-        // Populate correctAnswersMap if applicable
-
+        // --- START: Formatting Logic Moved Here ---
         const formattedQuestions: Question[] = response.questions.map((apiQ): Question => {
-            const correctAnswerText = correctAnswersMap[apiQ.question_id] || "";
-            let correctAnswerId = "";
+            // Generate Answer objects with IDs based on the shuffled index
             const answersWithOptions: Answer[] = apiQ.options.map((optionText, optionIndex): Answer => {
-                const answerId = `${apiQ.question_id}-${optionIndex}`;
-                if (optionText === correctAnswerText) {
-                   correctAnswerId = answerId;
-                }
-                return { id: answerId, text: optionText, letter: String.fromCharCode(65 + optionIndex) };
+                const answerId = `${apiQ.question_id}-${optionIndex}`; // ID based on index *after* shuffle
+                return {
+                    id: answerId,
+                    text: optionText,
+                    letter: String.fromCharCode(65 + optionIndex)
+                };
             });
-            if (!correctAnswerId && correctAnswerText) {
-                console.warn(`Could not find ID for correct answer text "${correctAnswerText}" in options for question ${apiQ.question_id}`);
+
+            // Directly use the correct_answer_id from the API response
+            const correctAnswerId = apiQ.correct_answer_id;
+            if (!correctAnswerId) {
+                 console.error(`Missing correct_answer_id from backend for question ${apiQ.question_id}`);
+                 // Handle this error? Maybe skip the question or assign a default?
+                 // For now, we'll let it potentially fail downstream comparison, but log it.
             }
+
             return {
-                id: apiQ.question_id,
+                id: apiQ.question_id, // Original question ID
                 text: apiQ.question_text,
-                category: packId || 'Trivia',
-                answers: answersWithOptions,
-                correctAnswer: correctAnswerId, // Relies on accurate mapping above
+                category: packId || 'Trivia', // Use packId if available
+                answers: answersWithOptions, // Array of Answer objects with generated IDs
+                correctAnswer: correctAnswerId, // Assign the ID from the backend
                 timeLimit: apiQ.time_limit,
             };
         });
+        // --- END: Formatting Logic Moved Here ---
+
         console.log("Formatted questions:", formattedQuestions);
         setGameQuestions(formattedQuestions);
+
       } catch (error) {
         console.error("Failed to fetch game questions:", error);
         const errorMsg = error instanceof Error ? error.message : "Could not load questions.";
@@ -89,7 +95,7 @@ const GameplayScreen: React.FC = () => {
       }
     };
     fetchQuestions();
-  }, [gameId, navigate, packId, packName, location.state]);
+  }, [gameId, navigate, packId, packName, location.state]); // Dependencies are correct
 
   // --- State Managed by Hooks ---
   const {
@@ -328,7 +334,7 @@ const GameplayScreen: React.FC = () => {
             answers={question.answers}
             selectedAnswer={selectedAnswer}
             isAnswered={isAnswered}
-            correctAnswer={question.correctAnswer}
+            correctAnswer={question.correctAnswer} // Pass the correct ID here
             onAnswerSelect={handleAnswerSelect}
             playerSelectionsByAnswer={playerSelectionsByAnswer}
             maxHeight={maxHeight}
@@ -338,7 +344,7 @@ const GameplayScreen: React.FC = () => {
               onSubmit: handleSubmit,
               disabled: !selectedAnswer && !isAnswered,
               isAnswered: isAnswered,
-              isCorrect: isCorrect,
+              isCorrect: isCorrect, // Pass the correct state here
             }}
           />
         </div>
@@ -362,4 +368,4 @@ const GameplayScreen: React.FC = () => {
 };
 
 export default GameplayScreen;
-// --- END OF FULL FILE WITH MODIFIED HOOK CALL ---
+// --- END OF FULL MODIFIED FILE ---

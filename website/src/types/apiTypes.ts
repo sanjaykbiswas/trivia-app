@@ -88,9 +88,10 @@ export interface ApiGamePlayQuestion {
     question_id: string;
     question_text: string;
     options: string[]; // Shuffled options from backend
-    time_limit: number; // Time limit per question
     // --- ADDED FIELD ---
     correct_answer_id: string; // ID of the correct answer option (e.g., "q1-option2")
+    // --- END ADDED FIELD ---
+    time_limit: number; // Time limit per question
 }
 
 // Matches backend GamePlayQuestionListResponse

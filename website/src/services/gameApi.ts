@@ -1,5 +1,5 @@
 // website/src/services/gameApi.ts
-// --- START OF FILE ---
+// --- START OF FULL MODIFIED FILE ---
 import { API_BASE_URL } from '@/config';
 import {
     ApiGameSessionResponse,
@@ -253,11 +253,17 @@ export const getGamePlayQuestions = async (gameId: string): Promise<ApiGamePlayQ
             throw new Error(`Failed to fetch gameplay questions: ${errorDetail}`);
         }
 
-        // Validate response structure
+        // --- UPDATED VALIDATION ---
         if (!responseData || typeof responseData.game_id !== 'string' || !Array.isArray(responseData.questions) || typeof responseData.total_questions !== 'number') {
             console.error("Invalid gameplay questions response structure:", responseData);
             throw new Error("Received invalid gameplay questions data from server.");
         }
+        // Add check for correct_answer_id in the first question if available
+        if (responseData.questions.length > 0 && typeof responseData.questions[0].correct_answer_id !== 'string') {
+            console.error("Invalid question structure within gameplay questions response (missing correct_answer_id):", responseData.questions[0]);
+            throw new Error("Received invalid question data (missing correct ID) from server.");
+        }
+        // --- END UPDATED VALIDATION ---
 
         return responseData as ApiGamePlayQuestionListResponse;
 
