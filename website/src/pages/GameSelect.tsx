@@ -14,9 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import GameSettings from '@/components/GameSettings';
-import { createGameSession } from '@/services/gameApi';
+import { createGameSession, startGame } from '@/services/gameApi'; // Added startGame
 import { fetchPacks } from '@/services/packApi';
-import { ApiPackResponse, GameCreationPayload, ApiGameSessionResponse } from '@/types/apiTypes';
+import { createTemporaryUser, updateUser } from '@/services/userApi';
+import { getPirateNameForUserId } from '@/utils/gamePlayUtils';
+import { ApiPackResponse, GameCreationPayload, ApiGameSessionResponse, ApiUserResponse } from '@/types/apiTypes';
 
 // --- Icon Mapping ---
 const getIconForPack = (packName: string): React.ReactNode => {
@@ -75,30 +77,84 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [availablePacks, setAvailablePacks] = useState<ApiPackResponse[]>([]);
   const [selectedPack, setSelectedPack] = useState<ApiPackResponse | null>(null);
-  const [isLoadingPacks, setIsLoadingPacks] = useState(true);
+  const [isLoadingPacks, setIsLoadingPacks] = useState(true); // Start true initially
   const [fetchPacksError, setFetchPacksError] = useState<string | null>(null);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
 
   const [hostUserId, setHostUserId] = useState<string | null>(null);
-  useEffect(() => {
-      const storedUserId = localStorage.getItem('tempUserId');
-      if (storedUserId) {
-          setHostUserId(storedUserId);
-          console.log("Retrieved temporary user ID:", storedUserId);
-      } else {
-          console.error("Temporary user ID not found in localStorage.");
-          toast.error("User session not found", { description: "Please start from the beginning." });
-          if (mode === 'crew') navigate('/crew');
-          else navigate('/');
-      }
-  }, [navigate, mode]);
+  // Add state for current user's display name, needed for solo user creation feedback
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
 
+  // --- MODIFIED useEffect to handle user creation for SOLO mode ---
+  useEffect(() => {
+    const initializeUser = async () => {
+      let storedUserId = localStorage.getItem('tempUserId');
+      let storedName = localStorage.getItem('tempUserDisplayName');
+
+      if (storedUserId) {
+        // User ID already exists, just set the state
+        setHostUserId(storedUserId);
+        // Use stored name or assign one if missing for some reason
+        const nameToUse = storedName || getPirateNameForUserId(storedUserId);
+        setCurrentUserDisplayName(nameToUse);
+        console.log("Retrieved existing temporary user ID:", storedUserId, "Name:", nameToUse);
+      } else if (mode === 'solo') {
+        // --- SOLO MODE: User ID missing, CREATE IT ---
+        console.log("Solo mode: Temporary user ID not found, creating one...");
+        setIsLoadingPacks(true); // Keep loading packs indicator on while creating user
+        try {
+          const user: ApiUserResponse = await createTemporaryUser(null); // Create user without name first
+          if (!user?.id) {
+            throw new Error("Failed to get valid ID after user creation.");
+          }
+          const userId = user.id;
+          const assignedName = getPirateNameForUserId(userId); // Assign name based on ID
+
+          console.log(`Solo mode: Created user ${userId}, assigned name '${assignedName}'. Storing locally.`);
+          localStorage.setItem('tempUserId', userId);
+          localStorage.setItem('tempUserDisplayName', assignedName);
+
+          setHostUserId(userId); // Set state for this component instance
+          setCurrentUserDisplayName(assignedName);
+
+          // Attempt to update backend silently, don't block UI if it fails
+          try {
+              console.log(`Solo mode: Attempting to update backend user ${userId} with name '${assignedName}'...`);
+              await updateUser(userId, { displayname: assignedName });
+              console.log(`Solo mode: Backend update successful for user ${userId}.`);
+          } catch (updateError) {
+              console.warn(`Solo mode: Failed to update backend displayname for ${userId}:`, updateError);
+              // Don't show toast here, it's less critical for solo setup
+          }
+
+        } catch (error) {
+          console.error("Failed to create temporary user for solo mode:", error);
+          toast.error("Initialization Failed", { description: "Could not prepare your solo session. Please try again." });
+          navigate('/'); // Navigate home on creation failure
+          return; // Stop further execution in this effect
+        }
+        // Note: setIsLoadingPacks(false) is NOT called here; the pack loading effect will handle it now that hostUserId is set.
+
+      } else if (mode === 'crew') {
+        // --- CREW MODE: User ID missing, this is an error ---
+        console.error("Crew mode: Temporary user ID not found in localStorage!");
+        toast.error("User session not found", { description: "Please select your role again." });
+        navigate('/crew'); // Navigate back to role selection for crew
+      }
+    };
+
+    initializeUser();
+
+  }, [navigate, mode]); // Dependencies remain the same
+  // --- END MODIFIED useEffect ---
 
     useEffect(() => {
     const loadPacks = async () => {
-      setIsLoadingPacks(true);
+      // Don't set loading true here if it was already set by user creation
+      // setIsLoadingPacks(true);
       setFetchPacksError(null);
       try {
+        console.log("Fetching packs now that user ID is available:", hostUserId);
         const response = await fetchPacks();
         setAvailablePacks(response.packs);
       } catch (error) {
@@ -107,13 +163,24 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
         setFetchPacksError(errorMsg);
         toast.error("Failed to Load Categories", { description: errorMsg });
       } finally {
-        setIsLoadingPacks(false);
+        setIsLoadingPacks(false); // Set loading false *after* attempting to fetch packs
       }
     };
+    // Trigger pack loading ONLY when hostUserId is available
     if (hostUserId) {
          loadPacks();
+    } else {
+        // If hostUserId is not yet set (e.g., still creating), keep loading state true
+        // or handle appropriately based on your desired UX.
+        // Setting it true here might cause a flash if user creation is fast.
+        // Let's ensure it stays true if no hostUserId exists yet.
+        if (!isLoadingPacks) {
+            // This case shouldn't ideally happen if the logic flow is correct,
+            // but as a safeguard, keep loading if ID isn't ready.
+            setIsLoadingPacks(true);
+        }
     }
-  }, [hostUserId]);
+  }, [hostUserId]); // Depends only on hostUserId
 
   useEffect(() => {
     if (mode === 'crew' && (!role || !gameCodeFromUrl)) {
@@ -163,10 +230,11 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
     setSelectedPack(null);
   };
 
+  // --- MODIFIED handleGameSettingsSubmit to include startGame for SOLO ---
   const handleGameSettingsSubmit = async (gameSettings: {
     numberOfQuestions: number;
     timePerQuestion: number;
-    focus: string;
+    focus: string; // Keep focus even if not used in payload yet
   }) => {
     if (!selectedPack) {
       toast.error("No pack selected.");
@@ -177,33 +245,47 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
         return;
     }
 
-    setIsCreatingGame(true);
+    setIsCreatingGame(true); // Indicate loading state
 
-    const payload: GameCreationPayload = {
+    const creationPayload: GameCreationPayload = {
       pack_id: selectedPack.id,
-      max_participants: mode === 'solo' ? 1 : 10,
+      max_participants: mode === 'solo' ? 1 : 10, // Use 1 for SOLO
       question_count: gameSettings.numberOfQuestions,
       time_limit_seconds: gameSettings.timePerQuestion,
     };
 
     try {
-      console.log("Calling createGameSession with:", payload, hostUserId);
-      const createdGame: ApiGameSessionResponse = await createGameSession(payload, hostUserId);
-      console.log("Game created successfully:", createdGame);
+      // Step 1: Create the game session
+      console.log(`Calling createGameSession for ${mode}:`, creationPayload, hostUserId);
+      const createdGame: ApiGameSessionResponse = await createGameSession(creationPayload, hostUserId);
+      console.log(`${mode} game session created successfully:`, createdGame);
 
-      const newGameCode = createdGame.code;
       let targetPath: string;
 
       if (mode === 'solo') {
+          // --- Step 2 (SOLO ONLY): START the solo game immediately ---
+          console.log(`Calling startGame for solo game ID: ${createdGame.id} by host: ${hostUserId}`);
+          const startResponse = await startGame(createdGame.id, hostUserId);
+          console.log("Solo game started successfully (backend response):", startResponse);
+
+          // Ensure the game status is indeed active after starting
+          if (startResponse.status !== 'active') {
+             throw new Error(`Game did not activate properly. Status: ${startResponse.status}`);
+          }
+          // --- End Step 2 (SOLO ONLY) ---
+
+          // Step 3 (SOLO): Navigate to countdown
           targetPath = `/countdown`;
           navigate(targetPath, {
             state: {
-              gameId: createdGame.id,
-              packId: selectedPack.id, // Pass packId
-              totalQuestions: createdGame.question_count // Use count from response
+              gameId: createdGame.id, // Use the ID from the created session
+              packId: selectedPack.id,
+              totalQuestions: createdGame.question_count // Use count from created session
             }
           });
       } else { // Crew mode
+          // Step 2 (CREW): Navigate to waiting room (start happens later)
+          const newGameCode = createdGame.code;
           targetPath = `/crew/waiting/${role}?gameCode=${newGameCode}`;
           navigate(targetPath, {
             state: {
@@ -215,14 +297,16 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
       }
 
     } catch (error) {
-      console.error("Failed to create game:", error);
-      toast.error("Failed to Create Game", {
+      console.error(`Failed to create or start ${mode} game:`, error);
+      toast.error("Failed to Start Game", {
         description: error instanceof Error ? error.message : "An unknown error occurred.",
       });
     } finally {
-      setIsCreatingGame(false);
+        // Ensure loading state is turned off if an error occurred before navigation
+         setIsCreatingGame(false);
     }
   };
+  // --- END MODIFIED handleGameSettingsSubmit ---
 
    const filteredPacks = availablePacks.filter(pack =>
     pack.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -286,7 +370,7 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
           {getPageDescription() && <p className="text-pirate-navy/80 mb-8">{getPageDescription()}</p>}
 
           {/* Conditional Rendering Logic */}
-          {isLoadingPacks ? (
+          {isLoadingPacks ? ( // Combined loading state
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-[calc(100vh-350px)]">
               {[...Array(6)].map((_, i) => (
                 <Card key={i} className="p-6 flex flex-col items-center">
@@ -352,11 +436,11 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
                  icon: getIconForPack(selectedPack.name),
                  description: selectedPack.description || '',
                  slug: selectedPack.name.toLowerCase().replace(/\s+/g, '-'),
-                 focuses: []
+                 focuses: [] // Focuses not currently used but needed by type
               }}
               onSubmit={handleGameSettingsSubmit}
               mode={mode}
-              role={role}
+              role={role} // Pass role here, although not directly used by GameSettings itself
             />
           )}
 
@@ -364,7 +448,9 @@ const GameSelect: React.FC<GameSelectProps> = ({ mode }) => {
           {isCreatingGame && (
             <div className="absolute inset-0 bg-pirate-parchment/80 flex items-center justify-center rounded-xl z-20">
               <Loader2 className="h-8 w-8 animate-spin text-pirate-navy" />
-              <span className="ml-2 font-semibold text-pirate-navy">Creating Game...</span>
+              <span className="ml-2 font-semibold text-pirate-navy">
+                {mode === 'solo' ? 'Starting Solo Game...' : 'Creating Crew Game...'}
+              </span>
             </div>
           )}
         </div>
