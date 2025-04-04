@@ -45,11 +45,18 @@ async def create_game(
         )
         participants = await game_service.game_participant_repo.get_by_game_session_id(game_session.id)
         return GameSessionResponse(
-            id=game_session.id, code=game_session.code, status=game_session.status,
-            pack_id=game_session.pack_id, max_participants=game_session.max_participants,
-            question_count=game_session.question_count, time_limit_seconds=game_session.time_limit_seconds,
+            id=game_session.id,
+            code=game_session.code,
+            status=game_session.status,
+            pack_id=game_session.pack_id,
+            host_user_id=game_session.host_user_id, # <<< FIX: Added this line
+            max_participants=game_session.max_participants,
+            question_count=game_session.question_count,
+            time_limit_seconds=game_session.time_limit_seconds,
             current_question_index=game_session.current_question_index,
-            participant_count=len(participants), is_host=True, created_at=game_session.created_at
+            participant_count=len(participants),
+            is_host=True, # Assuming the creator is always the host requesting this
+            created_at=game_session.created_at
         )
     except ValueError as e:
         logger.error(f"Error creating game: {str(e)}")
@@ -73,11 +80,18 @@ async def join_game(
         )
         participants = await game_service.game_participant_repo.get_by_game_session_id(game_session.id)
         return GameSessionResponse(
-             id=game_session.id, code=game_session.code, status=game_session.status,
-             pack_id=game_session.pack_id, max_participants=game_session.max_participants,
-             question_count=game_session.question_count, time_limit_seconds=game_session.time_limit_seconds,
+             id=game_session.id,
+             code=game_session.code,
+             status=game_session.status,
+             pack_id=game_session.pack_id,
+             host_user_id=game_session.host_user_id, # Include host_user_id here too
+             max_participants=game_session.max_participants,
+             question_count=game_session.question_count,
+             time_limit_seconds=game_session.time_limit_seconds,
              current_question_index=game_session.current_question_index,
-             participant_count=len(participants), is_host=participant.is_host, created_at=game_session.created_at
+             participant_count=len(participants),
+             is_host=participant.is_host,
+             created_at=game_session.created_at
          )
     except ValueError as e:
         logger.warning(f"Error joining game {join_data.game_code}: {str(e)}")

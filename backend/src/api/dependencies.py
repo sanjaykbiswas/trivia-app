@@ -1,5 +1,5 @@
 # backend/src/api/dependencies.py
-from fastapi import Depends, Request
+from fastapi import Depends, Request, WebSocket # <<< Import WebSocket
 from supabase import AsyncClient
 
 # --- WebSocket Manager Import ---
@@ -31,23 +31,43 @@ from ..services.game_service import GameService
 from ..services.user_service import UserService
 
 
-async def get_supabase_client(request: Request) -> AsyncClient:
-    """Get Supabase client from request state."""
-    # Ensure the client exists in state (initialized during lifespan)
-    if not hasattr(request.app.state, 'supabase') or not request.app.state.supabase:
+# --- MODIFIED: Dependency for Supabase client ---
+# Accepts WebSocket OR Request to work in both contexts
+async def get_supabase_client(
+    websocket: WebSocket = None, # Make websocket optional
+    request: Request = None      # Make request optional
+) -> AsyncClient:
+    """Get Supabase client from app state via WebSocket or Request."""
+    app_state = None
+    if websocket:
+        app_state = websocket.app.state
+    elif request:
+        app_state = request.app.state
+
+    if not app_state or not hasattr(app_state, 'supabase') or not app_state.supabase:
         raise RuntimeError("Supabase client not initialized or found in app state.")
-    return request.app.state.supabase
+    return app_state.supabase
+# --- END MODIFIED ---
 
-# --- ADD Dependency for ConnectionManager ---
-async def get_connection_manager(request: Request) -> ConnectionManager:
-    """Get the shared ConnectionManager instance from request state."""
-    if not hasattr(request.app.state, 'connection_manager') or not request.app.state.connection_manager:
-        # This should theoretically not happen if lifespan runs correctly
+# --- MODIFIED: Dependency for ConnectionManager ---
+# Accepts WebSocket OR Request to work in both contexts
+async def get_connection_manager(
+    websocket: WebSocket = None, # Make websocket optional
+    request: Request = None      # Make request optional
+) -> ConnectionManager:
+    """Get the shared ConnectionManager instance from app state via WebSocket or Request."""
+    app_state = None
+    if websocket:
+        app_state = websocket.app.state
+    elif request:
+        app_state = request.app.state
+
+    if not app_state or not hasattr(app_state, 'connection_manager') or not app_state.connection_manager:
         raise RuntimeError("ConnectionManager not initialized or found in app state.")
-    return request.app.state.connection_manager
-# --- END ADD ---
+    return app_state.connection_manager
+# --- END MODIFIED ---
 
-# --- Repository dependencies (Unchanged) ---
+# --- Repository dependencies (Unchanged in definition, but rely on modified get_supabase_client) ---
 async def get_pack_repository(
     supabase: AsyncClient = Depends(get_supabase_client)
 ) -> PackRepository:
@@ -99,7 +119,7 @@ async def get_user_pack_history_repository(
     return UserPackHistoryRepository(supabase)
 
 
-# --- Service dependencies (Modified to inject ConnectionManager) ---
+# --- Service dependencies (Rely on modified get_connection_manager) ---
 
 # Pack, Topic, Difficulty, Seed, Question, IncorrectAnswer services remain unchanged
 # as they don't directly interact with WebSockets in this design.
@@ -155,21 +175,23 @@ async def get_incorrect_answer_service(
     )
 
 # --- MODIFIED get_user_service ---
+# No change in signature, but Depends(get_connection_manager) works now
 async def get_user_service(
     user_repository: UserRepository = Depends(get_user_repository),
     game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
     game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
-    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< ADDED
+    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< Works now
 ) -> UserService:
     return UserService(
         user_repository=user_repository,
         game_participant_repository=game_participant_repository,
         game_session_repository=game_session_repository,
-        connection_manager=connection_manager # <<< ADDED
+        connection_manager=connection_manager # <<< Injected correctly
     )
 # --- END MODIFIED get_user_service ---
 
 # --- MODIFIED get_game_service ---
+# No change in signature, but Depends(get_connection_manager) works now
 async def get_game_service(
     game_session_repository: GameSessionRepository = Depends(get_game_session_repository),
     game_participant_repository: GameParticipantRepository = Depends(get_game_participant_repository),
@@ -179,7 +201,7 @@ async def get_game_service(
     user_repository: UserRepository = Depends(get_user_repository),
     user_question_history_repository: UserQuestionHistoryRepository = Depends(get_user_question_history_repository),
     user_pack_history_repository: UserPackHistoryRepository = Depends(get_user_pack_history_repository),
-    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< ADDED
+    connection_manager: ConnectionManager = Depends(get_connection_manager) # <<< Works now
 ) -> GameService:
     """Get GameService instance."""
     return GameService(
@@ -191,6 +213,6 @@ async def get_game_service(
         user_repository=user_repository,
         user_question_history_repository=user_question_history_repository,
         user_pack_history_repository=user_pack_history_repository,
-        connection_manager=connection_manager # <<< ADDED
+        connection_manager=connection_manager # <<< Injected correctly
     )
 # --- END MODIFIED get_game_service ---

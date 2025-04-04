@@ -9,6 +9,10 @@ from .api.routes import router as api_router
 from .config.supabase_client import init_supabase_client, close_supabase_client
 from .websocket_manager import ConnectionManager # Import the manager
 from .utils import ensure_uuid # Import ensure_uuid
+# --- ADDED IMPORTS for FIX ---
+from .api.dependencies import get_game_service
+from .services.game_service import GameService
+# --- END ADDED IMPORTS ---
 # --- END MODIFIED IMPORTS ---
 
 # Configure logging
@@ -71,7 +75,14 @@ app.include_router(api_router, prefix="/api")
 
 # --- ADD WebSocket Endpoint ---
 @app.websocket("/ws/{game_id}/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, game_id: str, user_id: str):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    game_id: str,
+    user_id: str,
+    # --- ADD Dependency Injection ---
+    game_service: GameService = Depends(get_game_service)
+    # --- END ADD ---
+):
     """WebSocket endpoint for real-time game communication."""
     try:
         # Basic validation (more robust validation might be needed depending on auth)
@@ -83,14 +94,9 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, user_id: str):
          return
 
     # Use the global connection manager instance
-    manager = app.state.connection_manager
+    # manager = connection_manager # Direct use also possible
+    manager = app.state.connection_manager # Get manager instance from app state
     await manager.connect(websocket, game_id_uuid, user_id_uuid)
-
-    # Example: Notify others that a user joined (moved this logic to GameService.join_game)
-    # await manager.broadcast(
-    #     {"type": "user_joined", "user_id": user_id_uuid, "game_id": game_id_uuid},
-    #     game_id_uuid
-    # )
 
     try:
         while True:
@@ -102,18 +108,26 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str, user_id: str):
             # await manager.send_personal_message(f"You wrote: {data}", websocket)
     except WebSocketDisconnect:
         manager.disconnect(websocket, game_id_uuid, user_id_uuid)
-        # Example: Notify others that a user left (move this logic to where disconnects are handled, e.g., GameService)
-        # await manager.broadcast(
-        #     {"type": "user_left", "user_id": user_id_uuid, "game_id": game_id_uuid},
-        #     game_id_uuid
-        # )
+        # --- FIX: CALL GameService disconnect handler ---
+        try:
+            # Call the service to handle disconnect logic (like broadcasting user_left)
+            await game_service.handle_disconnect(game_id_uuid, user_id_uuid)
+        except Exception as service_error:
+            logger.error(f"Error during GameService disconnect handling for User {user_id_uuid} in Game {game_id_uuid}: {service_error}", exc_info=True)
+        # --- END FIX ---
         logger.info(f"WebSocket disconnected cleanly for User {user_id_uuid} in Game {game_id_uuid}.")
     except Exception as e:
         # Log unexpected errors during WebSocket communication
         logger.error(f"WebSocket error for User {user_id_uuid} in Game {game_id_uuid}: {e}", exc_info=True)
         # Attempt to disconnect cleanly if possible
         manager.disconnect(websocket, game_id_uuid, user_id_uuid)
-        # Optionally broadcast an error or disconnect message
+        # --- FIX: Consider calling handle_disconnect here too ---
+        try:
+            # Call the service even on error to attempt broadcasting leave
+            await game_service.handle_disconnect(game_id_uuid, user_id_uuid)
+        except Exception as service_error:
+            logger.error(f"Error during GameService disconnect handling (on WebSocket error) for User {user_id_uuid} in Game {game_id_uuid}: {service_error}", exc_info=True)
+        # --- END FIX ---
 
 # --- END ADD WebSocket Endpoint ---
 
@@ -124,6 +138,3 @@ async def root():
     return {"status": "ok", "message": "Trivia API is running"}
 
 # Removed uvicorn runner - use run_api_server.py instead
-# if __name__ == "__main__":
-#     import uvicorn
-#     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
