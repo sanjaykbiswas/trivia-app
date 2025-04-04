@@ -195,6 +195,12 @@ class GameService:
         if str(game_session.host_user_id) != str(host_user_id): raise ValueError("Only the host can start the game") # Compare as strings
         if game_session.status != GameStatus.PENDING: raise ValueError(f"Game cannot be started (current status: {game_session.status})")
 
+        # --- ADDED: WebSocket Connection Check for Host ---
+        if not self.connection_manager.is_user_connected(game_id=game_session_id, user_id=host_user_id):
+             logger.warning(f"Host {host_user_id} attempted to start game {game_session_id} but is not connected via WebSocket.")
+             raise ValueError("Host is not connected to the game room.")
+        # --- END ADDED ---
+
         # 2. Get Participants
         participants = await self.game_participant_repo.get_by_game_session_id(game_session.id)
         participant_user_ids = [p.user_id for p in participants]
@@ -254,7 +260,6 @@ class GameService:
         play_questions = await self.get_questions_for_play(updated_game.id) # Use updated game ID
         first_question_payload_obj = play_questions[0] if play_questions else None
 
-        # --- >>> MODIFICATION START <<< ---
         # Convert the Pydantic model to a dictionary before including it
         first_question_dict = None
         if first_question_payload_obj:
@@ -265,7 +270,6 @@ class GameService:
                 logger.error(f"Error dumping first question payload for broadcast: {dump_error}", exc_info=True)
                 # Decide how to handle: send null, raise error? Sending null might be safer for client.
                 first_question_dict = None
-        # --- >>> MODIFICATION END <<< ---
 
         start_message = {
             "type": "game_started",
@@ -524,7 +528,6 @@ class GameService:
             play_questions = await self.get_questions_for_play(game_session_id)
             next_question_payload_obj = next((q for q in play_questions if q.index == next_game_question.question_index), None)
 
-            # --- >>> MODIFICATION START <<< ---
             # Convert the Pydantic model to a dictionary before including it
             next_question_payload_dict = None
             if next_question_payload_obj:
@@ -534,7 +537,6 @@ class GameService:
                 except Exception as dump_error:
                     logger.error(f"Error dumping next question payload for broadcast: {dump_error}", exc_info=True)
                     next_question_payload_dict = None
-            # --- >>> MODIFICATION END <<< ---
 
             if next_question_payload_dict: # Check the dictionary now
                 # --- Broadcast Next Question Event ---
@@ -638,7 +640,6 @@ class GameService:
         logger.info(f"Handling disconnect for user {user_id} in game {game_id}")
         participant = await self.game_participant_repo.get_by_user_and_game(user_id, game_id)
         if participant:
-            # --- MODIFICATION START ---
             # Fetch latest user info for the broadcast message
             display_name_for_broadcast = participant.display_name # Fallback
             try:
@@ -659,7 +660,6 @@ class GameService:
                     "display_name": display_name_for_broadcast # Use fetched/fallback name
                     }
             }
-            # --- MODIFICATION END ---
             await self.connection_manager.broadcast(message, game_id)
             logger.debug(f"Broadcasted participant_left for user {user_id} in game {game_id} with name '{display_name_for_broadcast}'")
         else:

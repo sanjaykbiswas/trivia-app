@@ -41,6 +41,13 @@ class ConnectionManager:
         else:
              logger.warning(f"Game room {game_id} not found during disconnect for user {user_id}.")
 
+    # --- ADDED METHOD ---
+    def is_user_connected(self, game_id: str, user_id: str) -> bool:
+        """Checks if a specific user has an active WebSocket connection in a game room."""
+        is_connected = game_id in self.active_connections and user_id in self.active_connections[game_id]
+        logger.debug(f"Checking connection status for user {user_id} in game {game_id}: {is_connected}")
+        return is_connected
+    # --- END ADDED METHOD ---
 
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         """Sends a JSON message to a specific WebSocket client."""
