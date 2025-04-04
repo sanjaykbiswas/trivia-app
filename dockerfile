@@ -10,6 +10,7 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+
 # 4. Install Dependencies:
 #    - Copy *only* the requirements file first to leverage Docker cache
 #    - Install the dependencies
