@@ -252,7 +252,20 @@ class GameService:
         # --- 7. Broadcast Game Started Event ---
         # Fetch the formatted first question for the broadcast
         play_questions = await self.get_questions_for_play(updated_game.id) # Use updated game ID
-        first_question_payload = play_questions[0] if play_questions else None
+        first_question_payload_obj = play_questions[0] if play_questions else None
+
+        # --- >>> MODIFICATION START <<< ---
+        # Convert the Pydantic model to a dictionary before including it
+        first_question_dict = None
+        if first_question_payload_obj:
+            try:
+                # Use model_dump(mode='json') for proper serialization including enums/datetimes if any
+                first_question_dict = first_question_payload_obj.model_dump(mode='json')
+            except Exception as dump_error:
+                logger.error(f"Error dumping first question payload for broadcast: {dump_error}", exc_info=True)
+                # Decide how to handle: send null, raise error? Sending null might be safer for client.
+                first_question_dict = None
+        # --- >>> MODIFICATION END <<< ---
 
         start_message = {
             "type": "game_started",
@@ -262,8 +275,8 @@ class GameService:
                 "total_questions": updated_game.question_count,
                 "time_limit": updated_game.time_limit_seconds,
                 "pack_id": updated_game.pack_id,
-                # Include first question details directly in the start message
-                "current_question": first_question_payload
+                # --- USE THE CONVERTED DICTIONARY ---
+                "current_question": first_question_dict
             }
         }
         await self.connection_manager.broadcast(start_message, updated_game.id)
@@ -384,7 +397,6 @@ class GameService:
             else: logger.error(f"Failed to mark game question {next_game_question.id} as started for game {game_session_id}"); return None
         else: logger.error(f"Game {game_session_id}: Failed to find game question at index {next_index}"); return None
 
-    # --- METHOD WITH FIXES APPLIED ---
     async def submit_answer(
         self,
         game_session_id: str,
@@ -481,8 +493,6 @@ class GameService:
             "score": score, # Score for this question (now 1 or 0)
             "total_score": final_total_score # Participant's new total score
         }
-    # --- END METHOD WITH FIXES APPLIED ---
-
 
     async def end_current_question(
         self,
@@ -512,16 +522,29 @@ class GameService:
         if next_game_question:
             # Fetch formatted next question details
             play_questions = await self.get_questions_for_play(game_session_id)
-            next_question_payload = next((q for q in play_questions if q.index == next_game_question.question_index), None)
+            next_question_payload_obj = next((q for q in play_questions if q.index == next_game_question.question_index), None)
 
-            if next_question_payload:
+            # --- >>> MODIFICATION START <<< ---
+            # Convert the Pydantic model to a dictionary before including it
+            next_question_payload_dict = None
+            if next_question_payload_obj:
+                try:
+                    # Use model_dump(mode='json') for proper serialization
+                    next_question_payload_dict = next_question_payload_obj.model_dump(mode='json')
+                except Exception as dump_error:
+                    logger.error(f"Error dumping next question payload for broadcast: {dump_error}", exc_info=True)
+                    next_question_payload_dict = None
+            # --- >>> MODIFICATION END <<< ---
+
+            if next_question_payload_dict: # Check the dictionary now
                 # --- Broadcast Next Question Event ---
-                next_q_message = {"type": "next_question", "payload": next_question_payload}
+                # Use the dictionary in the message
+                next_q_message = {"type": "next_question", "payload": next_question_payload_dict}
                 await self.connection_manager.broadcast(next_q_message, game_session_id)
                 logger.info(f"Broadcasted next_question event (index {next_game_question.question_index}) for game {game_session_id}")
                 # --- End Broadcast ---
-                # Return minimal REST response containing the next question payload
-                return {"game_complete": False, "next_question": next_question_payload}
+                # Return minimal REST response containing the next question payload (also as dict)
+                return {"game_complete": False, "next_question": next_question_payload_dict}
             else:
                  logger.error(f"Failed to format next question payload for index {next_game_question.question_index} in game {game_session_id}")
                  # If formatting fails, we might still need to end the game gracefully
@@ -613,14 +636,32 @@ class GameService:
     async def handle_disconnect(self, game_id: str, user_id: str):
         """Handles logic when a user disconnects (called by WS endpoint)."""
         logger.info(f"Handling disconnect for user {user_id} in game {game_id}")
-        # Find the participant record
         participant = await self.game_participant_repo.get_by_user_and_game(user_id, game_id)
         if participant:
-            # Broadcast user_left message
-            message = {"type": "participant_left", "payload": {"user_id": user_id, "participant_id": participant.id, "display_name": participant.display_name}}
-            await self.connection_manager.broadcast(message, game_id)
-            logger.debug(f"Broadcasted participant_left for user {user_id} in game {game_id}")
+            # --- MODIFICATION START ---
+            # Fetch latest user info for the broadcast message
+            display_name_for_broadcast = participant.display_name # Fallback
+            try:
+                user_record = await self.user_repo.get_by_id(user_id)
+                if user_record and user_record.displayname:
+                    display_name_for_broadcast = user_record.displayname
+                else:
+                    logger.warning(f"Could not fetch user record or displayname for disconnected user {user_id}. Using participant record name.")
+            except Exception as e:
+                logger.error(f"Error fetching user details during disconnect for {user_id}: {e}", exc_info=True)
 
+            # Use the potentially updated display_name_for_broadcast
+            message = {
+                "type": "participant_left",
+                "payload": {
+                    "user_id": user_id,
+                    "participant_id": participant.id,
+                    "display_name": display_name_for_broadcast # Use fetched/fallback name
+                    }
+            }
+            # --- MODIFICATION END ---
+            await self.connection_manager.broadcast(message, game_id)
+            logger.debug(f"Broadcasted participant_left for user {user_id} in game {game_id} with name '{display_name_for_broadcast}'")
         else:
             logger.warning(f"Participant record not found for disconnected user {user_id} in game {game_id}")
 
