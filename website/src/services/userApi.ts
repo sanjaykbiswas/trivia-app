@@ -1,11 +1,11 @@
 // website/src/services/userApi.ts
-// --- Add this file content ---
+// --- START OF FULL MODIFIED FILE ---
 import { API_BASE_URL } from '@/config';
 import { ApiUserCreateRequest, ApiUserResponse } from '@/types/apiTypes';
 
 // --- Keep existing createUser and createTemporaryUser functions ---
 export const createUser = async (payload: ApiUserCreateRequest): Promise<ApiUserResponse> => {
-  const url = `${API_BASE_URL}/users`; // POST /api/users
+  const url = `${API_BASE_URL}/users/`; // <<< ADDED SLASH
   console.log("Attempting to create user:", payload);
 
   try {

@@ -7,6 +7,7 @@ and profile management, including broadcasting updates via WebSockets.
 """
 import logging
 import traceback
+import asyncio
 from typing import Optional, Tuple, Dict, Any, List
 
 from ..models.user import User, UserCreate, UserUpdate

@@ -9,7 +9,7 @@ import { ApiPackListResponse } from '@/types/apiTypes';
  * @throws If the API request fails.
  */
 export const fetchPacks = async (): Promise<ApiPackListResponse> => {
-  const url = `${API_BASE_URL}/packs`; // Target the GET /api/packs endpoint
+  const url = `${API_BASE_URL}/packs/`; // <<< ADDED SLASH
   console.log("Attempting to fetch packs from:", url);
 
   try {
