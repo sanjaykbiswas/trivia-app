@@ -1,4 +1,5 @@
 # backend/src/repositories/base_repository_impl.py
+
 import uuid
 import logging
 import traceback
@@ -6,6 +7,8 @@ from typing import List, Optional, Type, Dict, Any, Union, TypeVar
 from pydantic import BaseModel
 from supabase import AsyncClient
 from postgrest import APIResponse
+# --- Import datetime and timezone ---
+from datetime import datetime, timezone
 
 from .base_repository import BaseRepository, ModelType, CreateSchemaType, UpdateSchemaType, IdentifierType
 from ..utils import ensure_uuid
@@ -35,33 +38,43 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
         self.table_name = table_name
         logger.info(f"Initialized repository for table: {table_name}")
 
+    # --- MODIFIED: Serialize datetimes within this helper ---
     def _serialize_data_for_db(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Recursively serialize data for database storage.
-        
+        Recursively serialize data for database storage, converting datetimes to ISO strings.
+
         Args:
             data: Dictionary containing data to serialize
-            
+
         Returns:
-            Serialized dictionary ready for database insertion
+            Serialized dictionary ready for database insertion/update
         """
         result = {}
-        
         for key, value in data.items():
-            # Handle lists
-            if isinstance(value, list):
+            if isinstance(value, datetime):
+                # Ensure datetime is timezone-aware (use UTC if naive)
+                # Supabase prefers timezone-aware timestamps ('timestamptz')
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=timezone.utc)
+                # Convert to ISO 8601 string format
+                result[key] = value.isoformat()
+            elif isinstance(value, list):
+                # Handle potential datetimes within lists
                 result[key] = [
-                    self._serialize_data_for_db(item) if isinstance(item, dict) else item 
+                    self._serialize_data_for_db(item) if isinstance(item, dict) else
+                    (item.isoformat() if isinstance(item, datetime) else item)
                     for item in value
                 ]
-            # Handle nested dictionaries
             elif isinstance(value, dict):
-                result[key] = self._serialize_data_for_db(value)
-            # Handle other types
+                result[key] = self._serialize_data_for_db(value) # Recurse for nested dicts
+            # --- NEW: Handle Enums explicitly if needed (Pydantic v2 often handles this) ---
+            # elif isinstance(value, Enum):
+            #     result[key] = value.value
+            # --- END NEW ---
             else:
-                result[key] = value
-                
+                result[key] = value # Keep other types as is
         return result
+    # --- END MODIFICATION ---
 
     async def _execute_query(self, query) -> APIResponse:
         """Helper to execute supabase query and handle potential errors."""
@@ -73,8 +86,14 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
                  logger.error(f"Supabase query failed: {response.error}")
                  raise ValueError(f"Supabase query failed: {response.error}")
             if not hasattr(response, 'data'):
-                 logger.error(f"Supabase response format unexpected: {response}")
-                 raise ValueError(f"Supabase response format unexpected: {response}")
+                 # This case might happen for DELETE without returning data, allow it
+                 if query.method == "DELETE":
+                     logger.debug("DELETE query executed successfully, no data returned expectedly.")
+                     # Create a dummy response object that mimics a successful no-data response
+                     return APIResponse(data=[], count=None) # Return empty list for data
+                 else:
+                     logger.error(f"Supabase response format unexpected (no data attribute): {response}")
+                     raise ValueError(f"Supabase response format unexpected: {response}")
             return response
         except Exception as e:
             logger.error(f"Error executing Supabase query on table {self.table_name}: {str(e)}")
@@ -85,15 +104,15 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
     async def get_by_id(self, id: IdentifierType) -> Optional[ModelType]:
         """Get a record by ID."""
         try:
-            # Ensure id is a valid UUID string
             id_str = ensure_uuid(id)
             logger.debug(f"Getting record with ID: {id_str} from table {self.table_name}")
-            
+
             query = self.db.table(self.table_name).select("*").eq("id", id_str).limit(1)
             response = await self._execute_query(query)
 
             if response.data:
-                return self.model.parse_obj(response.data[0])
+                # Use model_validate for Pydantic V2
+                return self.model.model_validate(response.data[0])
             logger.debug(f"No record found with ID: {id_str} in table {self.table_name}")
             return None
         except Exception as e:
@@ -107,7 +126,8 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
             query = self.db.table(self.table_name).select("*").offset(skip).limit(limit)
             response = await self._execute_query(query)
 
-            return [self.model.parse_obj(item) for item in response.data]
+             # Use model_validate for Pydantic V2
+            return [self.model.model_validate(item) for item in response.data]
         except Exception as e:
             logger.error(f"Error getting all records from table {self.table_name}: {str(e)}")
             raise
@@ -115,38 +135,39 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
     async def create(self, *, obj_in: CreateSchemaType) -> ModelType:
         """Create a new record from a creation schema."""
         try:
-            # Convert model to dict and prepare for insertion
-            insert_data = obj_in.dict(exclude_unset=False, by_alias=False)
+            # Convert model to dict using Pydantic v2's model_dump
+            insert_data = obj_in.model_dump(exclude_unset=False, by_alias=False)
             logger.debug(f"Creating new record in table {self.table_name}")
-            
-            # Serialize data for database
+
+            # ---> FIX: Serialize data (including datetimes) before sending <---
             insert_data = self._serialize_data_for_db(insert_data)
 
             # Step 1: Insert the data
-            query = self.db.table(self.table_name).insert(insert_data)
+            query = self.db.table(self.table_name).insert(insert_data) # Pass serialized data
             response = await self._execute_query(query)
 
             # Step 2: If successful and we have an id, fetch the newly created record
             if response.data and 'id' in response.data[0]:
                 new_id = response.data[0]['id']
                 logger.debug(f"Record created with ID: {new_id}, fetching complete record")
-                fetch_query = self.db.table(self.table_name).select("*").eq("id", new_id).limit(1)
-                fetch_response = await self._execute_query(fetch_query)
-                
-                if fetch_response.data:
-                    return self.model.parse_obj(fetch_response.data[0])
-                    
-            # If we couldn't get the full record data, try to use the insert response
+                # Use get_by_id which handles parsing correctly
+                new_record = await self.get_by_id(new_id)
+                if new_record:
+                    return new_record
+
+            # Fallback: If fetching failed or no ID returned, try parsing insert response
             if response.data:
                 try:
-                    logger.debug("Using insert response data for record")
-                    return self.model.parse_obj(response.data[0])
+                    logger.warning("Could not fetch created record by ID, parsing insert response.")
+                    # Use model_validate for Pydantic V2
+                    return self.model.model_validate(response.data[0])
                 except Exception as e:
-                    logger.warning(f"Could not parse insert response: {e}")
-                    
-            # As a last resort, use the input data (but this might miss default values)
-            logger.warning("Using input data as fallback for created record")
-            return self.model.parse_obj(insert_data)
+                    logger.error(f"Could not parse insert response data: {e}")
+                    raise ValueError("Failed to create record and parse response.")
+
+            logger.error("Failed to create record, no data returned from insert.")
+            raise ValueError("Failed to create record, no data returned.")
+
         except Exception as e:
             logger.error(f"Error creating record in table {self.table_name}: {str(e)}")
             logger.error(traceback.format_exc())
@@ -155,55 +176,52 @@ class BaseRepositoryImpl(BaseRepository[ModelType, CreateSchemaType, UpdateSchem
     async def update(self, *, id: IdentifierType, obj_in: UpdateSchemaType) -> Optional[ModelType]:
         """Update a record with proper handling of optional fields."""
         try:
-            # Ensure id is a valid UUID string
             id_str = ensure_uuid(id)
             logger.debug(f"Updating record with ID: {id_str} in table {self.table_name}")
-            
-            # Use exclude_unset=True for partial updates and exclude None values
-            update_data = obj_in.dict(exclude_unset=True, exclude_none=True, by_alias=False)
+
+            # Use Pydantic v2's model_dump for partial updates
+            update_data = obj_in.model_dump(exclude_unset=True, exclude_none=True, by_alias=False)
 
             if not update_data:
-                # If there's nothing to update, return the existing object
                 logger.debug(f"No fields to update for record {id_str}")
-                return await self.get_by_id(id)
+                return await self.get_by_id(id_str)
 
-            # Serialize data for database
+            # ---> FIX: Serialize data (including datetimes) before sending <---
             update_data = self._serialize_data_for_db(update_data)
 
             # Step 1: Update the record
-            query = self.db.table(self.table_name).update(update_data).eq("id", id_str)
+            query = self.db.table(self.table_name).update(update_data).eq("id", id_str) # Pass serialized data
             await self._execute_query(query)
 
             # Step 2: Fetch the updated record
             logger.debug(f"Record updated, fetching updated record with ID: {id_str}")
-            return await self.get_by_id(id)
+            return await self.get_by_id(id_str)
         except Exception as e:
-            logger.error(f"Error updating record with ID {id} in table {self.table_name}: {str(e)}")
+            logger.error(f"Error updating record with ID {id_str} in table {self.table_name}: {str(e)}") # Use id_str
             logger.error(traceback.format_exc())
             raise
 
     async def delete(self, *, id: IdentifierType) -> Optional[ModelType]:
         """Delete a record and return the deleted object if successful."""
         try:
-            # Ensure id is a valid UUID string
             id_str = ensure_uuid(id)
             logger.debug(f"Deleting record with ID: {id_str} from table {self.table_name}")
-            
+
             # Step 1: Get the object before deletion
-            obj = await self.get_by_id(id)
-            
+            obj = await self.get_by_id(id_str)
+
             if not obj:
                 logger.warning(f"Record with ID {id_str} not found for deletion")
                 return None  # Object doesn't exist
-                
+
             # Step 2: Delete the object
             query = self.db.table(self.table_name).delete().eq("id", id_str)
             await self._execute_query(query)
-            
+
             # Step 3: Return the object that was deleted
             logger.debug(f"Successfully deleted record with ID: {id_str}")
             return obj
         except Exception as e:
-            logger.error(f"Error deleting record with ID {id} from table {self.table_name}: {str(e)}")
+            logger.error(f"Error deleting record with ID {id_str} in table {self.table_name}: {str(e)}") # Use id_str
             logger.error(traceback.format_exc())
             raise
