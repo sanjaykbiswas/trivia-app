@@ -1,19 +1,25 @@
 // src/pages/GameplayScreen.tsx
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useMemo } from 'react'; // Added useMemo
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'; // Added useLocation
 import GameHeader from '@/components/GameHeader';
 import QuestionCard from '@/components/QuestionCard';
 import QuestionTimer from '@/components/QuestionTimer';
-import { Player, PlayerSelection } from '@/types/gameTypes'; // Question type not needed directly
-import { mockQuestions, mockPlayers, getPlayerById, getQuestionTextClass } from '@/utils/gamePlayUtils';
+// *** MODIFICATION: Import Player and PlayerResult type ***
+import { Player, PlayerSelection, PlayerResult } from '@/types/gameTypes';
+import { mockQuestions, getPlayerById, getQuestionTextClass, getPirateNameForUserId } from '@/utils/gamePlayUtils'; // Removed mockPlayers import
 import { useGameTimer } from '@/hooks/useGameTimer'; // Import timer hook
 import { useQuestionManager } from '@/hooks/useQuestionManager'; // Import question manager hook
 
 const GameplayScreen: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const totalQuestionsParam = searchParams.get('questions');
+  const location = useLocation(); // Get location state
+  const gameId = location.state?.gameId as string | undefined; // Get gameId from state
+  const totalQuestionsParam = location.state?.totalQuestions as number | undefined; // Get totalQuestions from state
+  const gameCode = searchParams.get('gameCode'); // Check if it's a crew game
+  const isSoloMode = !gameCode;
+
   const defaultTotalQuestions = 10; // Define default centrally if needed
-  const totalQuestions = totalQuestionsParam ? parseInt(totalQuestionsParam) : defaultTotalQuestions;
+  const totalQuestions = totalQuestionsParam ?? defaultTotalQuestions;
 
   // --- State Managed by Hooks ---
   const {
@@ -22,19 +28,37 @@ const GameplayScreen: React.FC = () => {
     isLastQuestion,
     nextQuestion,
     totalQuestionsToPlay // Get the actual number being played
-  } = useQuestionManager(mockQuestions, totalQuestions); // Use the question manager hook
+  } = useQuestionManager(mockQuestions, totalQuestions); // Use the question manager hook - using mock questions for now
 
   // --- Local State for Gameplay Interaction ---
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [isAnswered, setIsAnswered] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [score, setScore] = useState(0); // Overall score (if needed for display during game)
-  const [players] = useState<Player[]>(mockPlayers);
+  const [score, setScore] = useState(0); // Player's score for this game
+  // Removed useState for players - we only need the current user for solo
   const [playerSelections, setPlayerSelections] = useState<PlayerSelection[]>([]);
-  const [playerScores, setPlayerScores] = useState<Record<string, number>>({});
+  // Removed playerScores - only track the single player's score for solo
   const [maxHeight, setMaxHeight] = useState<number | null>(null);
   const answerRefs = useRef<(HTMLDivElement | null)[]>([]);
   const navigate = useNavigate();
+
+  // --- Get Current User Info (for Solo) ---
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserDisplayName, setCurrentUserDisplayName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('tempUserId');
+    const storedName = localStorage.getItem('tempUserDisplayName');
+    if (storedUserId) {
+      setCurrentUserId(storedUserId);
+      setCurrentUserDisplayName(storedName || getPirateNameForUserId(storedUserId)); // Fallback name generation
+    } else {
+      console.error("Gameplay: User ID not found!");
+      // Handle error - maybe navigate back
+      navigate('/');
+    }
+  }, [navigate]);
+
 
   // --- Timer Hook ---
   // The 'handleSubmit' function will now also act as the onTimeout callback
@@ -45,13 +69,6 @@ const GameplayScreen: React.FC = () => {
   );
 
   // --- Effects ---
-  // Initialize player scores
-  useEffect(() => {
-    const initialScores: Record<string, number> = {};
-    players.forEach(player => { initialScores[player.id] = 0; });
-    setPlayerScores(initialScores);
-  }, [players]); // Run only when players array potentially changes (likely only once)
-
   // Reset state for new question (triggered by `question` changing via hook)
   useEffect(() => {
     if (question) {
@@ -93,28 +110,25 @@ const GameplayScreen: React.FC = () => {
   const handleAnswerSelect = (answerId: string) => {
     if (!isAnswered) {
       setSelectedAnswer(answerId);
-      // Simulate player selection (same as before)
+      // Store the current player's selection
        setPlayerSelections(prev => {
         const newSelections = [...prev];
-        const existingIndex = newSelections.findIndex(s => s.playerId === 'p1');
+        // In solo, player ID comes from state; use 'p1' as placeholder if needed, but currentUserId is better
+        const playerId = currentUserId || 'p1';
+        const existingIndex = newSelections.findIndex(s => s.playerId === playerId);
         if (existingIndex >= 0) newSelections[existingIndex].answerId = answerId;
-        else newSelections.push({ playerId: 'p1', answerId });
+        else newSelections.push({ playerId: playerId, answerId });
         return newSelections;
       });
-      // Simulate other players (same as before)
-      if (playerSelections.filter(p => p.playerId !== 'p1').length === 0) {
-         setTimeout(() => {
-          const otherPlayers = players.filter(p => p.id !== 'p1');
-          const otherSelections = otherPlayers.map(player => ({
-            playerId: player.id,
-            answerId: question!.answers[Math.floor(Math.random() * question!.answers.length)].id // Use question! assertion
-          }));
-          setPlayerSelections(prev => {
-             const currentOtherIds = new Set(prev.filter(s => s.playerId !== 'p1').map(s => s.playerId));
-             const newOtherSelections = otherSelections.filter(s => !currentOtherIds.has(s.playerId));
-             return [...prev, ...newOtherSelections];
-           });
-        }, Math.random() * 1000 + 500);
+
+      // *** MODIFICATION: Only simulate AI players in crew mode ***
+      if (!isSoloMode) {
+          // Simulate other players (only relevant for potential future crew mode use here)
+          // This logic should ideally move to a crew-specific gameplay component or be fetched
+           setTimeout(() => {
+            // Placeholder for fetching/simulating other players in crew mode
+            console.log("Simulating other players (Crew Mode only)");
+           }, Math.random() * 1000 + 500);
       }
     }
   };
@@ -125,37 +139,50 @@ const GameplayScreen: React.FC = () => {
       nextQuestion(); // Use the function from the hook
     } else {
       // End the game - navigate to results
-      const playerResultsArray = players.map(player => ({
-        ...player,
-        score: playerScores[player.id] || 0
-      }));
-      navigate('/results', { state: { results: playerResultsArray } });
+      // *** MODIFICATION: Change type to PlayerResult[] ***
+      let playerResultsArray: PlayerResult[] = [];
+
+      // *** MODIFICATION: Build results array based on mode ***
+      if (isSoloMode && currentUserId && currentUserDisplayName !== null) {
+        // Solo Mode: Use current user's data
+        playerResultsArray = [{
+          id: currentUserId,
+          name: currentUserDisplayName, // Use the display name from state
+          score: score // Use the final score from state - This is now valid
+        }];
+      } else {
+        // Crew Mode: This part needs proper implementation if used
+        // You would fetch final participant scores from the backend or use websocket data
+        // For now, it might use outdated/mock data if called in crew mode context
+        console.warn("Crew mode results calculation not fully implemented in this component.");
+        // Placeholder using current state (might be incorrect for crew)
+        if (currentUserId && currentUserDisplayName !== null) {
+            // Ensure this object also matches PlayerResult
+            playerResultsArray = [{ id: currentUserId, name: currentUserDisplayName, score: score }];
+        }
+      }
+
+      console.log("Navigating to Results with:", playerResultsArray); // Debug log
+      // Pass gameCode only if it exists (i.e., crew mode)
+      const resultsPath = gameCode ? `/results?gameCode=${gameCode}` : '/results';
+      navigate(resultsPath, { state: { results: playerResultsArray } });
     }
   };
 
   // Handles both submit button click and timer timeout
   const handleSubmit = () => {
-    if (isAnswered || !question) return; // Prevent double submission or running without a question
+    if (isAnswered || !question || !currentUserId) return; // Prevent double submission or running without a question
 
     setIsAnswered(true); // Mark as answered FIRST
     const isAnswerCorrect = selectedAnswer === question.correctAnswer;
     setIsCorrect(isAnswerCorrect);
 
-    // Update score for the current player (p1)
+    // Update score for the current player (solo)
     if (isAnswerCorrect) {
-      setScore(prev => prev + 1); // Optional: Update local score if needed during gameplay
-      setPlayerScores(prev => ({ ...prev, 'p1': (prev['p1'] || 0) + 1 }));
+      setScore(prev => prev + 1);
     }
 
-    // Update AI player scores (run this regardless of player 1's answer)
-    playerSelections.forEach(selection => {
-      if (selection.playerId !== 'p1') {
-        const isCorrectSelection = selection.answerId === question.correctAnswer;
-        if (isCorrectSelection) {
-          setPlayerScores(prev => ({ ...prev, [selection.playerId]: (prev[selection.playerId] || 0) + 1 }));
-        }
-      }
-    });
+    // No AI player score updates needed for solo mode
 
     // Wait 3 seconds before advancing
     setTimeout(() => {
@@ -164,23 +191,26 @@ const GameplayScreen: React.FC = () => {
   };
 
   // --- Derived Data ---
-  // Group player selections by answer (requires question to exist)
-  const playerSelectionsByAnswer = question ? question.answers.reduce<Record<string, Player[]>>((acc, answer) => {
-    acc[answer.id] = playerSelections
-      .filter(selection => selection.answerId === answer.id)
-      .map(selection => {
-        const player = getPlayerById(players, selection.playerId);
-        return player ? player : { id: selection.playerId, name: `Player ${selection.playerId.substring(0, 4)}`, avatar: '👤' };
-      });
-    return acc;
-  }, {}) : {};
+  // Group player selections by answer (Only needed visually for crew mode)
+  const playerSelectionsByAnswer = useMemo(() => {
+      if (isSoloMode || !question) return {}; // Don't calculate for solo
+
+      // Placeholder: In crew mode, this needs real data fetched from backend/websockets
+      const selections: Record<string, Player[]> = {}; // Using Player type here is fine for display
+       // Example structure if you had `crewMembers` state:
+       // question.answers.forEach(answer => {
+       //   selections[answer.id] = crewMembers.filter(m => playerSelections.find(ps => ps.playerId === m.id && ps.answerId === answer.id));
+       // });
+      return selections;
+  }, [isSoloMode, question, playerSelections /*, crewMembers */ ]); // Add crewMembers if implemented
+
 
   // Determine question text class (requires question to exist)
   const questionTextClass = question ? getQuestionTextClass(question.text) : 'text-2xl md:text-3xl'; // Default class
 
   // --- Render ---
   // Handle loading state or end of questions more gracefully
-  if (!question) {
+  if (!question || !currentUserId) {
      // Could show a loading spinner or a "Game Over" message before navigation
     return <div className="min-h-screen flex items-center justify-center">Loading question...</div>;
   }
@@ -212,7 +242,8 @@ const GameplayScreen: React.FC = () => {
             isAnswered={isAnswered}
             correctAnswer={question.correctAnswer}
             onAnswerSelect={handleAnswerSelect}
-            playerSelectionsByAnswer={playerSelectionsByAnswer}
+            // *** MODIFICATION: Pass empty object for solo selections ***
+            playerSelectionsByAnswer={isSoloMode ? {} : playerSelectionsByAnswer}
             maxHeight={maxHeight}
             questionTextClass={questionTextClass}
             answerRefs={answerRefs}
@@ -226,10 +257,11 @@ const GameplayScreen: React.FC = () => {
         </div>
       </main>
 
+      {/* Styles remain the same */}
       <style>
         {`
-        @keyframes shake { /* Keep shake animation */ }
-        .animate-shake { /* Keep shake animation */ }
+        @keyframes shake { /* Keep shake animation */ 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
+        .animate-shake { /* Keep shake animation */ animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         `}
       </style>
 

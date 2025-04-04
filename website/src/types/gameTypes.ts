@@ -19,6 +19,12 @@ export interface Player {
   avatar?: string; // This should hold the emoji, initials, or URL
 }
 
+// *** ADDED: PlayerResult interface extending Player ***
+export interface PlayerResult extends Player {
+  score: number;
+}
+// *** END ADDED ***
+
 export interface PlayerSelection {
   playerId: string;
   answerId: string;
