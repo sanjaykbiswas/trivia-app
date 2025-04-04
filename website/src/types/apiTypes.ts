@@ -1,5 +1,5 @@
 // website/src/types/apiTypes.ts
-// --- START OF FILE ---
+// --- START OF FULL MODIFIED FILE ---
 
 // --- User API Types ---
 // Matches backend UserCreateRequest (body)
@@ -89,6 +89,8 @@ export interface ApiGamePlayQuestion {
     question_text: string;
     options: string[]; // Shuffled options from backend
     time_limit: number; // Time limit per question
+    // --- ADDED FIELD ---
+    correct_answer_id: string; // ID of the correct answer option (e.g., "q1-option2")
 }
 
 // Matches backend GamePlayQuestionListResponse
