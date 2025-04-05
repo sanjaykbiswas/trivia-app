@@ -74,6 +74,6 @@ export const useGameTimer = (
   }, [timeRemaining, isPaused]);
     // --- Removed timerId from this effect's dependency array ---
 
-  // Return the current time, ensuring it's not negative
+  // Return the current time, to ensure it's not negative
   return Math.max(0, timeRemaining);
 };
