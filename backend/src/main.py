@@ -57,6 +57,7 @@ app = FastAPI(
 allowed_origins = [
     "https://trivia-im0a7qfa5-sanjay-personal-projects.vercel.app", # Your Vercel deployment
     "https://trivia-app-five-chi.vercel.app",
+    "https://trivia-app-git-main-sanjay-personal-projects.vercel.app",
     "http://localhost:8080",
     "http://127.0.0.1:8080",
 ]
