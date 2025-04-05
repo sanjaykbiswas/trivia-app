@@ -8,6 +8,34 @@ from ..llm.llm_parsing_utils import parse_json_from_llm
 # Setup logger
 logger = logging.getLogger(__name__)
 
+# --- Example format moved outside f-string ---
+TOPIC_GENERATION_JSON_EXAMPLE_FORMAT = """
+[
+  "{pack_name}: Topic 1",
+  "{pack_name}: Topic 2",
+  "{pack_name}: Topic 3"
+]
+"""
+
+TOPIC_GENERATION_EXAMPLE_OUTPUT = """
+[
+  "World Geography: Mountain ranges across continents",
+  "World Geography: Island nations and archipelagos",
+  "World Geography: Capital cities of the world",
+  "World Geography: Major rivers and watersheds",
+  "World Geography: Desert ecosystems"
+]
+"""
+
+ADDITIONAL_TOPIC_GENERATION_JSON_EXAMPLE_FORMAT = """
+[
+  "New Topic 1",
+  "New Topic 2",
+  "New Topic 3"
+]
+"""
+# --- End Example format ---
+
 class PackTopicCreation:
     """
     Utility for generating pack topics for trivia question generation.
@@ -101,6 +129,8 @@ class PackTopicCreation:
             Formatted prompt string.
         """
         # --- END UPDATED SIGNATURE ---
+
+        # --- Modified f-string to use external examples ---
         prompt = f"""Generate {num_topics} specific topics for a trivia pack named "{pack_name}".
 
 The topics should:
@@ -109,23 +139,14 @@ The topics should:
 - They should be wide enough that there is room for a variety of interesting questions to be generated about the topic
 
 IMPORTANT: Return the topics as a valid JSON array of strings in this exact format:
-[
-  "{pack_name}: Topic 1",
-  "{pack_name}: Topic 2",
-  "{pack_name}: Topic 3"
-]
+{TOPIC_GENERATION_JSON_EXAMPLE_FORMAT}
 
 For example, if the pack name was "World Geography", the response should be:
-[
-  "World Geography: Mountain ranges across continents",
-  "World Geography: Island nations and archipelagos",
-  "World Geography: Capital cities of the world",
-  "World Geography: Major rivers and watersheds",
-  "World Geography: Desert ecosystems"
-]
+{TOPIC_GENERATION_EXAMPLE_OUTPUT}
 
 DO NOT include any additional text, explanations, or markdown - ONLY return the JSON array.
 """
+        # --- End modification ---
         return prompt
 
     # --- UPDATED METHOD SIGNATURE ---
@@ -158,6 +179,7 @@ DO NOT include any additional text, explanations, or markdown - ONLY return the 
         # Clean pack name
         pack_name = normalize_text(pack_name, lowercase=False) # Use pack_name
 
+        # --- Modified f-string to use external example ---
         # Build prompt for additional topics (using pack_name)
         additional_prompt = f"""Generate {num_additional_topics} new specific topics for a trivia pack named "{pack_name}".
 
@@ -169,14 +191,11 @@ The topics should:
 - Cover different aspects related to {pack_name}
 
 IMPORTANT: Return the topics as a valid JSON array of strings in this exact format:
-[
-  "New Topic 1",
-  "New Topic 2",
-  "New Topic 3"
-]
+{ADDITIONAL_TOPIC_GENERATION_JSON_EXAMPLE_FORMAT}
 
 DO NOT include any additional text, explanations, or markdown - ONLY return the JSON array.
 """
+        # --- End modification ---
 
         try: # Added try/except
             # Generate additional topics

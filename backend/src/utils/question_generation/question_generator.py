@@ -18,6 +18,22 @@ from ..document_processing.processors import clean_text
 # Configure logger
 logger = logging.getLogger(__name__)
 
+# --- Example format moved outside f-string ---
+QUESTION_JSON_EXAMPLE_FORMAT = """
+[
+  {
+    "question": "The full question text?",
+    "answer": "The correct answer"
+  },
+  {
+    "question": "Another question?",
+    "answer": "Its answer"
+  }
+]
+"""
+# --- End Example format ---
+
+
 class QuestionGenerator:
     """
     Generates trivia questions using LLM based on specified topics and difficulties.
@@ -179,6 +195,7 @@ class QuestionGenerator:
         # Pre-format the optional instruction text
         instruction_text = f"\nAdditional instructions for question generation:\n{custom_instructions}\n" if custom_instructions else ""
 
+        # --- Modified f-string to use external example format ---
         # Combine everything into a single f-string
         prompt = f"""Generate {num_questions} trivia questions about "{pack_topic}" for a trivia pack called "{pack_name}".
 
@@ -200,13 +217,7 @@ Each generated question should:
 {examples_text}
 
 Return ONLY a valid JSON array of question objects with the following format:
-[
-  {{
-    "question": "The full question text?",
-    "answer": "The correct answer"
-  }},
-  ...
-]
+{QUESTION_JSON_EXAMPLE_FORMAT}
 
 IMPORTANT:
 - Generate questions ONLY for the TARGET difficulty level: {difficulty}.
@@ -214,6 +225,7 @@ IMPORTANT:
 - Return ONLY the JSON array without any additional text or markdown formatting.
 - Ensure the JSON is properly formatted.
 """
+        # --- End modification ---
         return prompt
 
     def _format_seed_questions_as_examples(self, seed_questions: Optional[Dict[str, str]]) -> str:

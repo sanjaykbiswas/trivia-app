@@ -21,6 +21,24 @@ class IncorrectAnswerGenerationError(Exception):
         super().__init__(f"{message} Failed for question IDs: {', '.join(failed_question_ids)}")
 # --- End Custom Exception ---
 
+# --- Example format moved outside f-string ---
+INCORRECT_ANSWER_JSON_EXAMPLE_FORMAT = """
+[
+  {
+    "question_id": "uuid-for-question-1",
+    "question": "What is the capital of France?",
+    "incorrect_answers": ["London", "Rome", "Berlin"]
+  },
+  {
+    "question_id": "uuid-for-question-2",
+    "question": "Which planet is known as the Red Planet?",
+    "incorrect_answers": ["Venus", "Jupiter", "Saturn"]
+  }
+  // ... more objects following the same structure
+]
+"""
+# --- End Example format ---
+
 class IncorrectAnswerGenerator:
     """
     Generates plausible but incorrect answers for trivia questions,
@@ -63,7 +81,7 @@ class IncorrectAnswerGenerator:
             return []
 
         all_results_map: Dict[str, List[str]] = {}
-        original_question_map = {q.id: q for q in questions}
+        original_question_map = {str(q.id): q for q in questions} # Use string IDs for map keys
         original_question_ids = set(original_question_map.keys())
 
         questions_to_process = list(questions)
@@ -86,8 +104,9 @@ class IncorrectAnswerGenerator:
 
         for batch_answers in initial_batch_results:
             for q_id, answers in batch_answers:
-                if q_id not in all_results_map:
-                     all_results_map[q_id] = answers
+                q_id_str = str(q_id) # Ensure string ID
+                if q_id_str not in all_results_map:
+                     all_results_map[q_id_str] = answers
 
         # --- Identify Failures from Initial Attempt ---
         currently_failed_ids = original_question_ids - set(all_results_map.keys())
@@ -119,8 +138,9 @@ class IncorrectAnswerGenerator:
             processed_in_retry = 0
             for batch_answers in retry_batch_results:
                 for q_id, answers in batch_answers:
-                    if q_id not in all_results_map:
-                         all_results_map[q_id] = answers
+                     q_id_str = str(q_id) # Ensure string ID
+                     if q_id_str not in all_results_map:
+                         all_results_map[q_id_str] = answers
                          processed_in_retry += 1
 
             # Update the list of failures after the retry
@@ -179,12 +199,14 @@ class IncorrectAnswerGenerator:
         question_data_for_prompt = []
         original_questions_map = {}
         for q in questions_batch:
+             # Ensure string IDs are used
+             q_id_str = str(q.id)
              question_data_for_prompt.append({
-                  "id": q.id,
+                  "id": q_id_str,
                   "question": q.question,
                   "answer": q.answer
              })
-             original_questions_map[q.question] = q
+             original_questions_map[q.question] = q # Key by text for matching
 
         prompt = self._build_incorrect_answers_prompt(question_data_for_prompt, num_incorrect_answers)
 
@@ -223,7 +245,7 @@ class IncorrectAnswerGenerator:
         """
         Build the prompt for incorrect answer generation.
         """
-        prompt = f"""Generate {num_incorrect_answers} plausible but incorrect answers for each of the following trivia questions.
+        prompt_intro = f"""Generate {num_incorrect_answers} plausible but incorrect answers for each of the following trivia questions.
 
 For each question, I'll provide:
 - A unique question_id
@@ -234,37 +256,28 @@ Your task is to create {num_incorrect_answers} incorrect answers that meet the g
 
 Here are the questions (pay attention to the question_id):
 """
+        question_examples = []
         for item in question_data:
             # Basic escaping for JSON within the prompt string
             q_text = item['question'].replace('"', '\\"')
             c_ans = item['answer'].replace('"', '\\"')
-            prompt += f"""
+            # Ensure the ID is treated as a string
+            q_id_str = str(item['id'])
+            question_examples.append(f"""
 {{
-  "question_id": "{item['id']}",
+  "question_id": "{q_id_str}",
   "question": "{q_text}",
   "correct_answer": "{c_ans}"
 }}
-"""
-        prompt += f"""
+""")
+        prompt_outro = f"""
 Return your response as a valid JSON array containing objects. Each object MUST have these EXACT keys:
-- "question_id": The EXACT unique ID provided for the question above.
+- "question_id": The EXACT unique ID provided for the question above (as a string).
 - "question": The EXACT original question text provided above.
 - "incorrect_answers": An array of {num_incorrect_answers} strings representing the generated incorrect answers.
 
 Example of the required output structure:
-[
-  {{
-    "question_id": "uuid-for-question-1",
-    "question": "What is the capital of France?",
-    "incorrect_answers": ["London", "Rome", "Berlin"]
-  }},
-  {{
-    "question_id": "uuid-for-question-2",
-    "question": "Which planet is known as the Red Planet?",
-    "incorrect_answers": ["Venus", "Jupiter", "Saturn"]
-  }}
-  // ... more objects following the same structure
-]
+{INCORRECT_ANSWER_JSON_EXAMPLE_FORMAT}
 
 IMPORTANT NOTES:
 - Use the EXACT question_id provided for each question in your response.
@@ -276,6 +289,9 @@ IMPORTANT NOTES:
 - Ensure the final output is a single, valid JSON array.
 - Ensure the incorrect answers are not overly verbose, they should be appropriate length for multiple choice trivia
 """
+        # --- Modified f-string concatenation ---
+        prompt = prompt_intro + "".join(question_examples) + prompt_outro
+        # --- End modification ---
         return prompt
 
     async def _parse_and_match_response(
@@ -336,13 +352,11 @@ IMPORTANT NOTES:
 
             # Matching Logic (ID first, then Text)
             if question_id_from_llm:
-                found_by_id = False
-                for q_obj in original_questions_map.values():
-                    if q_obj.id == question_id_from_llm:
-                        target_question = q_obj
-                        found_by_id = True
-                        break
+                # Find question by string ID
+                target_question = next((q for q in original_questions_map.values() if str(q.id) == str(question_id_from_llm)), None)
+
             if not target_question and question_text_from_llm:
+                # Fallback to text matching (less reliable)
                 if question_text_from_llm in original_questions_map:
                     target_question = original_questions_map[question_text_from_llm]
                 else:
@@ -354,7 +368,8 @@ IMPORTANT NOTES:
                             break
 
             if target_question:
-                if target_question.id in processed_ids_in_this_response:
+                target_id_str = str(target_question.id) # Ensure string ID
+                if target_id_str in processed_ids_in_this_response:
                     continue
 
                 if isinstance(incorrect_answers, list) and all(isinstance(a, str) for a in incorrect_answers):
@@ -363,10 +378,10 @@ IMPORTANT NOTES:
                     filtered_answers = [a for a in cleaned_answers if clean_text(a).lower() != correct_answer_lower]
 
                     if filtered_answers:
-                        results.append((target_question.id, filtered_answers))
-                        processed_ids_in_this_response.add(target_question.id)
+                        results.append((target_id_str, filtered_answers)) # Return string ID
+                        processed_ids_in_this_response.add(target_id_str)
                 else:
-                    logger.warning(f"Invalid incorrect_answers format from LLM for QID {target_question.id}")
+                    logger.warning(f"Invalid incorrect_answers format from LLM for QID {target_id_str}")
 
         if self.debug_enabled:
             print(f"    Successfully parsed and matched {len(results)} items from this LLM response.")
