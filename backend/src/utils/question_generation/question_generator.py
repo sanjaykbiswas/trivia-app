@@ -189,43 +189,37 @@ class QuestionGenerator:
         custom_instructions: Optional[str] = None,
         num_questions: int = 5
     ) -> str:
-        """Build the prompt for question generation."""
+        """Build the prompt for question generation using string concatenation."""
         all_descriptions_text = self._format_all_difficulty_descriptions(difficulty_descriptions)
         examples_text = self._format_seed_questions_as_examples(seed_questions)
         # Pre-format the optional instruction text
         instruction_text = f"\nAdditional instructions for question generation:\n{custom_instructions}\n" if custom_instructions else ""
 
-        # --- Modified f-string to use external example format ---
-        # Combine everything into a single f-string
-        prompt = f"""Generate {num_questions} trivia questions about "{pack_topic}" for a trivia pack called "{pack_name}".
+        # --- Build the prompt using concatenation ---
+        prompt = f"Generate {num_questions} trivia questions about \"{pack_topic}\" for a trivia pack called \"{pack_name}\".\n\n"
+        prompt += f"The TARGET difficulty level for these questions is: {difficulty}.\n\n"
+        prompt += "Use the following descriptions for ALL difficulty levels in this pack as context to understand what {difficulty} means relative to the others:\n"
+        prompt += f"{all_descriptions_text}\n\n" # Add the formatted descriptions
+        prompt += "Each generated question should:\n"
+        prompt += "1. Be clear and unambiguous.\n"
+        prompt += "2. Have a single correct answer that is factually accurate. The question should also have factually correct elements.\n"
+        prompt += "3. Not state the answer within the question text itself. E.g., \"Question: Who is the main character of Harry Potter\" is a bad question because the answer is \"Harry Potter.\"\n"
+        prompt += f"4. Be specific to the topic \"{pack_topic}\".\n"
+        prompt += f"5. Match the TARGET difficulty level ({difficulty}) based on the provided context.\n"
+        prompt += "6. Be interesting and creative while maintaining accuracy.\n"
+        prompt += "7. Have a question length appropriate for trivia (e.g., 10-20 words or max 125 characters).\n"
+        prompt += "8. Have a concise answer.\n"
+        prompt += instruction_text # Add optional instructions
+        prompt += examples_text # Add optional examples
+        prompt += "\nReturn ONLY a valid JSON array of question objects with the following format:\n"
+        prompt += QUESTION_JSON_EXAMPLE_FORMAT # Add the pre-defined example format
+        prompt += "\nIMPORTANT:\n"
+        prompt += f"- Generate questions ONLY for the TARGET difficulty level: {difficulty}.\n"
+        prompt += "- Make sure each question has exactly ONE correct answer.\n"
+        prompt += "- Return ONLY the JSON array without any additional text or markdown formatting.\n"
+        prompt += "- Ensure the JSON is properly formatted.\n"
+        # --- End prompt building ---
 
-The TARGET difficulty level for these questions is: {difficulty}.
-
-Use the following descriptions for ALL difficulty levels in this pack as context to understand what {difficulty} means relative to the others:
-{all_descriptions_text}
-
-Each generated question should:
-1. Be clear and unambiguous.
-2. Have a single correct answer that is factually accurate. The question should also have factually correct elements.
-3. Not state the answer within the question text itself. E.g., "Question: Who is the main character of Harry Potter" is a bad question because the answer is "Harry Potter."
-4. Be specific to the topic "{pack_topic}".
-5. Match the TARGET difficulty level ({difficulty}) based on the provided context.
-6. Be interesting and creative while maintaining accuracy.
-7. Have a question length appropriate for trivia (e.g., 10-20 words or max 125 characters).
-8. Have a concise answer.
-{instruction_text}
-{examples_text}
-
-Return ONLY a valid JSON array of question objects with the following format:
-{QUESTION_JSON_EXAMPLE_FORMAT}
-
-IMPORTANT:
-- Generate questions ONLY for the TARGET difficulty level: {difficulty}.
-- Make sure each question has exactly ONE correct answer.
-- Return ONLY the JSON array without any additional text or markdown formatting.
-- Ensure the JSON is properly formatted.
-"""
-        # --- End modification ---
         return prompt
 
     def _format_seed_questions_as_examples(self, seed_questions: Optional[Dict[str, str]]) -> str:
@@ -238,13 +232,10 @@ IMPORTANT:
             count += 1
             if count >= 5: break
         if examples:
-            return f"""
-Here are some example questions and answers for this pack and topic:
-
-{"\n\n".join(examples)}
-
-Use the instructions and example questions as inspiration, but create entirely new questions that play with wordplay, allusions, and clever phrasing that ties to the topic without being too on-the-nose. Ensure you follow all instructions listed. Above all, the question and answer created must be correct. Do not let style or creativity override accuracy.
-"""
+            # --- Use simple concatenation here too ---
+            return ("\nHere are some example questions and answers for this pack and topic:\n\n"
+                    + "\n\n".join(examples)
+                    + "\n\nUse the instructions and example questions as inspiration, but create entirely new questions that play with wordplay, allusions, and clever phrasing that ties to the topic without being too on-the-nose. Ensure you follow all instructions listed. Above all, the question and answer created must be correct. Do not let style or creativity override accuracy.\n")
         return ""
 
     async def _process_question_response(
